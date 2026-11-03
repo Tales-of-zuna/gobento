@@ -69,7 +69,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version: stable # scan with the latest patched toolchain, as users build with
       - name: Check for known vulnerabilities
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
@@ -118,7 +118,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
+          go-version: "1.27" # newest Go in versions.yaml: the reference project defaults to it
       - name: Generate the reference project
         run: go run ./cmd/gobento new shop --module example.com/shop --dir "$RUNNER_TEMP/shop"
       - name: Regenerate with the pinned sqlc and compare
