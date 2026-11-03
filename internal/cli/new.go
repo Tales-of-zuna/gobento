@@ -220,9 +220,10 @@ func (a *app) printDryRun(p *generate.Prepared, target string) error {
 
 func (a *app) printNextSteps(p *generate.Prepared, target string) error {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Created %s in %s.\n\nNext steps:\n", p.Module, target)
-	if abs, err := filepath.Abs(target); err != nil || !isCurrentDir(abs) {
-		fmt.Fprintf(&b, "  cd %s\n", target)
+	if abs, err := filepath.Abs(target); err == nil && isCurrentDir(abs) {
+		fmt.Fprintf(&b, "Created %s in the current directory.\n\nNext steps:\n", p.Module)
+	} else {
+		fmt.Fprintf(&b, "Created %s in %s.\n\nNext steps:\n  cd %s\n", p.Module, target, target)
 	}
 	b.WriteString("  go test ./...\n")
 	if entry, ok := p.Plan.Slots["entry"]; ok {

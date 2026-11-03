@@ -317,3 +317,21 @@ func twoFrameworkFS(t *testing.T) fs.FS {
 	}
 	return m
 }
+
+// TestNewIntoCurrentDirectory covers spec "Generate into the current empty
+// directory": the target is "." and no cd step is printed.
+func TestNewIntoCurrentDirectory(t *testing.T) {
+	t.Chdir(t.TempDir())
+
+	gen := &fakeGenerator{}
+	out, _, err := run(t, components.FS(), gen, "new", "shop", "--dir", ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gen.calls[0].Target != "." {
+		t.Errorf("Target = %q, want .", gen.calls[0].Target)
+	}
+	if !strings.Contains(out, "Created shop in the current directory.") || strings.Contains(out, "cd ") {
+		t.Errorf("output =\n%s\nwant the current directory and no cd step", out)
+	}
+}

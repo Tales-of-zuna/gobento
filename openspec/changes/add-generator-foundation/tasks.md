@@ -47,7 +47,7 @@
 ## 8. Documentation and CI
 
 - [x] 8.1 Write `docs/components.md` (layout, slots, contracts, traits, template data, the `.tmpl` and `dot-` rules, adding a component, bumping versions); verify that its example manifest loads with the catalog loader in a test
-- [ ] 8.2 Add the Usage section to `README.md`; verify every documented command runs as written
+- [x] 8.2 Add the Usage section to `README.md`; verify every documented command runs as written
 - [ ] 8.3 Extend `.github/workflows/ci.yml` with the integration job (newest Go in range, ubuntu/macos/windows, module cache) and the sqlc freshness job; verify with `actionlint` locally (the first real run happens after a push the user approves)
 
 ## 9. End-to-end check
