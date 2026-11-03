@@ -1,14 +1,17 @@
 import Link from 'next/link';
 import { MascotHero } from '@/components/mascot/MascotHero';
 import { PrereleaseNotice } from '@/components/site/PrereleaseNotice';
+import type { ReleaseStatus } from '@/lib/release';
 import { docsRoute } from '@/lib/shared';
 import { CopyCommand } from './CopyCommand';
 import { configuratorRoute, QUICK_START } from './links';
 import { Item, PressLink, Stagger } from './motion';
+import { HeroInstallNote } from './ReleaseCopy';
 import s from './home.module.css';
 
 /** The sky band under the nav: value proposition, quick start, calls to action and the mascot. */
-export function Hero({ released }: { released: boolean }) {
+export function Hero({ release }: { release: ReleaseStatus }) {
+  const { released } = release;
   return (
     <div className={`${s.band} ${s.bSora} ${s.bHero}`}>
       <div className={`${s.pat} ${s.sei}`} aria-hidden="true" />
@@ -32,9 +35,7 @@ export function Hero({ released }: { released: boolean }) {
           </Item>
           <Item>
             <CopyCommand command={QUICK_START} />
-            {!released && (
-              <p className={s.note}>Planned interface. There is nothing to install yet.</p>
-            )}
+            <HeroInstallNote release={release} />
           </Item>
           <Item className={s.ctas}>
             <PressLink className={`${s.btn} ${s.pri}`} href={configuratorRoute} prefetch={false}>

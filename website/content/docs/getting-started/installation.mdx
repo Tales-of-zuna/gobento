@@ -1,12 +1,13 @@
 ---
 title: Installation
-description: What you need to run gobento, and how to install it.
+description: What you need to run gobento, and how to install it with go install or a prebuilt binary.
 ---
 
-<Callout type="info" title="Not released yet">
-  There is no tagged release yet. Until the first one, `go install ...@latest` builds the newest
-  commit of the main branch.
-</Callout>
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+gobento is released on [GitHub Releases](https://github.com/Tales-of-zuna/gobento/releases).
+It is pre-1.0 and in early development, so the interface may still change between minor releases;
+each release's notes list what changed.
 
 ## Requirements
 
@@ -21,21 +22,96 @@ description: What you need to run gobento, and how to install it.
 
 ## Install the CLI
 
+You can install gobento with `go install` or download a prebuilt binary.
+
+### With `go install`
+
 ```sh
 go install github.com/Tales-of-zuna/gobento/cmd/gobento@latest
 ```
 
-Check that it is on your `PATH`:
+This builds the latest release into `$(go env GOBIN)`, or `$(go env GOPATH)/bin`
+when `GOBIN` is not set. Make sure that directory is on your `PATH`. To install a
+specific version, replace `@latest` with its tag, such as `@v0.1.0`.
+
+### With a prebuilt binary
+
+Each release on the
+[releases page](https://github.com/Tales-of-zuna/gobento/releases) has an
+archive for Linux, macOS, and Windows on `amd64` and `arm64`, named
+`gobento_<version>_<os>_<arch>` (`.tar.gz`, or `.zip` on Windows), and a
+`checksums.txt` file with the SHA-256 checksum of every archive. The binaries
+do not need Go to start, but generating a project still needs the Go toolchain
+(see [Requirements](#requirements)).
+
+Download the archive for your system and `checksums.txt`, from the releases
+page or with the [GitHub CLI](https://cli.github.com/):
 
 ```sh
-gobento --help
+gh release download v0.1.0 --repo Tales-of-zuna/gobento \
+  --pattern 'gobento_0.1.0_linux_amd64.tar.gz' --pattern checksums.txt
 ```
+
+Verify the checksum before you run the binary:
+
+<Tabs items={['Linux', 'macOS', 'Windows (PowerShell)']}>
+<Tab value="Linux">
+
+```sh
+sha256sum --check --ignore-missing checksums.txt
+```
+
+It prints `gobento_0.1.0_linux_amd64.tar.gz: OK`.
+
+</Tab>
+<Tab value="macOS">
+
+```sh
+shasum -a 256 --check --ignore-missing checksums.txt
+```
+
+It prints `OK` after the archive's name.
+
+</Tab>
+<Tab value="Windows (PowerShell)">
+
+```powershell
+$file = "gobento_0.1.0_windows_amd64.zip"
+$want = (Select-String -Path checksums.txt -Pattern $file -SimpleMatch).Line.Split(" ")[0]
+(Get-FileHash $file -Algorithm SHA256).Hash -eq $want
+```
+
+It prints `True` when the hash matches the archive's line in `checksums.txt`.
+
+</Tab>
+</Tabs>
+
+Extract the archive, which contains `gobento` (`gobento.exe` on Windows),
+`LICENSE`, and `README.md`, and move the binary to a directory on your `PATH`:
+
+```sh
+tar -xzf gobento_0.1.0_linux_amd64.tar.gz gobento
+sudo mv gobento /usr/local/bin/
+```
+
+On Windows, extract the `.zip` (for example with `Expand-Archive`) and add the
+folder that holds `gobento.exe` to your `PATH`.
+
+### Check the installation
+
+```sh
+gobento --version
+```
+
+A release binary prints its version, such as `gobento version 0.1.0`.
+gobento v0.1.0 installed with `go install` prints `gobento version dev`: that
+release only reports the version that release builds set. Releases after
+v0.1.0 also report the module version when installed with `go install`.
+
+### Build from source
 
 To build from a clone instead, run `make build` (or
 `go build -o bin/gobento ./cmd/gobento`), which writes `bin/gobento`.
-
-Prebuilt binaries are on the roadmap. Until then, `go install` and building
-from source are the install methods.
 
 ## Go version of generated projects
 

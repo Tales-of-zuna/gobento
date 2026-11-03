@@ -3,11 +3,6 @@ title: gobento new
 description: Reference for gobento new, the command that generates a Go project from a component selection.
 ---
 
-<Callout type="info" title="Not released yet">
-  `gobento new` works as described here, but there is no tagged release yet. See
-  [Installation](/docs/getting-started/installation) for how to build it.
-</Callout>
-
 ## Synopsis
 
 ```text
@@ -46,7 +41,10 @@ it has several, gobento stops with a problem such as
 **rules default**: the default from the [version rules](/docs/concepts/version-rules).
 The current defaults and ranges are listed in the [Components reference](/docs/components).
 
-`gobento --version` prints the gobento version (`dev` for a local build).
+`gobento --version` prints the gobento version: the release version for release binaries, the
+module version for `go install` and builds from a clone (a pseudo-version between releases), and
+`dev` when Go recorded no version, such as for `go run`. See
+[Installation](/docs/getting-started/installation) for v0.1.0 installed with `go install`.
 
 ## Examples
 

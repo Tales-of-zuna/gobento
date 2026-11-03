@@ -22,8 +22,7 @@ export function Stack() {
               One option per compartment today.
             </h2>
             <p className={s.lead}>
-              The first release ships one proven choice for each kind. Others join once they pass
-              the same CI matrix.
+              Each kind has one proven choice today. Others join once they pass the same CI matrix.
             </p>
           </div>
         </div>

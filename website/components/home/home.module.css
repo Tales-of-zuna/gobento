@@ -289,6 +289,14 @@
   font-size: var(--t-xs);
   color: var(--ink-2);
 }
+.note a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.note code {
+  font-family: var(--f-mono);
+}
 
 .stage {
   position: relative;

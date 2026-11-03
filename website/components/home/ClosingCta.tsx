@@ -1,10 +1,12 @@
 import { HERO_SIZE, HERO_STILLS, stillUrl } from '@/components/mascot/stills';
+import type { ReleaseStatus } from '@/lib/release';
 import { configuratorRoute, githubUrl } from './links';
 import { Item, PressAnchor, PressLink, Stagger } from './motion';
+import { closingLead } from './ReleaseCopy';
 import s from './home.module.css';
 
 /** "Fill your box": the closing call to action, with the mascot peeking in. */
-export function ClosingCta() {
+export function ClosingCta({ release }: { release: ReleaseStatus }) {
   return (
     <section className={`${s.band} ${s.edge} ${s.bClose}`} aria-labelledby="close-title">
       <div className={s.in}>
@@ -15,9 +17,7 @@ export function ClosingCta() {
                 <h2 id="close-title" className={s.h2}>
                   Fill your box.
                 </h2>
-                <p className={s.lead}>
-                  Try the configurator now; the CLI follows when the first release is ready.
-                </p>
+                <p className={s.lead}>{closingLead(release)}</p>
               </div>
               <div className={s.ctas}>
                 <PressLink

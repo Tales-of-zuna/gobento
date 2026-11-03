@@ -16,3 +16,9 @@ export const docsHomeRoute = `${docsRoute}/`;
 export function repoFile(path: string): string {
   return `${repo}/blob/${gitConfig.branch}/${path}`;
 }
+
+/** The GitHub Releases page: prebuilt binaries and checksums.txt for each version. */
+export const releasesUrl = `${repo}/releases`;
+
+/** Route of the installation guide in the docs. */
+export const installationRoute = `${docsRoute}/getting-started/installation/`;

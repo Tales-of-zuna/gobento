@@ -58,7 +58,8 @@ to be applied.
 
 ## 9. Launch check
 
-- [ ] 9.1 After the user approves merging, verify the deployed site at `https://tales-of-zuna.github.io/gobento/`: home, configurator, docs, and search work, and Lighthouse mobile scores meet the budget on the live URL (spec *Merge to main*, *Lighthouse budget*)
+- [x] 9.1 After the user approves merging, verify the deployed site at `https://tales-of-zuna.github.io/gobento/`: home, configurator, docs, and search work, and Lighthouse mobile scores meet the budget on the live URL (spec *Merge to main*, *Lighthouse budget*)
+  - Verified 2026-11-03 on the live site: all pages and assets 200, search works, configurator builds `gobento new shop`, 3D canvas mounts, pre-release notice absent, no console errors. Live Lighthouse mobile medians of 3 runs (performance / accessibility): home 0.99 / 1.00, configurator 0.91 / 1.00, docs quick-start 0.99 / 1.00.
 
 ## Workflow follow-up
 

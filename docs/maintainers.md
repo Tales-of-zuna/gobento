@@ -14,12 +14,11 @@ and search engines see. Keep it accurate as the project grows:
 
 - **Description:** "Go project generator: choose your framework, database,
   data access, architecture and dependency versions — compatibility-checked and
-  proven to build in CI. Early development." Drop "Early development." with
-  the first release.
+  proven to build in CI." (Before `v0.1.0` it ended with "Early development.")
 - **Topics:** `go`, `golang`, `cli`, `project-generator`, `scaffolding`,
   `code-generator`, `boilerplate`, `templates`.
-- **Website:** `https://tales-of-zuna.github.io/gobento/` once the first
-  Pages deployment has run (see [GitHub Pages](#github-pages)).
+- **Website:** `https://tales-of-zuna.github.io/gobento/` (see
+  [GitHub Pages](#github-pages)).
 
 The same values can be set from a terminal:
 
@@ -67,7 +66,7 @@ and [Managing the automatic deletion of branches](https://docs.github.com/en/rep
 |---|---|---|
 | Private vulnerability reporting | Enabled | [SECURITY.md](../SECURITY.md) and the issue form contact link send reporters to the private "Report a vulnerability" form. |
 | Dependabot alerts | Enabled | Notifies maintainers about known vulnerabilities in dependencies. |
-| Dependabot security updates | Enabled | Opens fix pull requests for those alerts automatically. Regular version updates are configured in `.github/dependabot.yml`. |
+| Dependabot security updates | Enabled | Opens fix pull requests for those alerts automatically. Regular version updates are configured in `.github/dependabot.yml`; major upgrades of the website toolchain (TypeScript, `@types/node`, Next.js, React, three.js/R3F) are ignored there and done as planned OpenSpec changes, with `@types/node` kept on the Node major in `website/.nvmrc`. |
 
 See [Configuring private vulnerability reporting](https://docs.github.com/en/code-security/security-advisories/working-with-repository-security-advisories/configuring-private-vulnerability-reporting-for-a-repository),
 [Configuring Dependabot alerts](https://docs.github.com/en/code-security/dependabot/dependabot-alerts/configuring-dependabot-alerts),
@@ -117,7 +116,7 @@ requests, so a required check from it would block them forever.
 | Job | What it checks |
 |---|---|
 | `website` | `pnpm install --frozen-lockfile`, that `go list ./...` sees nothing under `website/`, lint, type-check, Prettier, Vitest, and the static build |
-| `website-e2e` | Playwright end-to-end tests with axe accessibility audits against the static export under `/gobento/` |
+| `website-e2e` | Playwright end-to-end tests with axe accessibility audits against the static export under `/gobento/`; when it fails, the HTML report, traces, and screenshots are attached to the run as the `playwright-report` artifact (kept for 7 days) |
 | `lighthouse` | The Lighthouse budget (below); the reports are attached to the run as the `lighthouse-reports` artifact |
 | `website-ok` | Always runs, and fails if any job above failed or was cancelled (skipped counts as passing) |
 
@@ -128,7 +127,7 @@ reports on pull requests that do not touch the site.
 **Lighthouse budget.** The `project-website` spec requires the home page, the
 configurator, and a docs page to score at least 90 (0.9) for both performance
 and accessibility in a mobile Lighthouse audit. `website/lighthouserc.cjs`
-holds the URLs and the assertions; each page is audited three times and the
+holds the URLs and the assertions; each page is audited five times and the
 median run counts, which smooths out runner noise. Lighthouse simulates a
 mid-range phone on a slow 4G connection, so a failure usually means the page
 ships too much JavaScript, CSS, or fonts, or renders its main text late. Open
@@ -172,10 +171,12 @@ the release-please documentation, or add a `Release-As: x.y.z` footer to a
 commit on `main`.
 
 **First release.** With no previous release, release-please proposes `1.0.0`
-regardless of `bump-minor-pre-major`. `release-please-config.json` therefore
-sets `"release-as": "0.1.0"`. **Remove that line in the first pull request
-after `v0.1.0` is released**, otherwise every later release would also be
-forced to `0.1.0`.
+regardless of `bump-minor-pre-major`, so `release-please-config.json`
+temporarily set `"release-as": "0.1.0"` for the first release. `v0.1.0` has
+been released and that line has been removed; release-please now derives each
+version from the commits since the previous release. Do not add `release-as`
+back to the config, because it would force every later release to the same
+version. Use a `Release-As: x.y.z` commit footer for a one-off override.
 
 ## Bumping golangci-lint
 
