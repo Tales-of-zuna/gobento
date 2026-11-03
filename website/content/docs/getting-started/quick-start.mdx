@@ -1,0 +1,157 @@
+---
+title: Quick start
+description: Generate a Go project with gobento, run its tests, and call its API.
+---
+
+import { Files, Folder, File } from 'fumadocs-ui/components/files';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+<Callout type="warn" title="Planned interface">
+  These commands show how gobento is designed to work. They do not work yet.
+</Callout>
+
+This guide generates a project called `shop` with the first supported stack:
+MVC, `net/http`, SQLite, and sqlc.
+
+<Steps>
+<Step>
+
+### Preview the project (optional)
+
+`--dry-run` validates your input and lists the files that would be created. It
+writes nothing and does not run the Go toolchain.
+
+```sh
+gobento new shop --module example.com/shop --dry-run
+```
+
+</Step>
+<Step>
+
+### Generate it
+
+```sh
+gobento new shop --module example.com/shop
+```
+
+Each component kind has one option today, so gobento selects them for you. The
+same command with every choice spelled out is:
+
+```sh
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
+```
+
+gobento creates `./shop`, fetches the exact dependency versions with your Go
+toolchain, and prints the next commands to run.
+
+</Step>
+<Step>
+
+### Run the tests
+
+```sh
+cd shop
+go test ./...
+```
+
+The project builds, passes `go vet` and `gofmt -l`, and passes its own tests
+without edits.
+
+</Step>
+<Step>
+
+### Start the server
+
+The server reads its port from `PORT` and its database location from
+`DATABASE_URL`. This example sets the port explicitly.
+
+<Tabs items={['macOS / Linux', 'Windows (PowerShell)']}>
+<Tab value="macOS / Linux">
+
+```sh
+PORT=8080 go run ./cmd/shop
+```
+
+</Tab>
+<Tab value="Windows (PowerShell)">
+
+```powershell
+$env:PORT = "8080"
+go run ./cmd/shop
+```
+
+</Tab>
+</Tabs>
+
+</Step>
+<Step>
+
+### Call the API
+
+In a second terminal:
+
+```sh
+curl -i http://localhost:8080/health
+curl -i -X POST http://localhost:8080/items -d '{"name":"onigiri"}'
+curl -i http://localhost:8080/items
+```
+
+`GET /health` responds `200`. The item you create with `POST /items` is
+stored in SQLite and returned by `GET /items`.
+
+<Callout type="info" title="Illustrative request">
+  The exact request body of `POST /items` is defined when the generator is implemented. The JSON
+  above illustrates the idea.
+</Callout>
+
+</Step>
+</Steps>
+
+## What gets generated
+
+<Files>
+  <Folder name="shop" defaultOpen>
+    <Folder name="cmd" defaultOpen>
+      <Folder name="shop" defaultOpen>
+        <File name="main.go" />
+      </Folder>
+    </Folder>
+    <Folder name="internal" defaultOpen>
+      <Folder name="models" />
+      <Folder name="controllers" />
+      <Folder name="database" />
+      <Folder name="store" />
+    </Folder>
+    <File name="sqlc.yaml" />
+    <File name="README.md" />
+    <File name=".gitignore" />
+    <File name="go.mod" />
+    <File name="go.sum" />
+  </Folder>
+</Files>
+
+Each directory is one Go package, filled by one component:
+
+| Path                                          | Filled by     | Contents                                                                                                                 |
+| --------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `cmd/shop/main.go`                            | architecture  | Config from the environment (`PORT`, `DATABASE_URL`), wiring, graceful shutdown                                          |
+| `internal/models/`                            | architecture  | The `Item` type and the `ItemStore` interface                                                                            |
+| `internal/controllers/`                       | framework     | `NewRouter`, the health and items handlers, tests with a fake `ItemStore`                                                |
+| `internal/database/`                          | database      | `Open`, and an embedded `schema.sql` applied at startup                                                                  |
+| `internal/store/`                             | data access   | `queries.sql`, sqlc's generated code, the `New()` adapter, a test against real SQLite                                    |
+| `sqlc.yaml`                                   | data access   | sqlc configuration                                                                                                       |
+| `README.md`, `.gitignore`, `go.mod`, `go.sum` | project files | `go.mod` is rendered by gobento, `go.sum` comes from the Go toolchain, and the README includes notes from each component |
+
+`go.mod` requires every direct dependency at an exact version: the defaults
+from the [version rules](/docs/concepts/version-rules), or the versions you
+chose with `--go` and `--pin`.
+
+The sqlc output is shipped pre-generated, so you do not need sqlc to build the
+project. The generated README explains how to regenerate it after you change
+`queries.sql`.
+
+## Next steps
+
+- Learn how the pieces fit together in [Slots and contracts](/docs/concepts/slots-and-contracts).
+- See every flag in the [`gobento new` reference](/docs/cli/new).

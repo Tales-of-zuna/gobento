@@ -39,15 +39,15 @@ to be applied.
 
 ## 6. Documentation
 
-- [ ] 6.1 Write the docs sections (Getting started, Concepts, CLI reference, Contributing a component) in `content/docs`, with sidebar and previous/next navigation; verify the e2e test for *Navigation*
-- [ ] 6.2 Render the Components reference from `catalog.json`; verify a test that changes a fixture default and finds the new value on the rendered page (spec *Version bump*)
-- [ ] 6.3 Enable static search, "Edit this page" links, and code-block copy controls; verify e2e tests for *Searching*, *Suggesting an edit*, and *Copy a command*
+- [x] 6.1 Write the docs sections (Getting started, Concepts, CLI reference, Contributing a component) in `content/docs`, with sidebar and previous/next navigation; verify the e2e test for *Navigation*
+- [x] 6.2 Render the Components reference from `catalog.json`; verify a test that changes a fixture default and finds the new value on the rendered page (spec *Version bump*)
+- [x] 6.3 Enable static search, "Edit this page" links, and code-block copy controls; verify e2e tests for *Searching*, *Suggesting an edit*, and *Copy a command*
 
 ## 7. Real catalog integration (after add-generator-foundation)
 
 - [ ] 7.1 Write `internal/tools/catalogexport` on the real `internal/catalog` and `internal/compat`, emitting the D3 schema; verify its output passes the zod schema and replaces the fixture
 - [ ] 7.2 Add the CI freshness check (re-export, fail on diff) and the CLI cross-check (every supported selection's command passes `gobento new --dry-run`); verify both run green in CI
-- [ ] 7.3 Move `docs/components.md` into `content/docs/contributing/components.mdx`, leaving a stub that links to the new page; verify links in the repository still resolve
+- [ ] 7.3 Move `docs/components.md` into `content/docs/contributing/adding-a-component.mdx`, leaving a stub that links to the new page; verify links in the repository still resolve
 
 ## 8. CI, deployment, and maintenance
 

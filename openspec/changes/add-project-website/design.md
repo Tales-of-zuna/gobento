@@ -154,8 +154,8 @@ base-path constant as `next.config.ts`.
 - "Edit this page" links to
   `https://github.com/Tales-of-zuna/gobento/edit/main/website/content/docs/<path>`.
 - The existing `docs/components.md` from the generator change moves into
-  `content/docs/contributing/components.mdx` when both changes have landed. A
-  stub at the old path keeps links working.
+  `content/docs/contributing/adding-a-component.mdx` when both changes have
+  landed. A stub at the old path keeps links working.
 
 ### D6. Visual design in Claude Design, approved before code
 

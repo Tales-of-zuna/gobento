@@ -10,3 +10,12 @@ export const gitConfig = {
   repo: 'gobento',
   branch: 'main',
 };
+
+/** Directory of the docs sources, relative to the repository root. */
+export const docsContentDir = 'website/content/docs';
+
+/** GitHub editor URL for a docs source file, given its path inside {@link docsContentDir}. */
+export function editUrl(path: string): string {
+  const { user, repo, branch } = gitConfig;
+  return `https://github.com/${user}/${repo}/edit/${branch}/${docsContentDir}/${path}`;
+}

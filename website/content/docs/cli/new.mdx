@@ -1,0 +1,187 @@
+---
+title: gobento new
+description: Reference for gobento new, the command that generates a Go project from a component selection.
+---
+
+<Callout type="warn" title="Planned interface">
+  This reference describes the designed behavior of `gobento new`. The command is not released yet.
+</Callout>
+
+## Synopsis
+
+```text
+gobento new <name> [flags]
+```
+
+`gobento new` generates a Go project called `<name>` from one architecture,
+one HTTP framework, one database, and one data-access component.
+
+## Arguments
+
+| Argument | Rules                                                                                                                                                                                          |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<name>` | Required. Starts with a lowercase letter and contains only lowercase letters, digits, `-`, and `_`. Used for the default directory, the default module path, and the entry point `cmd/<name>`. |
+
+## Flags
+
+| Flag          | Type                         | Default        | Description                                                                                                                                                                                  |
+| ------------- | ---------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--module`    | string                       | `<name>`       | Go module path of the generated project. Must be a valid Go import path, as accepted by `go mod init`. Paths without a dot, such as `shop`, are accepted.                                    |
+| `--arch`      | string                       | auto           | Architecture component, for example `mvc`.                                                                                                                                                   |
+| `--framework` | string                       | auto           | HTTP framework component, for example `nethttp`.                                                                                                                                             |
+| `--db`        | string                       | auto           | Database component, for example `sqlite`.                                                                                                                                                    |
+| `--data`      | string                       | auto           | Data-access component, for example `sqlc`.                                                                                                                                                   |
+| `--go`        | string                       | rules default  | Go version for the `go` directive, for example `1.26`. Must be inside the supported Go range.                                                                                                |
+| `--pin`       | `module=version`, repeatable | rules defaults | Version of a library module, for example `--pin modernc.org/sqlite=v1.61.0`. Must be inside the module's range, and a selected component must use the module. Tool modules cannot be pinned. |
+| `--dir`       | path                         | `./<name>`     | Directory to generate into. See [Output location](#output-location).                                                                                                                         |
+| `--dry-run`   | bool                         | `false`        | Validate and compose in memory, list the files that would be created, and exit. See [Dry run](#dry-run).                                                                                     |
+
+**auto**: if the kind has exactly one supported component, it is selected. If
+it has several, gobento stops, names the flag, and lists the supported values.
+
+**rules default**: the default from the [version rules](/docs/concepts/version-rules).
+The current defaults and ranges are listed in the [Components reference](/docs/components).
+
+## Examples
+
+Generate with every option auto-selected:
+
+```sh
+gobento new shop --module example.com/shop
+```
+
+Spell out the full selection:
+
+```sh
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
+```
+
+Choose the Go version and a module version:
+
+```sh
+gobento new shop --go 1.26 --pin modernc.org/sqlite=v1.61.0
+```
+
+The versions in this example are illustrative. Use a version inside the ranges
+listed in the [Components reference](/docs/components).
+
+Generate into the current directory, which must be empty:
+
+```sh
+mkdir shop && cd shop
+gobento new shop --dir .
+```
+
+Preview the files without writing anything:
+
+```sh
+gobento new shop --dry-run
+```
+
+## What happens
+
+1. **Validate.** The name, module path, selection, versions, and composition
+   are all checked in memory. Every problem is collected.
+2. **Preflight.** gobento checks that `go` is on your `PATH`, compares the
+   selected Go version with your toolchain, and checks the target directory.
+3. **Write** the project into a temporary directory next to the target.
+4. **Resolve** the exact versions with the Go toolchain (`go get`, then
+   `go mod tidy`).
+5. **Re-check** that `go.mod` contains exactly the chosen versions. See
+   [the MVS re-check](/docs/concepts/version-rules#the-mvs-re-check).
+6. **Place** the files in the target directory, and print the next commands
+   to run.
+
+Nothing is written before step 1 and step 2 pass.
+
+## Output location
+
+- The project is generated into `--dir` when given, otherwise into `./<name>`.
+- If the target does not exist, it is created.
+- If the target exists and is empty, it is filled. This includes `.`, the
+  current directory.
+- If the target exists and is not empty, gobento exits non-zero and leaves it
+  unchanged.
+
+While working, gobento writes into a temporary directory named
+`.gobento-tmp-<random>` in the target's parent directory. If generation fails
+or you press Ctrl-C, gobento removes the temporary directory and anything it
+already moved into the target. A target directory that existed before is
+never deleted, and is left as it was.
+
+## Dry run
+
+`--dry-run` stops after validation and composition, which all happen in
+memory. It lists the paths of the files that would be created, then exits.
+
+- It writes nothing and creates no directory.
+- It does not run the Go toolchain, so it works without Go-proxy access.
+- It does not check the target directory.
+- It exits `0` for valid input. For invalid input, it reports the same
+  validation and composition problems as a normal run and exits non-zero.
+
+## Environment
+
+gobento runs every `go` command with `GOWORK=off` and `GOFLAGS=-mod=mod`. Your
+`GOPROXY`, `GONOSUMDB`, and `GOPRIVATE` settings are passed through unchanged.
+
+| Situation                                                         | Result                                                                    |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| No `go` command on `PATH`                                         | Exits non-zero with instructions to install Go                            |
+| Selected Go is newer than your toolchain, and `GOTOOLCHAIN=local` | Exits non-zero naming both versions                                       |
+| Selected Go is newer than your toolchain otherwise                | Warns that Go will download the newer toolchain, and continues            |
+| Fetching a module fails, for example without network              | Exits non-zero with the underlying `go` error, and leaves no files behind |
+
+## Exit status
+
+| Status   | Meaning                                                                                                                                                                  |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `0`      | The project was generated, or a dry run found no problems                                                                                                                |
+| non-zero | Any problem: invalid input, an unsupported selection, a version or constraint error, a failed preflight, a failed `go` command, or an interrupt. Nothing is left behind. |
+
+## Errors
+
+gobento lists every problem it finds, one per line, each with a suggested fix
+such as the supported values. You fix them all in one go instead of one run at
+a time.
+
+<Callout type="info">The outputs below are illustrative. The exact wording may change.</Callout>
+
+Several input problems at once:
+
+```text
+$ gobento new shop --module "Not A Path" --framework express
+Error: 2 problems found, nothing was written:
+  --module "Not A Path": not a valid Go module path (use a path like example.com/shop)
+  --framework "express": unknown framework (supported: nethttp)
+```
+
+An invalid project name:
+
+```text
+$ gobento new "My App"
+Error: 1 problem found, nothing was written:
+  name "My App": must start with a lowercase letter and contain only lowercase letters, digits, "-" and "_"
+```
+
+A version outside its range:
+
+```text
+$ gobento new shop --pin modernc.org/sqlite=v2.0.0
+Error: 1 problem found, nothing was written:
+  --pin modernc.org/sqlite=v2.0.0: outside the supported range ">=v1.61.0 <v2.0.0"
+```
+
+A tool version:
+
+```text
+$ gobento new shop --pin github.com/sqlc-dev/sqlc=v1.30.0
+Error: 1 problem found, nothing was written:
+  --pin github.com/sqlc-dev/sqlc: tool versions are fixed per gobento release
+```
+
+## Help
+
+```sh
+gobento new --help
+```

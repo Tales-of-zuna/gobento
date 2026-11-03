@@ -1,0 +1,232 @@
+---
+title: Adding a component
+description: How a gobento component is laid out, what its templates can use, and how it is tested.
+---
+
+import { Files, Folder, File } from 'fumadocs-ui/components/files';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+
+A component is data: a manifest and a set of templates under `components/`.
+Adding one never requires a change to gobento's engine. Before you read this
+page, skim [Slots and contracts](/docs/concepts/slots-and-contracts) and
+[Traits](/docs/concepts/traits).
+
+<Callout type="info" title="Start with a proposal">
+  A new component adds options to `gobento new`, so it is a behavior change. Open a [component
+  request](https://github.com/Tales-of-zuna/gobento/issues/new?template=component_request.yml) to
+  discuss it, then follow the OpenSpec workflow in
+  [CONTRIBUTING.md](https://github.com/Tales-of-zuna/gobento/blob/main/CONTRIBUTING.md).
+</Callout>
+
+## Directory layout
+
+Each component lives in `components/<kind>/<name>/`:
+
+<Files>
+  <Folder name="components" defaultOpen>
+    <File name="versions.yaml" />
+    <File name="embed.go" />
+    <Folder name="<kind>" defaultOpen>
+      <Folder name="<name>" defaultOpen>
+        <File name="component.yaml" />
+        <File name="notes.md.tmpl" />
+        <Folder name="files" defaultOpen>
+          <Folder name="<slot>" defaultOpen>
+            <File name="<file>.tmpl" />
+          </Folder>
+          <Folder name="root" defaultOpen>
+            <File name="<file>.tmpl" />
+          </Folder>
+        </Folder>
+      </Folder>
+    </Folder>
+  </Folder>
+</Files>
+
+| Path                       | Purpose                                                                                                              |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `component.yaml`           | The manifest. The loader validates it.                                                                               |
+| `files/<slot>/<file>.tmpl` | Rendered into that slot's directory, for example `files/store/` for the store slot.                                  |
+| `files/root/<file>.tmpl`   | Rendered into the project root, for example `sqlc.yaml`. Root paths are checked for conflicts with other components. |
+| `notes.md.tmpl`            | Optional notes appended to the generated README.                                                                     |
+
+### The `.tmpl` rule
+
+Every file under `components/` must end in `.tmpl`, except `component.yaml`,
+`versions.yaml`, and `embed.go`. The catalog test enforces this. As a result,
+no template is ever compiled, vetted, or linted as part of gobento itself.
+
+### Dotfiles
+
+A leading `dot-` in a file name becomes `.`, so `files/root/dot-gitignore.tmpl`
+renders as `.gitignore`. There are no real dotfiles in `components/`, and plain
+`//go:embed` picks up every file.
+
+Templates are read with `\r\n` normalized to `\n`, and the repository's
+`.gitattributes` forces LF line endings anyway.
+
+## The manifest
+
+An architecture's manifest declares its slots:
+
+```yaml title="components/architecture/mvc/component.yaml"
+name: mvc
+title: Model-View-Controller
+slots:
+  entry: { dir: 'cmd/{{.Project.Name}}', filled_by: architecture }
+  models: { dir: internal/models, filled_by: architecture }
+  handlers: { dir: internal/controllers, filled_by: framework, required: true }
+  database: { dir: internal/database, filled_by: database, required: true }
+  store: { dir: internal/store, filled_by: data, required: true }
+```
+
+The manifests of other kinds declare the traits they provide or require (see
+[Traits](/docs/concepts/traits)).
+
+<Callout type="warn" title="Exact keys pending">
+  The manifest keys for traits, and for metadata beyond `name` and `title`, are defined by the
+  catalog loader. They will be documented here when the generator foundation is implemented.
+</Callout>
+
+## Templates
+
+Templates use Go's `text/template`. Every template receives the same data:
+
+| Field                   | Contents                                                |
+| ----------------------- | ------------------------------------------------------- |
+| `.Project.Name`         | The project name, for example `shop`                    |
+| `.Project.Module`       | The module path, for example `example.com/shop`         |
+| `.Project.GoVersion`    | The selected Go version                                 |
+| `.Slots.<name>.Dir`     | The slot's directory, for example `internal/store`      |
+| `.Slots.<name>.Package` | The slot's Go package name                              |
+| `.Slots.<name>.Import`  | The slot's full import path                             |
+| `.Traits`               | The selection's traits, as key/value pairs              |
+| `.Versions`             | The chosen version of each module, keyed by module path |
+
+This data shape is the contributor API, and the golden test covers it.
+
+A store template might start like this:
+
+```go title="files/store/store.go.tmpl"
+package {{.Slots.store.Package}}
+
+import "{{.Slots.models.Import}}"
+```
+
+Module paths contain dots, so read `.Versions` with `index`:
+
+```text title="notes.md.tmpl"
+go run github.com/sqlc-dev/sqlc/cmd/sqlc@{{index .Versions "github.com/sqlc-dev/sqlc"}} generate
+```
+
+### Rules for templates
+
+- **No version numbers.** Versions come from `.Versions` and the rules file,
+  never from a template.
+- **Implement your slot's contract.** Provide exactly the functions and types
+  the architecture expects for your slot (see the
+  [contract table](/docs/concepts/slots-and-contracts#architecture-owned-contracts)).
+- **Import other slots only through the contract.** For example, handlers must
+  not import the database or store packages, directly or transitively.
+- **Use slot data, not directories.** Write `.Slots.store.Import`, never a
+  hard-coded path, so your component works with any architecture.
+- **Produce valid, formatted Go.** Every `.go` output is run through
+  `go/format.Source`. A failure is reported as a composition error naming your
+  component and the file. Generated files must also have no unused imports.
+
+### README notes
+
+If users need to know something about your component, add `notes.md.tmpl`.
+The architecture's README template appends every component's notes in kind
+order. sqlc uses this to explain how to regenerate its code.
+
+## Versions
+
+Every module your component uses needs an entry in `components/versions.yaml`:
+
+```yaml title="components/versions.yaml"
+modules:
+  modernc.org/sqlite:
+    components: [database/sqlite]
+    role: library
+    range: '>=v1.61.0 <v2.0.0'
+    default: v1.61.1
+    constraints:
+      - when: '>=v1.61.0'
+        require: { go: '>=1.26' }
+```
+
+The values above illustrate the format. The current ranges and defaults are
+in the [Components reference](/docs/components).
+
+- **`components`** lists every component that uses the module, as
+  `<kind>/<name>`.
+- **`role`** is `library` for modules required in the generated `go.mod`, or
+  `tool` for tools that are not. A tool gets an exact range, such as
+  `=v1.31.1`, because tool versions are fixed per gobento release.
+- **`range`** is the set of supported versions. CI generates the project with
+  both the default and the range floor, so the floor must really work.
+- **`constraints`** record what a version needs from other versions, such as
+  a minimum Go version.
+
+See [Version rules](/docs/concepts/version-rules) for the full format.
+
+## Tests
+
+<Steps>
+<Step>
+
+### Unit tests
+
+The unit tests load the shipped catalog and rules file, enforce the `.tmpl`
+rule, and check the list of supported selections. They catch an invalid
+manifest, a default outside its range, or an unknown reference.
+
+```sh
+make test
+```
+
+</Step>
+<Step>
+
+### Golden test
+
+The golden test composes the reference selection and compares the result
+with `internal/compose/testdata/golden/`. If you changed the reference
+selection's output on purpose, regenerate the golden files and review the
+diff:
+
+```sh
+go test ./internal/compose -update
+```
+
+</Step>
+<Step>
+
+### Integration test
+
+The integration test in `internal/generate` generates every supported
+selection twice, once with the default versions and once with the range
+floors. For each project it runs `go build`, `go vet`, `go test`, `gofmt -l`,
+and `go mod verify`, checks the `go.mod` pins, and checks with `go list -deps`
+that the handlers package does not import the database or store packages.
+
+It needs network access and is skipped with `-short`. Run it with:
+
+```sh
+make test-all
+```
+
+CI runs it on Linux, macOS, and Windows.
+
+</Step>
+</Steps>
+
+If your component ships generated code (as sqlc does), CI also regenerates it
+with the pinned tool inside a reference project and fails if any file changes.
+
+## Documentation
+
+You do not need to edit the docs to list your component. The
+[Components reference](/docs/components) is generated from the catalog when
+the site is built, including traits, versions, and defaults.

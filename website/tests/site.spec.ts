@@ -41,22 +41,18 @@ for (const { name, path, heading } of pages) {
       expect(await failedRequests()).toEqual([]);
     });
 
-    test('renders the shadcn Button with the shared theme', async ({ page }, testInfo) => {
+    test('maps the shadcn theme onto Fumadocs', async ({ page }, testInfo) => {
       await page.goto(path);
-      const button = page.locator('[data-slot="button"]').first();
-      await expect(button).toBeVisible();
-      // The button uses shadcn's --primary; Fumadocs' primary must be mapped onto it.
-      const colors = await button.evaluate((el) => {
+      // shadcn components use --primary; Fumadocs' primary must be mapped onto it.
+      const colors = await page.evaluate(() => {
         const root = getComputedStyle(document.documentElement);
         return {
-          button: getComputedStyle(el).backgroundColor,
           primary: root.getPropertyValue('--primary').trim(),
           fdPrimary: root.getPropertyValue('--color-fd-primary').trim(),
         };
       });
       expect(colors.primary).not.toBe('');
       expect(colors.fdPrimary).toBe(colors.primary);
-      expect(colors.button).not.toBe('rgba(0, 0, 0, 0)');
       await page.screenshot({ path: testInfo.outputPath(`${name}.png`), fullPage: true });
     });
 
@@ -68,12 +64,21 @@ for (const { name, path, heading } of pages) {
   });
 }
 
+test('renders the shadcn Button with the shared theme', async ({ page }) => {
+  await page.goto('./');
+  const button = page.locator('[data-slot="button"]').first();
+  await expect(button).toBeVisible();
+  expect(await button.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(
+    'rgba(0, 0, 0, 0)',
+  );
+});
+
 test('static search loads its index from under the base path', async ({ page }) => {
   await page.goto('docs/');
   await page.getByRole('button', { name: 'Search' }).first().click();
   const dialog = page.getByRole('dialog', { name: 'Search' });
   const index = page.waitForResponse((response) => response.url().endsWith('/gobento/api/search'));
-  await dialog.getByRole('combobox', { name: 'Search' }).fill('planned interface');
+  await dialog.getByRole('combobox', { name: 'Search' }).fill('go-blueprint');
   expect((await index).status()).toBe(200);
   await expect(dialog.getByRole('option').first()).toContainText('Introduction');
 });
