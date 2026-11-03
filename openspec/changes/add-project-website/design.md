@@ -236,6 +236,12 @@ Tailwind, shadcn, and Fumadocs.
   The static still (D7) is in the HTML first, sized to avoid layout shift, so
   the scene never blocks content or LCP; the canvas cross-fades in after its
   first frame.
+- The scene waits for the visitor's first interaction with the page (pointer
+  move or press, key, touch, wheel, or scroll). Until then, three.js is not
+  downloaded or compiled, so it never competes with the page's own loading
+  (it once cost the configurator about 10 s of main-thread time under
+  Lighthouse's mobile throttling). A visitor who never interacts keeps the
+  still, which shows the same pose.
 - WebGL support is detected before mounting. On failure, on an error
   boundary catch, or on a lost WebGL context, the still stays.
 - `prefers-reduced-motion`: when it is set on load, the still is shown and
@@ -257,8 +263,13 @@ Tailwind, shadcn, and Fumadocs.
     dialog scale-in.
 - Every 3D scene is its own lazily loaded client chunk, shares one small
   material and asset module, and obeys the same rules as above: SSR off,
-  static still first, WebGL fallback, and reduced motion means a static
-  frame. The Lighthouse budget (spec *Performance*) is the guardrail that keeps
+  static still first, loaded on the first interaction, WebGL fallback, and
+  reduced motion means a static frame. The configurator's stage uses the same
+  still and loader as the home hero, so its tray never moves when the scene
+  arrives.
+- Motion is loaded the same way: components use its lightweight `m`
+  elements inside `LazyMotion`, whose animation features arrive in their own
+  chunk after the first render. The Lighthouse budget (spec *Performance*) is the guardrail that keeps
   "often" from becoming "heavy".
 
 ### D9. Build, CI, and deployment

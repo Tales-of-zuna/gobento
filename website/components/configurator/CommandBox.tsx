@@ -3,7 +3,8 @@
  * The live `gobento new` command with its copy control, or the reason no
  * command can be offered yet. The command cross-fades whenever it changes.
  */
-import { motion, useReducedMotion } from 'motion/react';
+import { useReducedMotion } from 'motion/react';
+import * as m from 'motion/react-m';
 import styles from './configurator.module.css';
 
 /** Props of {@link CommandBox}. */
@@ -42,7 +43,7 @@ function CommandLine({
         <span className={styles.prompt} aria-hidden>
           $
         </span>
-        <motion.code
+        <m.code
           key={command}
           data-command
           initial={reduce ? false : { opacity: 0, y: 4 }}
@@ -57,7 +58,7 @@ function CommandLine({
               </span>
             </span>
           ))}
-        </motion.code>
+        </m.code>
       </span>
       <button
         type="button"

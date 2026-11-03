@@ -10,6 +10,12 @@
       transform: translateY(18px);
     }
   }
+  /* page load: movement only, so the hero text is painted (and is the LCP) at first paint */
+  @keyframes lift {
+    from {
+      transform: translateY(18px);
+    }
+  }
   @keyframes pop {
     from {
       opacity: 0;
@@ -27,6 +33,9 @@
   .view[data-reveal='play'] .item {
     animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
     animation-delay: calc(var(--i, 0) * 100ms + 50ms);
+  }
+  :global(html.motion-ready) .load > .item {
+    animation-name: lift;
   }
   :global(html.motion-ready) .load > .pop,
   .view[data-reveal='play'] .pop {

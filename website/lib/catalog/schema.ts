@@ -6,13 +6,10 @@
  * change together.
  */
 import { z } from 'zod';
+import { KIND_IDS } from './kinds';
 import { parseRange, parseVersion, satisfies, type VersionKind } from './semver';
 
-/** Component kinds, in the order their flags appear on `gobento new`. */
-export const KIND_IDS = ['architecture', 'framework', 'database', 'data'] as const;
-
-/** A component kind. */
-export type KindId = (typeof KIND_IDS)[number];
+export { KIND_IDS, type KindId } from './kinds';
 
 const text = z.string().min(1);
 

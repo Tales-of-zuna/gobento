@@ -49,7 +49,7 @@ export function Hero({ released }: { released: boolean }) {
           <Item kind="pop" className={s.stageIn}>
             <div className={s.halo} aria-hidden="true" />
             <div className={s.mascot}>
-              <MascotHero />
+              <MascotHero sizes="(max-width: 640px) min(366px, calc(100vw - 24px)), 600px" />
             </div>
             <span className={`${s.stk} ${s.sOni}`} aria-hidden="true" />
             <span className={`${s.stk} ${s.sTam}`} aria-hidden="true" />

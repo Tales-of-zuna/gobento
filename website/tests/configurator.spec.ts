@@ -206,6 +206,23 @@ test.describe('configurator', () => {
     });
   });
 
+  test('the 3D bento loads on interaction without moving the tray', async ({ page }) => {
+    await open(page);
+    const tray = page.getByRole('list', { name: 'Bento: chosen parts' });
+    // The mascot still holds the scene's place from the first paint.
+    await expect(page.locator('[data-stage] img[data-mascot-still]')).toBeVisible();
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('canvas')).toHaveCount(0);
+    // Let the arrival packing finish first: filling a compartment may change its text.
+    await expect(tray.locator('[data-filled="true"]')).toHaveCount(4);
+    const before = await tray.boundingBox();
+    await page.mouse.move(400, 300);
+    await expect(page.locator('[data-stage]')).toHaveAttribute('data-stage', 'scene', {
+      timeout: 30_000,
+    });
+    expect(await tray.boundingBox()).toEqual(before);
+  });
+
   test('reduced motion shows the static tray without loading 3D', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await open(page);

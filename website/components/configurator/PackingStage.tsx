@@ -1,22 +1,19 @@
 'use client';
 /**
  * The "packing" visual: a 2D bento tray with one compartment per component
- * kind, filling as each kind is chosen, and above it the 3D mascot whose
- * box-body compartments pack in step. The 3D scene follows the same
- * safeguards as the home page hero: its code is only downloaded on the
- * client, when WebGL works and reduced motion is off; a failure or lost
- * context leaves the tray alone, which is also the text alternative.
+ * kind, filling as each kind is chosen, and above it the mascot whose
+ * box-body compartments pack in step. The mascot follows the home page
+ * hero's rules (MascotHero): its pre-rendered still holds the space from the
+ * first paint, so nothing shifts, and the 3D scene is downloaded only on the
+ * client, after the first interaction, when WebGL works and reduced motion is
+ * off. The tray is the text alternative, so the mascot is decorative here.
  */
-import { motion, useReducedMotion as useMotionReduced } from 'motion/react';
-import dynamic from 'next/dynamic';
+import { useReducedMotion as useMotionReduced } from 'motion/react';
+import * as m from 'motion/react-m';
 import { useState } from 'react';
-import { useReducedMotion, useWebGLSupport } from '@/components/mascot/hooks';
-import { MascotErrorBoundary } from '@/components/mascot/MascotErrorBoundary';
-import { shouldMountScene } from '@/components/mascot/support';
+import { MascotHero } from '@/components/mascot/MascotHero';
 import styles from './configurator.module.css';
 import type { CellView } from './view-model';
-
-const MascotScene = dynamic(() => import('@/components/mascot/MascotScene'), { ssr: false });
 
 /** Props of {@link PackingStage}. */
 export interface PackingStageProps {
@@ -30,32 +27,24 @@ export interface PackingStageProps {
 const pop = { type: 'spring', stiffness: 420, damping: 14 } as const;
 
 export function PackingStage({ cells, packed, onRepack }: PackingStageProps) {
-  const reducedMotion = useReducedMotion();
-  const webgl = useWebGLSupport();
-  const [ready, setReady] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const mountScene = shouldMountScene({ webgl, reducedMotion, failed, ready });
-  const fail = () => setFailed(true);
+  const [scene, setScene] = useState(false);
   const still = useMotionReduced();
 
   return (
-    <div className={styles.stage} data-stage={mountScene && ready ? 'scene' : 'tray'}>
+    <div className={styles.stage} data-stage={scene ? 'scene' : 'tray'}>
       <span className={`${styles.sticker} ${styles.sOni}`} aria-hidden />
       <span className={`${styles.sticker} ${styles.sTam}`} aria-hidden />
       <span className={`${styles.sticker} ${styles.sUme}`} aria-hidden />
       <span className={`${styles.sticker} ${styles.sSak}`} aria-hidden />
-      {mountScene && (
-        <div className={styles.scene} data-ready={ready}>
-          <MascotErrorBoundary onError={fail}>
-            <MascotScene
-              animate={!reducedMotion}
-              packed={packed}
-              onReady={() => setReady(true)}
-              onError={fail}
-            />
-          </MascotErrorBoundary>
-        </div>
-      )}
+      <div className={styles.scene}>
+        <MascotHero
+          className={styles.sceneMascot}
+          sizes="(max-width: 899px) 300px, 390px"
+          packed={packed}
+          decorative
+          onSceneChange={setScene}
+        />
+      </div>
       <ul className={styles.tray} aria-label="Bento: chosen parts">
         {cells.map((cell, i) => {
           const filled = packed[i] === true && cell.value !== undefined;
@@ -64,7 +53,7 @@ export function PackingStage({ cells, packed, onRepack }: PackingStageProps) {
               <span className={styles.ck}>{cell.label}</span>
               {filled ? (
                 <>
-                  <motion.span
+                  <m.span
                     className={styles.piece}
                     data-piece={cell.piece}
                     aria-hidden
@@ -72,14 +61,14 @@ export function PackingStage({ cells, packed, onRepack }: PackingStageProps) {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={pop}
                   />
-                  <motion.b
+                  <m.b
                     className={styles.cv}
                     initial={still ? false : { opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
                   >
                     {cell.value}
-                  </motion.b>
+                  </m.b>
                   <span className={styles.food} aria-hidden>
                     {cell.food}
                   </span>

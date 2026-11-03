@@ -14,7 +14,7 @@ describe('stills', () => {
   it('builds URLs under the GitHub Pages base path', () => {
     expect(stillUrl(headStill(64), 'png')).toBe('/gobento/mascot/gobento-head-64.png');
     expect(heroSrcSet('webp')).toBe(
-      '/gobento/mascot/gobento-mascot-720x480.webp 1x, /gobento/mascot/gobento-mascot-1440x960.webp 2x',
+      '/gobento/mascot/gobento-mascot-720x480.webp 720w, /gobento/mascot/gobento-mascot-1440x960.webp 1440w',
     );
   });
 });

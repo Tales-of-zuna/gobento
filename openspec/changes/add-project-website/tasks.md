@@ -51,8 +51,8 @@ to be applied.
 
 ## 8. CI, deployment, and maintenance
 
-- [ ] 8.1 Add `.github/workflows/website.yml` (path-filtered; install, lint, typecheck, test, build, e2e with axe, Lighthouse CI with the spec budget) with SHA-pinned actions; verify `actionlint` passes and a PR run is green
-  - Workflow written and `actionlint`-clean; the `website` and `website-e2e` steps pass locally. Not ticked: the Lighthouse budget fails locally (mobile performance: home 0.62, configurator 0.30, docs 0.69; accessibility 0.99-1.0), so a PR run cannot be green until the site meets it. Main causes: Zen Maru Gothic preloads 241 font slices (~4.2 MB; `preload: false` alone cut the page weight from 6.7 MB to 2.6 MB), and a configurator chunk with ~13 s of script boot-up time under mobile throttling.
+- [x] 8.1 Add `.github/workflows/website.yml` (path-filtered; install, lint, typecheck, test, build, e2e with axe, Lighthouse CI with the spec budget) with SHA-pinned actions; verify `actionlint` passes and a PR run is green
+  - Workflow written and `actionlint`-clean; the `website` and `website-e2e` steps pass locally, and so does the Lighthouse budget (`@lhci/cli` 0.15.1, mobile, median of 3): home performance 0.94 (LCP 3.0 s, TBT 23 ms, CLS 0, 546 KB), configurator 0.94 (LCP 3.0 s, TBT 25 ms, CLS 0.001, 489 KB), docs quick start 0.94 (LCP 3.0 s, TBT 87 ms, CLS 0.003, 559 KB); accessibility 1.0 on all three. Before: 0.69, 0.30 and 0.69 (LCP about 31 s, 4.7-5 MB). Fixes: only the Latin slice of Zen Maru Gothic, self-hosted; 3D loaded on the first interaction, with the still holding its place on the configurator too (design D8); zod, the search dialog and most of Motion out of the page bundles. The PR run itself happens when the branch is pushed.
 - [x] 8.2 Add `.github/workflows/pages.yml` (build and deploy to GitHub Pages on `main`) and the `npm` entry in `.github/dependabot.yml` (weekly, grouped, 7-day cooldown); verify `actionlint` passes
 - [x] 8.3 Document in `docs/maintainers.md` the Pages setting (Settings → Pages → Source: GitHub Actions) and the website commands in `CONTRIBUTING.md`; verify the documented commands run as written
 

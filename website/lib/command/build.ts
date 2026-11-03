@@ -9,7 +9,8 @@ import {
   type Problem,
   type Selection,
 } from '@/lib/catalog/compat';
-import { KIND_IDS, type Catalog, type KindId } from '@/lib/catalog/schema';
+import { KIND_IDS } from '@/lib/catalog/kinds';
+import type { Catalog, KindId } from '@/lib/catalog/schema';
 import { sameVersion } from '@/lib/catalog/semver';
 
 /** The CLI flag for each component kind. */

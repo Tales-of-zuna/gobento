@@ -4,7 +4,7 @@
  * radio group: arrow keys move between enabled options, and disabled cards
  * explain themselves through aria-describedby.
  */
-import { motion } from 'motion/react';
+import * as m from 'motion/react-m';
 import { useId } from 'react';
 import styles from './configurator.module.css';
 import type { OptionView } from './view-model';
@@ -57,7 +57,7 @@ export function ChoiceGroup({
           const detail =
             option.status === 'incompatible' ? option.reasons.join(' ') : option.description;
           return (
-            <motion.label
+            <m.label
               key={option.value}
               className={styles.opt}
               data-status={option.status}
@@ -90,7 +90,7 @@ export function ChoiceGroup({
                 {tag && <span className={styles.srOnly}>{tag.text}. </span>}
                 {detail}
               </span>
-            </motion.label>
+            </m.label>
           );
         })}
       </div>

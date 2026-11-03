@@ -47,9 +47,13 @@ export function stillUrl(still: Still, format: StillFormat): string {
   return `${basePath}/mascot/${stillFileName(still, format)}`;
 }
 
-/** `srcset` with the 1x and 2x hero stills in one format. */
+/**
+ * `srcset` with the 1x and 2x hero stills in one format, by pixel width, so
+ * the browser picks by the displayed size (`sizes`) and a phone does not
+ * download the 2x render.
+ */
 export function heroSrcSet(format: StillFormat): string {
-  return HERO_STILLS.map((still, i) => `${stillUrl(still, format)} ${i + 1}x`).join(', ');
+  return HERO_STILLS.map((still) => `${stillUrl(still, format)} ${still.width}w`).join(', ');
 }
 
 /** The head still of a given pixel size. */

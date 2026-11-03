@@ -15,17 +15,19 @@
  *   stays as it is instead of blinking out and back in.
  *
  * Everything sits behind prefers-reduced-motion: no-preference. Presses
- * spring with Motion.
+ * spring with Motion's lightweight `m` elements (features load lazily).
  */
 import Link from 'next/link';
-import { motion, MotionConfig, type HTMLMotionProps } from 'motion/react';
+import type { HTMLMotionProps } from 'motion/react';
+import * as motion from 'motion/react-m';
 import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
+import { SiteMotion } from '@/components/motion/SiteMotion';
 import { cn } from '@/lib/utils';
 import m from './motion.module.css';
 
-/** Wraps the page so Motion honours the visitor's reduced-motion setting. */
+/** Wraps the page in Motion, loaded lazily and honouring the reduced-motion setting. */
 export function HomeMotion({ children }: { children: ReactNode }) {
-  return <MotionConfig reducedMotion="user">{children}</MotionConfig>;
+  return <SiteMotion>{children}</SiteMotion>;
 }
 
 /**
