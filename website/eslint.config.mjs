@@ -15,5 +15,6 @@ export default defineConfig([
     '.source/**',
     'playwright-report/**',
     'test-results/**',
+    '.lighthouseci/**',
   ]),
 ]);

@@ -1,0 +1,193 @@
+# Website checks (website/, see openspec/changes/add-project-website, D9):
+# lint, type-check, format, unit tests, static build, Playwright e2e with axe,
+# and the Lighthouse budget from the spec.
+#
+# Path filtering: the workflow runs on every pull request and push to main,
+# and the `changes` job decides whether the site is affected. A workflow-level
+# `paths:` filter would never report on unrelated pull requests, so a required
+# check would wait forever. Here unrelated changes skip the work jobs (skipped
+# counts as passing) and `website-ok` always reports. Require only
+# `website-ok` in branch protection (see docs/maintainers.md).
+# Third-party actions are pinned by full commit SHA (Dependabot updates them).
+name: Website
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+  # Lighthouse CI, pinned exactly and run with npx so it is not a dependency
+  # of the site. Keep in sync with CONTRIBUTING.md.
+  LHCI_VERSION: 0.15.1
+
+jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    outputs:
+      website: ${{ steps.filter.outputs.website }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Detect changes to the site
+        id: filter
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          # pull_request checks out the merge commit; its first parent is the base.
+          SHA: ${{ github.sha }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            range="HEAD^1 HEAD"
+          elif [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ] &&
+            git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            range="$BEFORE $SHA"
+          else
+            echo "No usable base commit; checking the site."
+            echo "website=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # shellcheck disable=SC2086 # range holds two revisions
+          changed=$(git diff --name-only $range)
+          echo "$changed"
+          if echo "$changed" | grep -qE '^(website/|components/|internal/tools/catalogexport/|\.github/workflows/website\.yml$)'; then
+            echo "website=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "website=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  website:
+    name: website
+    needs: changes
+    if: needs.changes.outputs.website == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # pnpm first: setup-node's pnpm cache needs it. The version comes from
+      # packageManager in website/package.json.
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: website/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: website/.nvmrc
+          cache: pnpm
+          cache-dependency-path: website/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Check that Go tooling sees no package under website/
+        # Runs with node_modules installed, so dependencies shipping .go files
+        # would be caught too (design D1).
+        working-directory: .
+        run: |
+          leaked=$(go list -f '{{.Dir}}' ./... | grep -E "^$PWD/website(/|\$)" || true)
+          if [ -n "$leaked" ]; then
+            echo "$leaked"
+            echo "::error::go list ./... reports packages under website/; keep Go files out of website/"
+            exit 1
+          fi
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm format:check
+      - run: pnpm test
+      - run: pnpm build
+
+  website-e2e:
+    name: website-e2e
+    needs: changes
+    if: needs.changes.outputs.website == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: website/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: website/.nvmrc
+          cache: pnpm
+          cache-dependency-path: website/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Install the Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+      - name: End-to-end and accessibility (axe) tests
+        # Playwright builds the static export and serves it under /gobento/.
+        run: pnpm e2e
+
+  lighthouse:
+    name: lighthouse
+    needs: changes
+    if: needs.changes.outputs.website == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: website/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: website/.nvmrc
+          cache: pnpm
+          cache-dependency-path: website/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Lighthouse budget (mobile; performance and accessibility >= 0.9)
+        # Serves out/ under /gobento/ and audits home, configurator, and a docs
+        # page; see lighthouserc.cjs.
+        run: npx --yes "@lhci/cli@$LHCI_VERSION" autorun
+      - name: Upload the Lighthouse reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lighthouse-reports
+          path: website/.lighthouseci/
+          if-no-files-found: ignore
+          include-hidden-files: true
+
+  website-ok:
+    # The single required check: passes when every job above passed or was
+    # skipped because the site is unaffected.
+    name: website-ok
+    needs: [changes, website, website-e2e, lighthouse]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the website jobs
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Results: $RESULTS"
+          for result in $RESULTS; do
+            case "$result" in
+              success | skipped) ;;
+              *) echo "::error::a website job did not succeed ($result)"; exit 1 ;;
+            esac
+          done

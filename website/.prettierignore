@@ -7,3 +7,4 @@ pnpm-lock.yaml
 pnpm-workspace.yaml
 # Written by the catalog exporter (internal/tools/catalogexport) once it exists.
 src/generated/
+.lighthouseci/
