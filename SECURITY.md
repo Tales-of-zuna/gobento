@@ -6,10 +6,11 @@ gobento is pre-1.0. Only the latest minor release receives security fixes.
 
 | Version | Supported |
 |---|---|
-| Latest minor release (`0.x`) | Yes |
+| Latest minor release (currently `0.1.x`) | Yes |
 | Older releases | No |
 
-No release has been published yet. This policy applies from the first release.
+The latest release is listed on the
+[releases page](https://github.com/Tales-of-zuna/gobento/releases).
 
 ## Reporting a vulnerability
 

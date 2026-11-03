@@ -8,16 +8,17 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/Tales-of-zuna/gobento.svg)](https://pkg.go.dev/github.com/Tales-of-zuna/gobento)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Tales-of-zuna/gobento)](https://goreportcard.com/report/github.com/Tales-of-zuna/gobento)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Status: early development](https://img.shields.io/badge/status-early%20development-orange.svg)](#roadmap)
+[![Release](https://img.shields.io/github/v/release/Tales-of-zuna/gobento?sort=semver)](https://github.com/Tales-of-zuna/gobento/releases)
+[![Status: early stage](https://img.shields.io/badge/status-early%20stage-orange.svg)](#roadmap)
 
 [Why gobento](#why-gobento) · [Usage](#usage) · [How it works](#how-it-works) · [Contributing](#contributing) · [Roadmap](#roadmap)
 
 </div>
 
 > [!NOTE]
-> gobento is in **early development** and **nothing is released yet**. The
-> first stack works when built from source, as shown below, but the interface
-> may still change. To follow what is being built, see the proposals in
+> **gobento v0.1.0 is released.** It is an early, pre-1.0 release: the first
+> stack works, but the interface may still change between minor releases. To
+> follow what is being built, see the proposals in
 > [`openspec/changes/`](openspec/changes).
 
 ## Why gobento?
@@ -38,15 +39,33 @@
 
 ## Usage
 
-> [!IMPORTANT]
-> There is no release yet, so `go install ...@latest` does not work. Build
-> gobento from source instead. You need [Go](https://go.dev/dl/) 1.26 or newer.
+You need [Go](https://go.dev/dl/) 1.26 or newer: gobento uses your Go
+toolchain to fetch the exact dependency versions of the project it generates.
+Install gobento with `go install`:
 
 ```sh
-git clone https://github.com/Tales-of-zuna/gobento.git
-cd gobento
-go install ./cmd/gobento
+go install github.com/Tales-of-zuna/gobento/cmd/gobento@latest
+gobento --version
 ```
+
+v0.1.0 installed with `go install` reports its version as `dev`; release
+binaries, and later releases installed with `go install`, report the version
+number.
+
+Or download a prebuilt binary for Linux, macOS, or Windows from
+[GitHub Releases](https://github.com/Tales-of-zuna/gobento/releases), and verify
+it against the release's `checksums.txt`:
+
+```sh
+gh release download v0.1.0 --repo Tales-of-zuna/gobento \
+  --pattern 'gobento_0.1.0_linux_amd64.tar.gz' --pattern checksums.txt
+sha256sum --check --ignore-missing checksums.txt   # macOS: shasum -a 256 --check --ignore-missing checksums.txt
+tar -xzf gobento_0.1.0_linux_amd64.tar.gz gobento
+```
+
+The [installation guide](https://tales-of-zuna.github.io/gobento/docs/getting-started/installation/)
+covers every platform, including Windows. To build from a clone instead, run
+`make build` or `go install ./cmd/gobento`.
 
 Generate a project. Every flag is optional: a component kind with a single
 option is chosen automatically, and versions come from gobento's
@@ -128,7 +147,7 @@ flowchart LR
 
 ## Roadmap
 
-- [ ] First slice: MVC, `net/http`, SQLite, and sqlc
+- [x] First slice: MVC, `net/http`, SQLite, and sqlc (v0.1.0)
 - [ ] Interactive prompts
 - [ ] More frameworks: gin, chi
 - [ ] PostgreSQL
@@ -136,7 +155,7 @@ flowchart LR
 - [ ] Frontends: React, Vue, and Svelte via Vite; htmx + templ
 - [ ] Tailwind CSS
 - [ ] More architectures: vertical slice, DDD
-- [ ] Releases with prebuilt binaries via GoReleaser
+- [x] Releases with prebuilt binaries via GoReleaser (v0.1.0)
 
 Have an idea? Open a
 [feature request](https://github.com/Tales-of-zuna/gobento/issues/new?template=feature_request.yml)
