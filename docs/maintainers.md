@@ -14,12 +14,11 @@ and search engines see. Keep it accurate as the project grows:
 
 - **Description:** "Go project generator: choose your framework, database,
   data access, architecture and dependency versions — compatibility-checked and
-  proven to build in CI. Early development." Drop "Early development." with
-  the first release.
+  proven to build in CI." (Before `v0.1.0` it ended with "Early development.")
 - **Topics:** `go`, `golang`, `cli`, `project-generator`, `scaffolding`,
   `code-generator`, `boilerplate`, `templates`.
-- **Website:** `https://tales-of-zuna.github.io/gobento/` once the first
-  Pages deployment has run (see [GitHub Pages](#github-pages)).
+- **Website:** `https://tales-of-zuna.github.io/gobento/` (see
+  [GitHub Pages](#github-pages)).
 
 The same values can be set from a terminal:
 
@@ -172,10 +171,12 @@ the release-please documentation, or add a `Release-As: x.y.z` footer to a
 commit on `main`.
 
 **First release.** With no previous release, release-please proposes `1.0.0`
-regardless of `bump-minor-pre-major`. `release-please-config.json` therefore
-sets `"release-as": "0.1.0"`. **Remove that line in the first pull request
-after `v0.1.0` is released**, otherwise every later release would also be
-forced to `0.1.0`.
+regardless of `bump-minor-pre-major`, so `release-please-config.json`
+temporarily set `"release-as": "0.1.0"` for the first release. `v0.1.0` has
+been released and that line has been removed; release-please now derives each
+version from the commits since the previous release. Do not add `release-as`
+back to the config, because it would force every later release to the same
+version. Use a `Release-As: x.y.z` commit footer for a one-off override.
 
 ## Bumping golangci-lint
 
