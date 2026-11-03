@@ -198,3 +198,19 @@ func TestSelectionErrorAs(t *testing.T) {
 		t.Errorf("SelectionError = %+v", se)
 	}
 }
+
+func TestPrepareReportsVersionsWithSelectionProblems(t *testing.T) {
+	t.Parallel()
+
+	_, err := Prepare(shippedCatalog(t), Spec{
+		Name:       "shop",
+		Components: map[catalog.Kind]string{catalog.KindFramework: "express", catalog.KindDatabase: "postgres"},
+		Go:         "1.20",
+		Pins:       map[string]string{"modernc.org/sqlite": "v1.0.0"},
+	})
+	for _, w := range []string{`unknown framework "express"`, `unknown database "postgres"`, "go 1.20", "modernc.org/sqlite v1.0.0"} {
+		if err == nil || !strings.Contains(err.Error(), w) {
+			t.Errorf("Prepare() error = %v\nwant it to contain %q", err, w)
+		}
+	}
+}

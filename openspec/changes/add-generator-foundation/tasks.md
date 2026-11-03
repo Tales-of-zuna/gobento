@@ -41,8 +41,8 @@
 
 ## 7. CLI (`internal/cli`)
 
-- [ ] 7.1 Implement `gobento new <name>` with `--module`, `--arch`, `--framework`, `--db`, `--data`, `--go`, a repeatable `--pin`, `--dir`, and `--dry-run`, with auto-selection of single-option kinds and next-steps output; verify CLI tests for *Fully specified by flags*, *Module path defaults to the project name*, *Automatic selection of the only option*, *Project name and module path rules*, *Report every input problem at once*, *Valid dry run*, and *Invalid dry run*
-- [ ] 7.2 Write help text and error messages that state the fix for each problem; verify `gobento new --help` lists every flag with an example, and that a snapshot test covers the multi-error output
+- [x] 7.1 Implement `gobento new <name>` with `--module`, `--arch`, `--framework`, `--db`, `--data`, `--go`, a repeatable `--pin`, `--dir`, and `--dry-run`, with auto-selection of single-option kinds and next-steps output; verify CLI tests for *Fully specified by flags*, *Module path defaults to the project name*, *Automatic selection of the only option*, *Project name and module path rules*, *Report every input problem at once*, *Valid dry run*, and *Invalid dry run*
+- [x] 7.2 Write help text and error messages that state the fix for each problem; verify `gobento new --help` lists every flag with an example, and that a snapshot test covers the multi-error output
 
 ## 8. Documentation and CI
 

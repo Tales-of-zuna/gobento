@@ -146,48 +146,22 @@ func checkPins(t *testing.T, dir string, res compat.Resolved) {
 // store package, directly or transitively.
 func checkHandlersContract(t *testing.T, dir string, p *Prepared) {
 	t.Helper()
-	slots := make(map[string]string)
-	for _, s := range p.Selection.Architecture.Slots {
-		f, ok := findSlotFile(p, s.Name)
-		if ok {
-			slots[s.Name] = f
-		}
-	}
-	handlers, ok := slots["handlers"]
+	handlers, ok := p.Plan.Slots["handlers"]
 	if !ok {
 		t.Fatal("handlers slot not found in the plan")
 	}
-	deps := runIn(t, dir, "go", "list", "-deps", "./"+handlers)
+	deps := runIn(t, dir, "go", "list", "-deps", "./"+handlers.Dir)
 	for _, forbidden := range []string{"database", "store"} {
-		d, ok := slots[forbidden]
+		slot, ok := p.Plan.Slots[forbidden]
 		if !ok {
 			t.Fatalf("%s slot not found in the plan", forbidden)
 		}
-		imp := p.Module + "/" + d
 		for line := range strings.SplitSeq(deps, "\n") {
-			if line == imp || strings.HasPrefix(line, imp+"/") {
+			if line == slot.Import || strings.HasPrefix(line, slot.Import+"/") {
 				t.Errorf("handlers package depends on %s", line)
 			}
 		}
 	}
-}
-
-// findSlotFile returns the directory of a slot, read from the planned file
-// paths of the component that fills it.
-func findSlotFile(p *Prepared, slot string) (string, bool) {
-	for _, c := range p.Selection.Components() {
-		for _, f := range c.Files {
-			if f.Slot != slot {
-				continue
-			}
-			for _, pf := range p.Plan.Files {
-				if dir, ok := strings.CutSuffix(pf.Path, "/"+f.Path); ok && pf.Component == c.ID() {
-					return dir, true
-				}
-			}
-		}
-	}
-	return "", false
 }
 
 // runIn runs a command in dir with gobento's controlled environment and

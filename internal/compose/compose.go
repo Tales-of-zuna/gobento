@@ -66,6 +66,8 @@ type Input struct {
 type Plan struct {
 	// Files lists the planned files, sorted by path.
 	Files []File
+	// Slots locates every slot of the architecture, as given to templates.
+	Slots map[string]SlotData
 }
 
 // File is one planned file.
@@ -112,7 +114,7 @@ func Compose(in Input) (*Plan, error) {
 		return nil, err
 	}
 	slices.SortFunc(c.files, func(a, b File) int { return strings.Compare(a.Path, b.Path) })
-	return &Plan{Files: c.files}, nil
+	return &Plan{Files: c.files, Slots: c.data.Slots}, nil
 }
 
 // composer holds the state of one Compose call.

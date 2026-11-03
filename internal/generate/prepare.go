@@ -106,21 +106,16 @@ func Prepare(cat *catalog.Catalog, spec Spec) (*Prepared, error) {
 		errs = append(errs, fmt.Errorf("%w %q: %w; use a path such as example.com/%s", ErrInvalidModule, p.Module, err, safeExample(spec.Name)))
 	}
 
-	sel, selErrs := selectComponents(cat, spec.Components)
+	sel, ids, selErrs := selectComponents(cat, spec.Components)
 	errs = append(errs, selErrs...)
-	if len(selErrs) > 0 {
-		return nil, errors.Join(errs...)
-	}
-	p.Selection = sel
 
-	var ids []string
-	for _, c := range sel.Components() {
-		ids = append(ids, c.ID())
-	}
+	// Versions are checked even when a kind is not resolved yet; every
+	// component of such a kind then counts as possibly selected.
 	res, err := cat.Rules().Resolve(compat.Request{Components: ids, Go: spec.Go, Pins: spec.Pins})
-	if err != nil {
+	if err != nil || len(selErrs) > 0 {
 		return nil, errors.Join(append(errs, err)...)
 	}
+	p.Selection = sel
 	p.Versions = res
 	goDirective, err := compat.GoDirective(res.Go)
 	if err != nil {
@@ -144,11 +139,14 @@ func Prepare(cat *catalog.Catalog, spec Spec) (*Prepared, error) {
 }
 
 // selectComponents resolves the chosen component names into a supported
-// selection, auto-selecting kinds with a single supported component.
-func selectComponents(cat *catalog.Catalog, chosen map[catalog.Kind]string) (catalog.Selection, []error) {
+// selection, auto-selecting kinds with a single supported component. It also
+// returns the IDs of the components whose versions apply: the selected ones,
+// and every component of a kind that could not be resolved.
+func selectComponents(cat *catalog.Catalog, chosen map[catalog.Kind]string) (catalog.Selection, []string, []error) {
 	supported := compose.Supported(cat)
 	var (
 		errs  []error
+		ids   []string
 		comps = make(map[catalog.Kind]*catalog.Component)
 	)
 	for _, kind := range catalog.Kinds() {
@@ -159,13 +157,17 @@ func selectComponents(cat *catalog.Catalog, chosen map[catalog.Kind]string) (cat
 			value = names[0]
 		case value == "" || !slices.Contains(names, value):
 			errs = append(errs, &SelectionError{Kind: kind, Value: value, Supported: names})
+			for _, c := range cat.Components(kind) {
+				ids = append(ids, c.ID())
+			}
 			continue
 		}
 		c, _ := cat.Component(kind, value)
 		comps[kind] = c
+		ids = append(ids, c.ID())
 	}
 	if len(errs) > 0 {
-		return catalog.Selection{}, errs
+		return catalog.Selection{}, ids, errs
 	}
 	sel := catalog.Selection{
 		Architecture: comps[catalog.KindArchitecture],
@@ -175,10 +177,10 @@ func selectComponents(cat *catalog.Catalog, chosen map[catalog.Kind]string) (cat
 	}
 	if !slices.ContainsFunc(supported, func(s catalog.Selection) bool { return s.String() == sel.String() }) {
 		if err := compose.Check(cat, sel); err != nil {
-			return catalog.Selection{}, []error{fmt.Errorf("the combination %s is not supported: %w", sel, err)}
+			return catalog.Selection{}, ids, []error{fmt.Errorf("the combination %s is not supported: %w", sel, err)}
 		}
 	}
-	return sel, nil
+	return sel, ids, nil
 }
 
 // supportedNames returns the sorted, unique names of kind in the supported

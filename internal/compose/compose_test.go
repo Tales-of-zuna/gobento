@@ -419,3 +419,20 @@ func TestComposeSwappingDataLeavesFrameworkUntouched(t *testing.T) {
 		}
 	}
 }
+
+func TestComposePlanSlots(t *testing.T) {
+	t.Parallel()
+
+	cat := loadCatalog(t, baseFixture())
+	plan, err := Compose(input(pick(t, cat, "hexagonal", "web", "lite", "query")))
+	if err != nil {
+		t.Fatalf("Compose() error = %v", err)
+	}
+	want := SlotData{Dir: "internal/http/handlers", Package: "handlers", Import: "example.com/shop/internal/http/handlers"}
+	if got := plan.Slots["handlers"]; got != want {
+		t.Errorf("Slots[handlers] = %+v, want %+v", got, want)
+	}
+	if got := plan.Slots["entry"]; got.Dir != "cmd/shop" || got.Package != "main" {
+		t.Errorf("Slots[entry] = %+v", got)
+	}
+}
