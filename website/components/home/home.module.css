@@ -24,7 +24,7 @@
   --lacquer-2: oklch(0.2 0.045 32);
 }
 
-.page a:not(.btn, .gh, .mark, .navLink, .menuLink) {
+.page main a:not(.btn) {
   color: var(--shu-text);
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -192,178 +192,6 @@
   margin-top: 28px;
 }
 
-/* ---------- nav: laid over the top of the hero band ---------- */
-.header {
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  z-index: 10;
-}
-
-.nav {
-  position: relative;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  padding-top: 24px;
-  padding-bottom: 24px;
-}
-
-.mark {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 44px;
-  font: 900 30px / 1 var(--f-display);
-  color: var(--ink);
-  text-decoration: none;
-}
-
-.logo {
-  flex: none;
-  width: 30px;
-  height: 30px;
-  box-sizing: border-box;
-  border: var(--stroke) solid var(--ink);
-  border-radius: 9px;
-  background: conic-gradient(
-    var(--shu-soft) 25%,
-    var(--tamago) 0 50%,
-    var(--matcha-soft) 0 75%,
-    var(--sora) 0
-  );
-}
-
-.tools {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.links {
-  display: flex;
-  align-items: center;
-  gap: 28px;
-  font: 600 var(--t-md) / 1 var(--f-body);
-}
-.links ul {
-  display: flex;
-  align-items: center;
-  gap: 28px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.navLink {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  color: var(--ink);
-  text-decoration: none;
-}
-.navLink:hover {
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
-.gh {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  box-sizing: border-box;
-  padding: 10px 18px;
-  color: var(--ink);
-  text-decoration: none;
-  background: var(--paper);
-  border: var(--stroke) solid var(--ink);
-  border-radius: 999px;
-  box-shadow: var(--toy-1);
-}
-
-.icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  box-sizing: border-box;
-  padding: 0;
-  color: var(--ink);
-  background: var(--paper);
-  border: var(--stroke) solid var(--ink);
-  border-radius: var(--r-md);
-  box-shadow: var(--toy-1);
-  cursor: pointer;
-}
-
-.moon {
-  width: 18px;
-  height: 18px;
-  box-sizing: border-box;
-  border-radius: 999px;
-  border: var(--stroke) solid var(--ink);
-  background: linear-gradient(90deg, var(--ink) 50%, transparent 50%);
-}
-
-.burger {
-  display: none;
-  flex-direction: column;
-  gap: 4px;
-}
-.burger i {
-  display: block;
-  width: 18px;
-  height: 2.5px;
-  border-radius: 2px;
-  background: var(--ink);
-}
-.burger[aria-expanded='true'] i:nth-child(1) {
-  transform: translateY(6.5px) rotate(45deg);
-}
-.burger[aria-expanded='true'] i:nth-child(2) {
-  opacity: 0;
-}
-.burger[aria-expanded='true'] i:nth-child(3) {
-  transform: translateY(-6.5px) rotate(-45deg);
-}
-
-.menu {
-  position: absolute;
-  top: calc(100% - 8px);
-  right: 20px;
-  left: 20px;
-  z-index: 20;
-  padding: 10px;
-  background: var(--paper);
-  border: var(--stroke) solid var(--ink);
-  border-radius: var(--r-lg);
-  box-shadow: var(--toy-2);
-}
-.menu ul {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.menuLink {
-  display: flex;
-  align-items: center;
-  min-height: 48px;
-  padding: 0 14px;
-  font: 600 var(--t-md) / 1 var(--f-body);
-  color: var(--ink);
-  text-decoration: none;
-  border-radius: var(--r-sm);
-}
-.menuLink:hover {
-  background: var(--tray);
-}
-
 /* ---------- hero ---------- */
 .bHero {
   z-index: 2;
@@ -378,25 +206,6 @@
   align-items: center;
   gap: 40px;
   padding-top: 24px;
-}
-
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  padding: 8px 14px;
-  font: 700 var(--t-xs) / 1 var(--f-body);
-  color: var(--matcha-ink);
-  background: var(--paper);
-  border: 2px solid var(--ink);
-  border-radius: 999px;
-}
-.pill i {
-  width: 8px;
-  height: 8px;
-  border-radius: 99px;
-  background: var(--matcha);
 }
 
 .h1 {
@@ -490,16 +299,26 @@
 .stage {
   position: relative;
   align-self: stretch;
-  min-height: 500px;
+  min-height: 520px;
+}
+/* the stage's one reveal item spans it, so its pieces keep their places while it pops */
+.stageIn {
+  position: absolute;
+  inset: 0;
 }
 
+/*
+ * The plate behind the mascot. The landscape "In the box" still (3:2) sits on
+ * its lower half and overhangs the band's bottom edge into the conveyor band,
+ * as in Home v2; both are absolutely placed, so nothing shifts as it loads.
+ */
 .halo {
   position: absolute;
   left: 50%;
-  bottom: -100px;
-  width: 400px;
-  height: 400px;
-  margin-left: -200px;
+  bottom: -106px;
+  width: 410px;
+  height: 410px;
+  margin-left: -205px;
   box-sizing: border-box;
   border-radius: 50%;
   background: var(--paper);
@@ -519,7 +338,7 @@
   left: 50%;
   bottom: -200px;
   z-index: 5;
-  width: 500px;
+  width: 600px;
   transform: translateX(-50%);
 }
 
@@ -1016,72 +835,6 @@
   object-position: 50% 100%;
 }
 
-/* ---------- footer ---------- */
-.footer {
-  margin-top: 96px;
-}
-.foot {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  padding-top: 32px;
-  padding-bottom: 48px;
-  border-top: var(--stroke) solid var(--ink);
-}
-.frow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 24px;
-}
-.fmark {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-.fmark img {
-  width: 52px;
-  height: 52px;
-  object-fit: contain;
-}
-.flinks ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 24px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font: 600 var(--t-sm) / 1 var(--f-body);
-}
-.flinks a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-}
-.page .flinks a {
-  color: var(--ink);
-  text-decoration: none;
-}
-.page .flinks a:hover {
-  text-decoration: underline;
-}
-.lic {
-  margin: 0;
-  font-size: var(--t-sm);
-  color: var(--ink-2);
-}
-.page .lic a {
-  color: inherit;
-}
-.credit {
-  max-width: 720px;
-  margin: 0;
-  font-size: var(--t-xs);
-  line-height: 1.6;
-  color: var(--ink-2);
-}
-
 /* ---------- toast ---------- */
 .toast {
   position: fixed;
@@ -1166,8 +919,6 @@
     animation: wobble 0.55s ease-in-out;
   }
   .btn,
-  .gh,
-  .icon,
   .cell,
   .opt,
   .run {
@@ -1175,14 +926,10 @@
       transform 0.18s ease,
       box-shadow 0.18s ease;
   }
-  .btn:not(.ghost):hover,
-  .gh:hover,
-  .icon:hover {
+  .btn:not(.ghost):hover {
     box-shadow: 6px 6px 0 var(--shadow-c);
   }
-  .btn:not(.ghost):active,
-  .gh:active,
-  .icon:active {
+  .btn:not(.ghost):active {
     box-shadow: 1px 1px 0 var(--shadow-c);
   }
   .cell:hover {
@@ -1233,19 +980,6 @@
   .bHero {
     padding: 76px 0 48px;
   }
-  .nav {
-    padding-top: 16px;
-    padding-bottom: 16px;
-  }
-  .mark {
-    font-size: 26px;
-  }
-  .links {
-    display: none;
-  }
-  .burger {
-    display: flex;
-  }
   .hero {
     gap: 16px;
     padding-top: 8px;
@@ -1270,17 +1004,17 @@
     width: 100%;
   }
   .stage {
-    height: 280px;
+    height: 300px;
   }
   .halo {
-    bottom: 20px;
-    width: 240px;
-    height: 240px;
-    margin-left: -120px;
+    bottom: -4px;
+    width: 264px;
+    height: 264px;
+    margin-left: -132px;
   }
   .mascot {
-    bottom: -110px;
-    width: 300px;
+    bottom: -100px;
+    width: min(366px, calc(100vw - 24px));
   }
   .sOni {
     left: 0;

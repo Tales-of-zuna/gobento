@@ -1,13 +1,19 @@
 import Link from 'next/link';
 import { headStill, stillUrl } from '@/components/mascot/stills';
-import { docsRoute } from '@/lib/shared';
-import { configuratorRoute, githubUrl, repoFile } from './links';
-import s from './home.module.css';
+import { cn } from '@/lib/utils';
+import { configuratorRoute, docsHomeRoute, githubUrl, repoFile } from './links';
+import s from './site.module.css';
+
+/** Props of {@link SiteFooter}. */
+export interface SiteFooterProps {
+  /** Sits right under another divider (the docs' five-color strip): no gap, no top rule. */
+  readonly flush?: boolean;
+}
 
 /** The site footer: links, license, and the mascot attribution (DESIGN.md). */
-export function SiteFooter() {
+export function SiteFooter({ flush = false }: SiteFooterProps) {
   return (
-    <footer className={`${s.in} ${s.footer}`}>
+    <footer className={cn(s.footer, flush && s.flush)}>
       <div className={s.foot}>
         <div className={s.frow}>
           <div className={s.fmark}>
@@ -26,7 +32,7 @@ export function SiteFooter() {
           <nav className={s.flinks} aria-label="Footer">
             <ul>
               <li>
-                <Link href={`${docsRoute}/`}>Docs</Link>
+                <Link href={docsHomeRoute}>Docs</Link>
               </li>
               <li>
                 <Link href={configuratorRoute} prefetch={false}>

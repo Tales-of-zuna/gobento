@@ -97,18 +97,6 @@
   align-items: flex-start;
 }
 
-.pill {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  font: 700 var(--t-xs) / 1 var(--cf-body);
-  padding: 7px 14px;
-  border-radius: 999px;
-  background: var(--paper);
-  color: var(--matcha-ink);
-  border: var(--stroke) solid var(--ink);
-}
-
 .h1 {
   font: 900 var(--t-h2) / 1.08 var(--cf-display);
   margin: 0;

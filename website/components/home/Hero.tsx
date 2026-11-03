@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { MascotHero } from '@/components/mascot/MascotHero';
+import { PrereleaseNotice } from '@/components/site/PrereleaseNotice';
 import { docsRoute } from '@/lib/shared';
 import { CopyCommand } from './CopyCommand';
 import { configuratorRoute, QUICK_START } from './links';
@@ -15,10 +16,7 @@ export function Hero({ released }: { released: boolean }) {
         <Stagger>
           {!released && (
             <Item>
-              <p className={s.pill} data-prerelease-notice>
-                <i aria-hidden="true" />
-                Early development · not released yet
-              </p>
+              <PrereleaseNotice released={released} />
             </Item>
           )}
           <Item>
@@ -48,7 +46,7 @@ export function Hero({ released }: { released: boolean }) {
           </Item>
         </Stagger>
         <Stagger className={s.stage}>
-          <Item kind="pop">
+          <Item kind="pop" className={s.stageIn}>
             <div className={s.halo} aria-hidden="true" />
             <div className={s.mascot}>
               <MascotHero />

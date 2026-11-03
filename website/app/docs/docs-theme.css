@@ -100,39 +100,34 @@
   border-bottom: var(--stroke) solid var(--line);
 }
 
-/* wordmark */
-.docs-mark {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font: 900 22px/1 var(--f-display);
+/* ---------- the site bar above the layout ---------- */
+
+/*
+ * The site bar (components/site) sits above Fumadocs and sticks to the top on
+ * wider screens. Fumadocs offsets its sticky sidebar and table of contents by
+ * --fd-banner-height, so the bar's height goes there. On phones the bar
+ * scrolls away and Fumadocs' own header sticks at the top instead.
+ */
+.docs-shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  --fd-banner-height: 0px;
+}
+@media (min-width: 768px) {
+  .docs-shell {
+    --fd-banner-height: var(--site-bar-height);
+  }
+}
+
+/* The site bar carries the wordmark: the sidebar shows no title of its own.
+   The phone header keeps a plain "Documentation" label. */
+#nd-sidebar a:has(> .docs-nav-label) {
+  display: none;
+}
+.docs-nav-label {
+  font: 700 var(--t-sm) / 1 var(--f-body);
   color: var(--ink);
-}
-.docs-logo {
-  display: grid;
-  flex: none;
-  grid-template-columns: repeat(2, 8px);
-  gap: 2px;
-  padding: 3px;
-  border-radius: 6px;
-  background: var(--ink);
-}
-.docs-logo i {
-  width: 8px;
-  height: 8px;
-  border-radius: 3px;
-}
-.docs-logo i:nth-child(1) {
-  background: var(--shu);
-}
-.docs-logo i:nth-child(2) {
-  background: var(--tamago);
-}
-.docs-logo i:nth-child(3) {
-  background: var(--matcha);
-}
-.docs-logo i:nth-child(4) {
-  background: var(--sora);
 }
 
 /* ---------- sidebar (desktop and mobile drawer) ---------- */
@@ -489,6 +484,11 @@
 .docs-band-in {
   position: relative;
   max-width: 600px;
+}
+
+/* the pre-release pill above the breadcrumb */
+.docs-prerelease {
+  margin-bottom: 14px;
 }
 
 .docs-crumbs ol {

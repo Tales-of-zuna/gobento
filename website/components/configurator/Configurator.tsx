@@ -11,6 +11,7 @@
 import { MotionConfig } from 'motion/react';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { prefersReducedMotion } from '@/components/mascot/support';
+import { PrereleaseNotice } from '@/components/site/PrereleaseNotice';
 import type { Catalog, KindId } from '@/lib/catalog/schema';
 import { buildCommand, type ConfigState } from '@/lib/command/build';
 import { decodeState, defaultState, encodeState } from '@/lib/command/url-state';
@@ -33,6 +34,8 @@ import {
 export interface ConfiguratorProps {
   /** The catalog to configure from; the page passes the one the site is built with. */
   readonly catalog: Catalog;
+  /** Whether gobento has a release (lib/release.server); hides the pre-release notice. */
+  readonly released?: boolean;
 }
 
 interface Toast {
@@ -52,7 +55,7 @@ async function copyText(text: string): Promise<boolean> {
   }
 }
 
-export function Configurator({ catalog }: ConfiguratorProps) {
+export function Configurator({ catalog, released = false }: ConfiguratorProps) {
   const id = useId();
   const [state, setState] = useState<ConfigState>(() => defaultState(catalog));
   const [notices, setNotices] = useState<readonly string[]>([]);
@@ -162,7 +165,7 @@ export function Configurator({ catalog }: ConfiguratorProps) {
       <div className={styles.root} data-hydrated={loaded}>
         <header className={styles.head}>
           <div className={`${styles.inner} ${styles.headInner}`}>
-            <span className={styles.pill}>Early development · not released yet</span>
+            <PrereleaseNotice released={released} />
             <h1 className={styles.h1}>Pack your project</h1>
             <p className={styles.sub}>
               Choose each part of your Go project. The command updates as you go; copy it, or share

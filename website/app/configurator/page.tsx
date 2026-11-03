@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Configurator } from '@/components/configurator/Configurator';
 import { catalog } from '@/lib/catalog/data';
+import { releaseStatus } from '@/lib/release.server';
 
 export const metadata: Metadata = {
   title: 'Configurator',
@@ -8,5 +9,6 @@ export const metadata: Metadata = {
 };
 
 export default function ConfiguratorPage() {
-  return <Configurator catalog={catalog} />;
+  const { released } = releaseStatus();
+  return <Configurator catalog={catalog} released={released} />;
 }

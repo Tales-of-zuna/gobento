@@ -1,0 +1,54 @@
+/*
+ * Reveal animations for components/home/motion.tsx. The visible end state is
+ * the base style: nothing here hides content unless an animation is running,
+ * so the page reads fully without JavaScript and before hydration.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+  }
+  @keyframes pop {
+    from {
+      opacity: 0;
+      transform: translateY(10px) scale(0.9);
+    }
+    65% {
+      opacity: 1;
+      transform: translateY(-2px) scale(1.02);
+    }
+  }
+
+  /* page load: only when the root layout's script has marked <html> */
+  :global(html.motion-ready) .load > .item,
+  /* in view: once the group has entered the window */
+  .view[data-reveal='play'] .item {
+    animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: calc(var(--i, 0) * 100ms + 50ms);
+  }
+  :global(html.motion-ready) .load > .pop,
+  .view[data-reveal='play'] .pop {
+    animation-name: pop;
+    animation-duration: 0.55s;
+    animation-timing-function: cubic-bezier(0.3, 1.3, 0.5, 1);
+  }
+
+  /* page-load order; in-view groups get --i from motion.tsx */
+  .load > .item:nth-child(2) {
+    --i: 1;
+  }
+  .load > .item:nth-child(3) {
+    --i: 2;
+  }
+  .load > .item:nth-child(4) {
+    --i: 3;
+  }
+  .load > .item:nth-child(5) {
+    --i: 4;
+  }
+  .load > .item:nth-child(n + 6) {
+    --i: 5;
+  }
+}

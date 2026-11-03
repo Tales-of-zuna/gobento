@@ -6,7 +6,7 @@
  */
 import { useTheme } from 'fumadocs-ui/provider/base';
 import { useSyncExternalStore } from 'react';
-import s from './home.module.css';
+import s from './site.module.css';
 
 const noSubscription = () => () => {};
 
