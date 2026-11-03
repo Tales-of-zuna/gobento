@@ -34,9 +34,9 @@ gobento must run on Linux, macOS, and Windows without cgo.
 ```
 cmd/gobento/          main: wires the CLI only
 internal/cli/         cobra commands and flag parsing
-internal/catalog/     loads manifests + versions.yaml from an fs.FS; lists supported selections
+internal/catalog/     loads manifests + versions.yaml from an fs.FS; lists trait-compatible selections
 internal/compat/      version ranges, constraint evaluation, resolution
-internal/compose/     slot resolution, conflict detection, rendering into an in-memory Plan
+internal/compose/     slot resolution, conflict detection, rendering into an in-memory Plan; supported selections
 internal/generate/    preflight, writing a Plan, Go toolchain steps, atomic placement, cleanup
 components/           data only: component dirs, versions.yaml, embed.go
 ```
@@ -131,14 +131,26 @@ the project root (D3).
   GoVersion), `.Slots.<name>` (Dir, Package, Import), `.Traits`, and `.Versions`
   (module → version). This shape is the contributor API, documented in
   `docs/components.md`.
-- Each component may add `notes.md.tmpl`. The architecture's README template
-  appends the notes in kind order (for example, sqlc's "how to regenerate").
+- Each component may add `notes.md.tmpl`. Composition renders every
+  component's notes and appends them, in kind order, to the root `README.md`
+  (for example, sqlc's "how to regenerate"). The template data stays as listed
+  above. If any component has notes but no component produces `README.md`,
+  that is a composition error.
 - `.go` outputs go through `go/format.Source`. A failure there is reported as a
   composition error naming the component and the file.
 - Output is a `Plan`: an ordered list of {slash path, mode, content}.
   Composition collects every error (unknown slot, unfilled required slot, two
   owners, root-path conflict, unmet trait, render or format error) and returns
-  them together with `errors.Join`.
+  them together with `errors.Join`. It also rejects:
+  - a slot filled by a component of a kind other than its `filled_by`;
+  - two components providing different values for the same trait;
+  - a component producing `go.mod` or `go.sum`, which generation writes (D5);
+  - a root file that lies inside a slot directory;
+  - two slots whose rendered directories are the same.
+- A selection is *supported* when its traits are met and it composes. The
+  catalog lists trait-compatible candidates; `compose.Supported` keeps those
+  that compose without error, so the supported list is derived from the
+  catalog alone (spec *Supported combinations*).
 
 ### D4. Version rules file
 
@@ -172,7 +184,9 @@ confirmed during apply.)
   all ANDed, compared with `golang.org/x/mod/semver`. Go versions are
   normalized internally (`1.27` → `v1.27.0`).
 - Resolution: defaults, then `--go` and `--pin` overrides, then range checks,
-  then every matching constraint. All errors are collected.
+  then every matching constraint. All errors are collected. Constraints are
+  evaluated only when every chosen version is valid and in range, so a rejected
+  pin does not also produce misleading constraint errors.
 - Tool modules have exact ranges, so `--pin` on them is rejected.
 - Only versions inside a range are offered, and CI tests both the defaults and
   the range floors (D9), so the range claim is tested.
@@ -193,7 +207,11 @@ would touch many places.
    directory (missing, or empty, is OK).
 3. **Write** the Plan into `.gobento-tmp-<random>` in the target's parent (same
    filesystem). `go.mod` is rendered directly from data (module and `go`
-   directive), not created by `go mod init`.
+   directive), not created by `go mod init`. The `go` directive is written as a
+   full release version (`1.27` → `go 1.27.0`, that is `NormalizeGo` without
+   the `v`). Go orders `1.26` before `1.26.0`, so a short directive would be
+   raised by dependencies that declare `go 1.26.0`, such as modernc.org/sqlite,
+   and step 5 would reject it.
 4. **Resolve:** run one `go get mod1@v1 mod2@v2 ...`, then `go mod tidy`. All go
    commands get a controlled environment: `GOWORK=off`, `GOFLAGS=-mod=mod`, and
    the user's `GOPROXY`/`GONOSUMDB`/`GOPRIVATE` passed through unchanged.
