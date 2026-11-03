@@ -47,6 +47,10 @@ test.describe('mascot', () => {
     // The still is in the server-rendered HTML, sized up front.
     await expect(still(page)).toHaveAttribute('width', '720');
     await expect(still(page)).toHaveAttribute('height', '480');
+    // The 3D code waits for the visitor: nothing loads while the page itself does.
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('canvas')).toHaveCount(0);
+    await page.mouse.move(200, 200);
     await expect(mascot(page)).toHaveAttribute('data-mascot', 'scene', { timeout: 30_000 });
     const canvas = page.locator('[data-mascot] canvas');
     await expect(canvas).toBeVisible();

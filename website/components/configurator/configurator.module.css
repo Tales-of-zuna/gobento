@@ -472,13 +472,16 @@
 
 .scene {
   position: relative;
+  display: flex;
+  justify-content: center;
   height: 260px;
   margin: -12px 0 -6px;
-  transition: opacity 0.5s ease;
 }
 
-.scene[data-ready='false'] {
-  opacity: 0;
+/* the mascot's 3:2 box, as tall as the scene */
+.sceneMascot {
+  height: 100%;
+  max-width: 100%;
 }
 
 .tray {

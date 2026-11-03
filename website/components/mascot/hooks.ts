@@ -37,6 +37,49 @@ export function useWebGLSupport(): boolean | null {
   );
 }
 
+/** Events that count as the visitor engaging with the page. */
+const INTERACTION_EVENTS = [
+  'pointerdown',
+  'pointermove',
+  'keydown',
+  'touchstart',
+  'wheel',
+  'scroll',
+];
+
+let interacted = false;
+const interactionListeners = new Set<() => void>();
+
+function markInteracted() {
+  if (interacted) return;
+  interacted = true;
+  INTERACTION_EVENTS.forEach((type) => window.removeEventListener(type, markInteracted, true));
+  interactionListeners.forEach((listener) => listener());
+}
+
+/**
+ * Whether the visitor has interacted with the page yet (moved or pressed the
+ * pointer, typed, touched, or scrolled); null during the server render. The
+ * 3D scenes wait for it (design D8), so three.js is never downloaded or
+ * compiled while the page is loading and never competes with its content.
+ */
+export function useHasInteracted(): boolean | null {
+  return useSyncExternalStore(
+    (onChange) => {
+      if (interacted) return noSubscription();
+      if (interactionListeners.size === 0) {
+        INTERACTION_EVENTS.forEach((type) =>
+          window.addEventListener(type, markInteracted, { capture: true, passive: true }),
+        );
+      }
+      interactionListeners.add(onChange);
+      return () => interactionListeners.delete(onChange);
+    },
+    () => interacted,
+    () => null,
+  );
+}
+
 /** Whether the page is visible (not a background tab). */
 export function usePageVisible(): boolean {
   return useSyncExternalStore(

@@ -48,20 +48,29 @@ export interface SceneConditions {
   readonly failed: boolean;
   /** The scene has already drawn its first frame. */
   readonly ready: boolean;
+  /**
+   * The visitor has interacted with the page (moved the pointer, typed,
+   * touched, scrolled), or null while not yet known. The scene waits for it,
+   * so the 3D code never loads while the page itself is loading.
+   */
+  readonly interacted: boolean | null;
 }
 
 /**
- * Whether to mount the 3D scene. The static still is the answer whenever
- * WebGL is missing, the scene failed, or reduced motion was requested before
- * the scene started (so reduced motion never downloads the 3D code). A scene
- * that is already running stays, and switches to its static pose instead.
+ * Whether to mount the 3D scene. The static still is the answer until the
+ * visitor first interacts with the page, and whenever WebGL is missing, the
+ * scene failed, or reduced motion was requested before the scene started (so
+ * reduced motion never downloads the 3D code). A scene that is already
+ * running stays, and switches to its static pose instead.
  */
 export function shouldMountScene({
   webgl,
   reducedMotion,
   failed,
   ready,
+  interacted,
 }: SceneConditions): boolean {
   if (webgl !== true || failed || reducedMotion === null) return false;
-  return ready || !reducedMotion;
+  if (ready) return true;
+  return interacted === true && !reducedMotion;
 }

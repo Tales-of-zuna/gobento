@@ -68,7 +68,13 @@ describe('supportsWebGL', () => {
 });
 
 describe('shouldMountScene', () => {
-  const base: SceneConditions = { webgl: true, reducedMotion: false, failed: false, ready: false };
+  const base: SceneConditions = {
+    webgl: true,
+    reducedMotion: false,
+    failed: false,
+    ready: false,
+    interacted: true,
+  };
   const cases: { name: string; when: Partial<SceneConditions>; mount: boolean }[] = [
     { name: 'WebGL works and motion is fine', when: {}, mount: true },
     { name: 'WebGL is unavailable', when: { webgl: false }, mount: false },
@@ -79,6 +85,17 @@ describe('shouldMountScene', () => {
       name: 'reduced motion is turned on after the scene started',
       when: { reducedMotion: true, ready: true },
       mount: true,
+    },
+    { name: 'the visitor has not interacted yet', when: { interacted: false }, mount: false },
+    {
+      name: 'interaction is not known yet (server render)',
+      when: { interacted: null },
+      mount: false,
+    },
+    {
+      name: 'reduced motion is requested and the visitor interacts',
+      when: { reducedMotion: true, interacted: true },
+      mount: false,
     },
     { name: 'the scene failed', when: { failed: true }, mount: false },
     { name: 'a running scene failed', when: { failed: true, ready: true }, mount: false },
