@@ -237,8 +237,12 @@ Windows cannot remove open files.
 - `spf13/cobra` v1.10.2 provides commands, help, and completion. It is the de
   facto standard for Go CLIs.
 - Flags on `new`: `--module`, `--arch`, `--framework`, `--db`, `--data`, `--go`,
-  `--pin module=version` (repeatable), and `--dir`. The name `--pin` avoids
-  confusion with cobra's root `--version`.
+  `--pin module=version` (repeatable), `--dir`, and `--dry-run`. The name
+  `--pin` avoids confusion with cobra's root `--version`. `--dry-run` stops
+  after pipeline step 1 of D5 (validation and composition, all in memory) and
+  lists the Plan's paths. It skips the toolchain and target checks, so it
+  works on machines without Go-proxy access, such as CI test runners. The website's configurator test uses it to prove that
+  every command the site produces is accepted (change `add-project-website`).
 - Error output lists every problem, one per line, each with a suggested fix
   (for example, the supported values).
 - Other dependencies: `golang.org/x/mod` v0.42.0 (semver, module, modfile) and
