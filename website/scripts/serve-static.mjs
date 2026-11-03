@@ -1,14 +1,16 @@
 // Serves the static export the way GitHub Pages serves a project site:
 // requests under /gobento/ map to files in out/, directories resolve to
 // index.html (with a redirect when the trailing slash is missing), unknown
-// paths get out/404.html with status 404, and nothing outside the prefix
-// is served.
+// paths get out/404.html with status 404, nothing outside the prefix is
+// served, and text responses are gzip-compressed when the client accepts it,
+// as Pages does (Lighthouse measures transfer sizes).
 //
 // Usage: node scripts/serve-static.mjs [port]
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { extname, join, resolve, sep } from 'node:path';
+import { createGzip } from 'node:zlib';
 
 const prefix = '/gobento';
 const root = resolve(import.meta.dirname, '..', 'out');
@@ -36,14 +38,24 @@ async function statOrUndefined(path) {
   }
 }
 
+/** Extensions served gzip-compressed to clients that accept it. */
+const compressible = new Set(['.html', '.js', '.css', '.json', '.txt', '.svg']);
+
 async function send(req, res, status, file) {
   const { size } = await stat(file);
-  res.writeHead(status, {
-    'content-type': types[extname(file)] ?? 'application/octet-stream',
-    'content-length': size,
-  });
+  const type = types[extname(file)] ?? 'application/octet-stream';
+  const gzip =
+    compressible.has(extname(file)) && /\bgzip\b/.test(req.headers['accept-encoding'] ?? '');
+  res.writeHead(
+    status,
+    gzip
+      ? { 'content-type': type, 'content-encoding': 'gzip', vary: 'accept-encoding' }
+      : { 'content-type': type, 'content-length': size },
+  );
   if (req.method === 'HEAD') return res.end();
-  createReadStream(file).pipe(res);
+  const stream = createReadStream(file);
+  if (gzip) stream.pipe(createGzip()).pipe(res);
+  else stream.pipe(res);
 }
 
 createServer(async (req, res) => {
