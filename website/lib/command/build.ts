@@ -40,14 +40,22 @@ export type BuildResult =
   | { readonly ok: false; readonly errors: readonly FieldError[] };
 
 /** Validates a value against one of the catalog's input rules; returns the rule's message on failure. */
-function checkRule(rule: Catalog['rules']['projectName'], value: string): string | undefined {
+function checkRule(rule: Catalog['rules']['modulePath'], value: string): string | undefined {
   return new RegExp(rule.pattern).test(value) ? undefined : rule.message;
 }
 
-/** Validates the project name and module path with the CLI's rules. */
+/**
+ * Validates the project name and module path with the CLI's rules. The module
+ * path pattern approximates the CLI's check (see `ModulePathPattern` in
+ * internal/generate): it does not reject Windows-reserved path elements such
+ * as `con`, which `gobento new` still reports.
+ */
 export function inputErrors(catalog: Catalog, state: ConfigState): FieldError[] {
   const errors: FieldError[] = [];
-  const nameError = checkRule(catalog.rules.projectName, state.name);
+  const { projectName } = catalog.rules;
+  const nameError =
+    checkRule(projectName, state.name) ??
+    (projectName.reserved.includes(state.name) ? projectName.reservedMessage : undefined);
   if (nameError) errors.push({ field: 'name', message: nameError });
   const moduleError =
     state.module === '' ? undefined : checkRule(catalog.rules.modulePath, state.module);

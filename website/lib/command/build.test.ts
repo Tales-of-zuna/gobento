@@ -6,6 +6,7 @@ import { addPostgres, catalogWith } from '@/lib/test/catalog';
 const fixture = catalogWith();
 const NAME_RULE = fixture.rules.projectName.message;
 const MODULE_RULE = fixture.rules.modulePath.message;
+const RESERVED_RULE = fixture.rules.projectName.reservedMessage;
 
 const state = (overrides: Partial<ConfigState> = {}): ConfigState => ({
   ...defaultState(fixture),
@@ -119,6 +120,16 @@ describe('inputErrors', () => {
     expect(errors).toEqual(valid ? [] : [{ field: 'name', message: NAME_RULE }]);
   });
 
+  it.each(['con', 'nul', 'com1', 'lpt9'])('reserved project name %j is rejected', (name) => {
+    expect(inputErrors(fixture, state({ name }))).toEqual([
+      { field: 'name', message: RESERVED_RULE },
+    ]);
+  });
+
+  it.each(['com', 'com0', 'console'])('project name %j is not reserved', (name) => {
+    expect(inputErrors(fixture, state({ name }))).toEqual([]);
+  });
+
   const modules: [string, boolean][] = [
     ['', true], // empty means the project name
     ['shop', true],
@@ -126,6 +137,8 @@ describe('inputErrors', () => {
     ['github.com/Tales-of-zuna/gobento', true],
     ['example.com/shop/v2', true],
     ['gopkg.in/yaml.v3', true],
+    ['example.com/a+b', true],
+    ['-shop', false],
     ['Not A Path', false],
     ['/example.com/shop', false],
     ['example.com/shop/', false],
