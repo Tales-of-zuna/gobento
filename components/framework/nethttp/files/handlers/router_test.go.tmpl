@@ -88,6 +88,8 @@ func TestCreateItemErrors(t *testing.T) {
 	}{
 		{name: "invalid JSON", store: &fakeStore{}, body: `{`, want: http.StatusBadRequest},
 		{name: "unknown field", store: &fakeStore{}, body: `{"title":"x"}`, want: http.StatusBadRequest},
+		{name: "trailing data", store: &fakeStore{}, body: `{"name":"x"} {"name":"y"}`, want: http.StatusBadRequest},
+		{name: "too large", store: &fakeStore{}, body: `{"name":"` + strings.Repeat("a", maxBodyBytes) + `"}`, want: http.StatusRequestEntityTooLarge},
 		{name: "empty name", store: &fakeStore{}, body: `{"name":"  "}`, want: http.StatusBadRequest},
 		{name: "store fails", store: &fakeStore{err: errors.New("disk full")}, body: `{"name":"x"}`, want: http.StatusInternalServerError},
 	}
@@ -97,8 +99,10 @@ func TestCreateItemErrors(t *testing.T) {
 			if rec.Code != tt.want {
 				t.Errorf("POST /items status = %d, want %d; body %s", rec.Code, tt.want, rec.Body)
 			}
-			if strings.Contains(rec.Body.String(), "disk full") {
-				t.Errorf("response exposes the internal error: %s", rec.Body)
+			for _, internal := range []string{"disk full", "invalid character", "json:"} {
+				if strings.Contains(rec.Body.String(), internal) {
+					t.Errorf("response exposes an internal error: %s", rec.Body)
+				}
 			}
 		})
 	}

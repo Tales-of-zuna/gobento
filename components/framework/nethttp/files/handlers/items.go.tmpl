@@ -2,6 +2,8 @@ package {{.Slots.handlers.Package}}
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -37,7 +39,17 @@ func (h *itemHandler) create(w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBodyBytes))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid JSON body: "+err.Error())
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			writeError(w, http.StatusRequestEntityTooLarge, "request body is too large")
+			return
+		}
+		writeError(w, http.StatusBadRequest, `invalid JSON body; send {"name": "..."}`)
+		return
+	}
+	// The body must hold exactly one JSON value.
+	if err := dec.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		writeError(w, http.StatusBadRequest, "invalid JSON body; unexpected data after the JSON object")
 		return
 	}
 	req.Name = strings.TrimSpace(req.Name)
