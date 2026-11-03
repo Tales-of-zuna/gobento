@@ -29,7 +29,7 @@
 - [x] 5.1 Write `architecture/mvc`: slots, `main.go` per the D2 contract (env config, graceful shutdown), `models` contract, README, and `dot-gitignore`
 - [x] 5.2 Write `framework/nethttp`: `NewRouter`, health and items handlers, and handler tests with a fake `ItemStore`
 - [x] 5.3 Write `database/sqlite`: `Open` with `modernc.org/sqlite` (confirm the driver name in source), embedded `schema.sql` applied at startup, traits `sql-dialect: sqlite`, `conn: database/sql`
-- [ ] 5.4 Write `data/sqlc`: `sqlc.yaml` (`omit_sqlc_version: true`, package from the slot), `queries.sql`, sqlc v1.31.1 output, the `New` adapter, `notes.md.tmpl` with the regenerate command, and a real-SQLite test that closes the DB in `t.Cleanup`
+- [ ] 5.4 Write `data/sqlc`: `sqlc.yaml` (`omit_sqlc_version: true`, schema from the `sql-schema` trait, output in the `sqlcgen` subpackage of the store slot), `queries.sql`, sqlc v1.31.1 output, the `New` adapter mapping `sqlcgen.Item` to `models.Item`, `notes.md.tmpl` with the regenerate command, and a real-SQLite test that closes the DB in `t.Cleanup`
 - [ ] 5.5 Add the golden test for mvc/nethttp/sqlite/sqlc with `-update`; verify it passes and `testdata/golden/` is committed
 
 ## 6. Generation (`internal/generate`)

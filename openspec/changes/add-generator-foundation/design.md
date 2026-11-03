@@ -49,7 +49,10 @@ contributors change most, and they need isolated tests.
 ### D2. Slots are Go packages, contracts are Go code
 
 An architecture declares slots. Each slot is one directory, which means one Go
-package, filled by exactly one component kind:
+package, filled by exactly one component kind. The owning component may also
+put its own subpackages below the slot directory (for example sqlc's generated
+code in `internal/store/sqlcgen`); they belong to the same owner, and other
+slots never import them:
 
 ```yaml
 # components/architecture/mvc/component.yaml
@@ -83,6 +86,12 @@ Traits are plain key/value data. sqlite provides
 `[sqlite]` and `conn` in `[database/sql]`. The pgx or GORM components later
 declare their own `conn` values, so incompatible pairs are rejected by data, not
 by code.
+
+Traits also carry the few facts one component needs about another's files.
+sqlite provides `sql-schema: schema.sql`, the schema file in its slot, and sqlc
+requires `sql-schema` in `[schema.sql]` and points `sqlc.yaml` at
+`{{.Slots.database.Dir}}/{{index .Traits "sql-schema"}}`. So sqlc depends on a
+trait, not on the sqlite component.
 
 Components may also add files at the project root (for example `sqlc.yaml`).
 These are checked for path conflicts like any other file.
@@ -241,8 +250,11 @@ roughly 76 MB tool on the user's machine to regenerate a fixed example, which
 is slow and network-heavy.
 
 - The shipped `sqlc.yaml` sets `omit_sqlc_version: true`, so generated files
-  contain no version numbers (spec: *Compatibility rules are data*). The
-  package name comes from `.Slots.store.Package`.
+  contain no version numbers (spec: *Compatibility rules are data*). sqlc
+  always generates `func New(db DBTX) *Queries`, which would clash with the
+  store contract's `New`, so its output goes into the fixed subpackage
+  `<store dir>/sqlcgen` (package `sqlcgen`). The store package's `New` adapter
+  wraps it and maps `sqlcgen.Item` to `models.Item`.
 - The generated README explains how to regenerate:
   `go run github.com/sqlc-dev/sqlc/cmd/sqlc@<.Versions value> generate`.
 - **CI freshness check:** generate the reference project, run the pinned sqlc
@@ -263,7 +275,7 @@ adds sqlc's large dependency tree to every generated project.
   internal/models/             architecture: Item, ItemStore
   internal/controllers/        framework: NewRouter, health + items handlers, tests with a fake ItemStore
   internal/database/           database: Open, embedded schema.sql applied at startup
-  internal/store/              data: queries.sql, sqlc output, New() adapter, test against real SQLite
+  internal/store/              data: queries.sql, New() adapter, test against real SQLite; sqlc output in sqlcgen/
   sqlc.yaml, README.md, .gitignore, go.mod, go.sum
 ```
 
