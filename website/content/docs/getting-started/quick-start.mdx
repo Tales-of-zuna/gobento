@@ -7,8 +7,9 @@ import { Files, Folder, File } from 'fumadocs-ui/components/files';
 import { Steps, Step } from 'fumadocs-ui/components/steps';
 import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 
-<Callout type="warn" title="Planned interface">
-  These commands show how gobento is designed to work. They do not work yet.
+<Callout type="info" title="Not released yet">
+  These commands work with gobento built from the main branch; there is no tagged release yet. See
+  [Installation](/docs/getting-started/installation).
 </Callout>
 
 This guide generates a project called `shop` with the first supported stack:
@@ -25,6 +26,10 @@ writes nothing and does not run the Go toolchain.
 ```sh
 gobento new shop --module example.com/shop --dry-run
 ```
+
+It prints `Dry run: nothing was written.`, the module, the selection
+(`mvc/nethttp/sqlite/sqlc, Go 1.27`), and the file list shown in
+[What gets generated](#what-gets-generated).
 
 </Step>
 <Step>
@@ -43,7 +48,16 @@ gobento new shop --module example.com/shop --arch mvc --framework nethttp --db s
 ```
 
 gobento creates `./shop`, fetches the exact dependency versions with your Go
-toolchain, and prints the next commands to run.
+toolchain, and prints the next commands to run:
+
+```text
+Created example.com/shop in shop.
+
+Next steps:
+  cd shop
+  go test ./...
+  go run ./cmd/shop
+```
 
 </Step>
 <Step>
@@ -56,15 +70,17 @@ go test ./...
 ```
 
 The project builds, passes `go vet` and `gofmt -l`, and passes its own tests
-without edits.
+without edits: the handlers are tested against a fake store, and the database
+and store packages against a real SQLite database.
 
 </Step>
 <Step>
 
 ### Start the server
 
-The server reads its port from `PORT` and its database location from
-`DATABASE_URL`. This example sets the port explicitly.
+The server listens on the port in `PORT` (default `8080`) and stores its data
+in the SQLite file named by `DATABASE_URL` (default `shop.db`, in the current
+directory). This example sets the port explicitly.
 
 <Tabs items={['macOS / Linux', 'Windows (PowerShell)']}>
 <Tab value="macOS / Linux">
@@ -97,18 +113,34 @@ curl -i -X POST http://localhost:8080/items -d '{"name":"onigiri"}'
 curl -i http://localhost:8080/items
 ```
 
-`GET /health` responds `200`. The item you create with `POST /items` is
-stored in SQLite and returned by `GET /items`.
+The API has three routes. Every response is JSON:
 
-<Callout type="info" title="Illustrative request">
-  The exact request body of `POST /items` is defined when the generator is implemented. The JSON
-  above illustrates the idea.
-</Callout>
+| Request                                 | Response                                                                                                                                 |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /health`                           | `200` with `{"status":"ok"}`                                                                                                             |
+| `POST /items` with `{"name":"onigiri"}` | `201` with the created item, such as `{"id":1,"name":"onigiri","created_at":"2026-11-03T06:15:11Z"}`                                     |
+| `GET /items`                            | `200` with every item, oldest first, such as `[{"id":1,"name":"onigiri","created_at":"2026-11-03T06:15:11Z"}]`; `[]` when there are none |
+
+`POST /items` takes exactly one JSON object with a non-empty `name` (leading
+and trailing spaces are removed). Errors are JSON objects with an `error`
+field:
+
+| Request                                               | Response                                                                     |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `{"name":""}` or `{"name":"  "}`                      | `400` `{"error":"name is required"}`                                         |
+| Not JSON, or an unknown field such as `{"title":"x"}` | `400` `{"error":"invalid JSON body; send {\"name\": \"...\"}"}`              |
+| More data after the object, such as `{"name":"a"} {}` | `400` `{"error":"invalid JSON body; unexpected data after the JSON object"}` |
+| A body larger than 1 MiB                              | `413` `{"error":"request body is too large"}`                                |
+| A storage failure                                     | `500` `{"error":"internal server error"}`; the details are logged, not sent  |
+
+The generated README documents the same API.
 
 </Step>
 </Steps>
 
 ## What gets generated
+
+This is the list `--dry-run` prints for `shop`, as a tree:
 
 <Files>
   <Folder name="shop" defaultOpen>
@@ -118,38 +150,67 @@ stored in SQLite and returned by `GET /items`.
       </Folder>
     </Folder>
     <Folder name="internal" defaultOpen>
-      <Folder name="models" />
-      <Folder name="controllers" />
-      <Folder name="database" />
-      <Folder name="store" />
+      <Folder name="controllers" defaultOpen>
+        <File name="items.go" />
+        <File name="router.go" />
+        <File name="router_test.go" />
+      </Folder>
+      <Folder name="database" defaultOpen>
+        <File name="database.go" />
+        <File name="database_test.go" />
+        <File name="schema.sql" />
+      </Folder>
+      <Folder name="models" defaultOpen>
+        <File name="models.go" />
+      </Folder>
+      <Folder name="store" defaultOpen>
+        <Folder name="sqlcgen" defaultOpen>
+          <File name="db.go" />
+          <File name="models.go" />
+          <File name="queries.sql.go" />
+        </Folder>
+        <File name="queries.sql" />
+        <File name="store.go" />
+        <File name="store_test.go" />
+      </Folder>
     </Folder>
-    <File name="sqlc.yaml" />
-    <File name="README.md" />
     <File name=".gitignore" />
+    <File name="README.md" />
     <File name="go.mod" />
     <File name="go.sum" />
+    <File name="sqlc.yaml" />
   </Folder>
 </Files>
 
 Each directory is one Go package, filled by one component:
 
-| Path                                          | Filled by     | Contents                                                                                                                 |
-| --------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `cmd/shop/main.go`                            | architecture  | Config from the environment (`PORT`, `DATABASE_URL`), wiring, graceful shutdown                                          |
-| `internal/models/`                            | architecture  | The `Item` type and the `ItemStore` interface                                                                            |
-| `internal/controllers/`                       | framework     | `NewRouter`, the health and items handlers, tests with a fake `ItemStore`                                                |
-| `internal/database/`                          | database      | `Open`, and an embedded `schema.sql` applied at startup                                                                  |
-| `internal/store/`                             | data access   | `queries.sql`, sqlc's generated code, the `New()` adapter, a test against real SQLite                                    |
-| `sqlc.yaml`                                   | data access   | sqlc configuration                                                                                                       |
-| `README.md`, `.gitignore`, `go.mod`, `go.sum` | project files | `go.mod` is rendered by gobento, `go.sum` comes from the Go toolchain, and the README includes notes from each component |
+| Path                                          | Filled by     | Contents                                                                                                                                  |
+| --------------------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `cmd/shop/main.go`                            | architecture  | Config from the environment (`PORT`, default `8080`; `DATABASE_URL`, default `shop.db`), wiring, graceful shutdown on Ctrl-C or `SIGTERM` |
+| `internal/models/`                            | architecture  | The `Item` type and the `ItemStore` interface                                                                                             |
+| `internal/controllers/`                       | framework     | `NewRouter` with `GET /health`, `GET /items`, and `POST /items`, and tests with a fake `ItemStore`                                        |
+| `internal/database/`                          | database      | `Open`, and an embedded `schema.sql` applied at startup                                                                                   |
+| `internal/store/`                             | data access   | `queries.sql`, the `New` adapter, and a test against real SQLite; sqlc's generated code is in the `sqlcgen` subpackage                    |
+| `sqlc.yaml`                                   | data access   | sqlc configuration                                                                                                                        |
+| `README.md`, `.gitignore`, `go.mod`, `go.sum` | project files | `go.mod` is rendered by gobento, `go.sum` comes from the Go toolchain, and the README includes notes from each component                  |
 
 `go.mod` requires every direct dependency at an exact version: the defaults
 from the [version rules](/docs/concepts/version-rules), or the versions you
 chose with `--go` and `--pin`.
 
-The sqlc output is shipped pre-generated, so you do not need sqlc to build the
-project. The generated README explains how to regenerate it after you change
-`queries.sql`.
+The sqlc output in `internal/store/sqlcgen` is shipped pre-generated, so you
+do not need sqlc to build the project. The generated README explains how to
+regenerate it with the pinned sqlc version (v1.31.1 today) after you change
+`queries.sql` or the schema:
+
+```sh
+go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
+```
+
+The schema in `internal/database/schema.sql` is embedded in the binary and
+applied every time the server starts. It uses `CREATE TABLE IF NOT EXISTS`, so
+it creates missing tables but never changes existing ones; it is not a
+migration system.
 
 ## Next steps
 

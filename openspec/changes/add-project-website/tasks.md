@@ -45,9 +45,9 @@ to be applied.
 
 ## 7. Real catalog integration (after add-generator-foundation)
 
-- [ ] 7.1 Write `internal/tools/catalogexport` on the real `internal/catalog` and `internal/compat`, emitting the D3 schema; verify its output passes the zod schema and replaces the fixture
-- [ ] 7.2 Add the CI freshness check (re-export, fail on diff) and the CLI cross-check (every supported selection's command passes `gobento new --dry-run`); verify both run green in CI
-- [ ] 7.3 Move `docs/components.md` into `content/docs/contributing/adding-a-component.mdx`, leaving a stub that links to the new page; verify links in the repository still resolve
+- [x] 7.1 Write `internal/tools/catalogexport` on the real `internal/catalog` and `internal/compat`, emitting the D3 schema; verify its output passes the zod schema and replaces the fixture
+- [x] 7.2 Add the CI freshness check (re-export, fail on diff) and the CLI cross-check (every supported selection's command passes `gobento new --dry-run`); verify both run green in CI
+- [x] 7.3 Move `docs/components.md` into `content/docs/contributing/adding-a-component.mdx`, leaving a stub that links to the new page; verify links in the repository still resolve
 
 ## 8. CI, deployment, and maintenance
 

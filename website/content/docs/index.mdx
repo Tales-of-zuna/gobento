@@ -4,8 +4,10 @@ description: gobento composes a ready-to-build Go project from the stack you cho
 ---
 
 <Callout type="warn" title="Early development">
-  gobento is in early development and nothing is released yet. The commands in these docs show the
-  **planned interface**, not a working tool. To follow what is being built, see the proposals in
+  gobento is in early development and has no tagged release yet. `gobento new` works as these docs
+  describe when you build it from the main branch (see
+  [Installation](/docs/getting-started/installation)). To follow what is being built, see the
+  proposals in
   [`openspec/changes/`](https://github.com/Tales-of-zuna/gobento/tree/main/openspec/changes).
 </Callout>
 
@@ -59,7 +61,8 @@ The first supported stack is:
 | Database       | `sqlite` (pure Go, no cgo)                    |
 | Data access    | `sqlc`                                        |
 
-It generates a project with a health endpoint and one example resource. More
+It generates a project with a health endpoint and one example resource,
+`/items`, stored in SQLite. More
 frameworks, databases, and architectures are on the roadmap; the
 [Components](/docs/components) reference always lists exactly what the
 catalog supports.
@@ -70,7 +73,7 @@ catalog supports.
   <Card
     title="Installation"
     href="/docs/getting-started/installation"
-    description="What you need, and the planned install command."
+    description="What you need, and how to install gobento."
   />
   <Card
     title="Quick start"

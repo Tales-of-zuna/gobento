@@ -92,3 +92,32 @@ func TestWebsiteCommands(t *testing.T) {
 			"run `make catalog` and `pnpm test -u` in website/", covered, want)
 	}
 }
+
+// TestDocsSeveralProblems checks that the CLI reference on the website
+// shows the problem report exactly as testdata/several-problems.txt holds
+// it: the text block after the several-problems marker in
+// website/content/docs/cli/new.mdx, without its first line (the command).
+func TestDocsSeveralProblems(t *testing.T) {
+	t.Parallel()
+
+	doc, err := os.ReadFile("../../website/content/docs/cli/new.mdx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, after, ok := strings.Cut(string(doc), "{/* several-problems */}\n\n```text\n")
+	if !ok {
+		t.Fatal("new.mdx has no several-problems text block")
+	}
+	block, _, ok := strings.Cut(after, "```")
+	if !ok {
+		t.Fatal("the several-problems block is not closed")
+	}
+	_, report, _ := strings.Cut(block, "\n")
+	want, err := os.ReadFile("testdata/several-problems.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report != string(want) {
+		t.Errorf("new.mdx shows:\n%s\nwant testdata/several-problems.txt:\n%s", report, want)
+	}
+}
