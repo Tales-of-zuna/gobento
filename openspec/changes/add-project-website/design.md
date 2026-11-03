@@ -67,9 +67,29 @@ website/
 | 3D | three + @react-three/fiber + @react-three/drei | Declarative scenes as React components. The pmndrs ecosystem behind the zustand demo site's style. |
 | Animation | Motion | Spring-based UI animation with built-in reduced-motion support |
 
-Exact versions are pinned during apply from the version research (see task
-1.1). One shared set of CSS variables (design tokens, D6) themes shadcn and
-Fumadocs together, so docs and marketing pages look like one product.
+Versions verified on 2026-11-03 and pinned exactly:
+- Next.js 16.4.4.
+- React and React DOM **19.3.1, pinned exactly**, because React Three Fiber
+  9.8.2 only supports React below 19.4.
+- Fumadocs core/ui 16.17.10 (the Base UI build, `@fumadocs/base-ui`) and
+  fumadocs-mdx 15.4.10.
+- Tailwind CSS 4.3.4.
+- shadcn CLI 4.23.0, initialized with `--base base`, so shadcn and Fumadocs
+  share Base UI instead of shipping both Base UI and Radix.
+- TypeScript ^5.9. TypeScript 7 support in Next.js is unverified.
+- three 0.187, @react-three/fiber 9.8.2, @react-three/drei 10.7.9, and
+  motion 14.9.
+- pnpm 12.16.1, pinned in `packageManager`. Corepack is not relied on: it is
+  no longer bundled from Node 25.
+
+The baseline is Fumadocs' official "Next.js Static" template. One shared set of
+CSS variables (design tokens, D6) themes shadcn and Fumadocs through
+`fumadocs-ui/css/shadcn.css`, so docs and marketing pages look like one
+product.
+
+**Gotcha:** Fumadocs' static search ignores Next.js `basePath`. The client must
+call `useStaticSearch({ from: "/gobento/api/search" })`, derived from the same
+base-path constant as `next.config.ts`.
 
 ### D3. Catalog bridge: Go owns the logic, the site reads JSON
 
@@ -163,17 +183,23 @@ Tailwind, shadcn, and Fumadocs.
 
 ### D7. Mascot implementation
 
-- **3D:** built in code from primitives in React Three Fiber (rounded boxes for
-  the bento, capsules and spheres for the gopher), with toon shading and
-  outlines matching the approved 2D sheet. This keeps the mascot reviewable as
-  code, animatable (idle bob, blink, lid opening on hover), and small, with no
-  binary model pipeline.
-  *Alternative:* a GLB modelled in Blender. Kept as the fallback if the
+- **3D-first (maintainer's choice):**
+  - The mascot is designed directly as a 3D model in code, from primitives
+    (rounded boxes for the bento; capsules and spheres for the gopher), with
+    toon shading and inverted-hull outlines in direction A's palette.
+  - Concepts are prototyped in plain three.js and compared as renders. The
+    winner is ported to React Three Fiber.
+  - Claude Design is not used to draw the mascot, because its guidelines
+    reserve complex illustration for real assets. Page designs show a
+    labelled placeholder.
+  - This keeps the mascot reviewable as code, animatable (idle bob, blink, lid
+    opening on hover), and small, with no binary model pipeline.
+  *Alternative:* a GLB modelled in Blender, kept as the fallback if the
   procedural version cannot reach the approved look. That decision is made at
   task 4.2, with the maintainer.
-- **Static fallback:** an SVG exported from the approved sheet. It is used for
-  reduced motion, without WebGL, while loading, in the favicon, and in social
-  images.
+- **Static fallback:** rendered stills of the approved 3D model (WebP/PNG at
+  1× and 2×, plus a small favicon render). They are used for reduced motion,
+  without WebGL, while loading, in the favicon, and in social images.
 - **Attribution:** the footer credits Renée French (CC BY 4.0) for the original
   Go gopher design and states non-affiliation with the Go project. The mascot
   is our own drawing. The Go logo is not used.
@@ -189,6 +215,21 @@ Tailwind, shadcn, and Fumadocs.
   decorative transitions.
 - Device pixel ratio is clamped to [1, 2]. Rendering pauses when the canvas is
   off-screen or the tab is hidden.
+- **3D and motion across the site:** the maintainer wants clean but impressive
+  animation used often. This is the motion language:
+  - Home: the mascot hero, plus subtle ambient particles.
+  - **Configurator:** a 3D bento box that *packs itself*. Each chosen
+    component drops into its compartment with a spring, which shows the slot
+    model.
+  - UI-wide: staggered reveals, spring presses, crossfades on command
+    changes, and copy feedback, implemented with Motion.
+  - Docs stay calm: an active-indicator slide, TOC highlight, and a search
+    dialog scale-in.
+- Every 3D scene is its own lazily loaded client chunk, shares one small
+  material and asset module, and obeys the same rules as above: SSR off,
+  static still first, WebGL fallback, and reduced motion means a static
+  frame. The Lighthouse budget (spec *Performance*) is the guardrail that keeps
+  "often" from becoming "heavy".
 
 ### D9. Build, CI, and deployment
 
@@ -223,8 +264,10 @@ Tailwind, shadcn, and Fumadocs.
   and color doing most of the work.
 - [The procedural 3D mascot looks worse than a modelled one] → A decision
   point at task 4.2, with GLB as the fallback.
-- [three.js bundle size (~150 kB gzipped)] → Loaded lazily after content, and
-  only on the home page, guarded by the Lighthouse budget.
+- [three.js bundle size (~150 kB gzipped), now used on several pages] → Each
+  scene is a lazy client chunk, loaded after content and only on pages that use
+  it. They share one three.js chunk, so it is cached across pages. Guarded by
+  the Lighthouse budget on every page.
 - [Catalog logic diverges between Go and TypeScript] → Pre-normalized JSON, a
   freshness check, and the CLI cross-check over every supported selection.
 - [GitHub Pages `basePath` bugs (broken assets or links)] → Playwright runs

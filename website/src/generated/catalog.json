@@ -1,0 +1,108 @@
+{
+  "kinds": [
+    {
+      "id": "architecture",
+      "title": "Architecture",
+      "description": "How the project's packages are laid out and wired together."
+    },
+    {
+      "id": "framework",
+      "title": "HTTP framework",
+      "description": "Routes HTTP requests to handlers."
+    },
+    {
+      "id": "database",
+      "title": "Database",
+      "description": "Where the project stores its data."
+    },
+    {
+      "id": "data",
+      "title": "Data access",
+      "description": "How the code reads and writes the database."
+    }
+  ],
+  "components": [
+    {
+      "id": "architecture/mvc",
+      "kind": "architecture",
+      "name": "mvc",
+      "title": "Model-View-Controller",
+      "description": "Models, controllers, and a store, wired together by one entry point.",
+      "provides": {},
+      "requires": {}
+    },
+    {
+      "id": "framework/nethttp",
+      "kind": "framework",
+      "name": "nethttp",
+      "title": "net/http",
+      "description": "The Go standard library's HTTP server and router.",
+      "provides": {},
+      "requires": {}
+    },
+    {
+      "id": "database/sqlite",
+      "kind": "database",
+      "name": "sqlite",
+      "title": "SQLite",
+      "description": "An embedded SQL database in a single file, through the pure-Go modernc.org/sqlite driver.",
+      "provides": {
+        "sql-dialect": "sqlite",
+        "conn": "database/sql"
+      },
+      "requires": {}
+    },
+    {
+      "id": "data/sqlc",
+      "kind": "data",
+      "name": "sqlc",
+      "title": "sqlc",
+      "description": "Type-safe Go code generated from SQL queries.",
+      "provides": {},
+      "requires": {
+        "sql-dialect": ["sqlite"],
+        "conn": ["database/sql"]
+      }
+    }
+  ],
+  "go": {
+    "range": ">=1.26 <1.28",
+    "default": "1.27"
+  },
+  "modules": [
+    {
+      "path": "modernc.org/sqlite",
+      "components": ["database/sqlite"],
+      "role": "library",
+      "range": ">=v1.61.0 <v2.0.0",
+      "default": "v1.61.1",
+      "constraints": [
+        {
+          "when": ">=v1.61.0",
+          "requires": {
+            "target": "go",
+            "range": ">=1.26"
+          }
+        }
+      ]
+    },
+    {
+      "path": "github.com/sqlc-dev/sqlc",
+      "components": ["data/sqlc"],
+      "role": "tool",
+      "range": "=v1.31.1",
+      "default": "v1.31.1",
+      "constraints": []
+    }
+  ],
+  "rules": {
+    "projectName": {
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "message": "Start with a lowercase letter and use only lowercase letters, digits, '-' and '_'."
+    },
+    "modulePath": {
+      "pattern": "^[A-Za-z0-9._~-]*[A-Za-z0-9_~-](/[A-Za-z0-9._~-]*[A-Za-z0-9_~-])*$",
+      "message": "Use a Go module path such as example.com/shop: elements of letters, digits, '.', '_', '~' and '-', separated by '/', none ending in '.'."
+    }
+  }
+}

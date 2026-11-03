@@ -5,25 +5,25 @@ to be applied.
 
 ## 1. Scaffold
 
-- [ ] 1.1 Scaffold `website/` (Next.js App Router, TypeScript strict, Tailwind, Fumadocs) with exact versions from the version research, `packageManager` (pnpm) and `.nvmrc` (Node 24); verify `pnpm install --frozen-lockfile` and `pnpm build` succeed and produce a static export
-- [ ] 1.2 Configure the static export for GitHub Pages (`basePath: "/gobento"`, `images.unoptimized`, `trailingSlash`, `.nojekyll`); verify a test server on the `out/` folder at `/gobento/` serves the home page with all assets loading
+- [x] 1.1 Scaffold `website/` (Next.js App Router, TypeScript strict, Tailwind, Fumadocs) with exact versions from the version research, `packageManager` (pnpm) and `.nvmrc` (Node 24); verify `pnpm install --frozen-lockfile` and `pnpm build` succeed and produce a static export
+- [x] 1.2 Configure the static export for GitHub Pages (`basePath: "/gobento"`, `images.unoptimized`, `trailingSlash`, `.nojekyll`); verify a test server on the `out/` folder at `/gobento/` serves the home page with all assets loading
 - [ ] 1.3 Add ESLint, Prettier, Vitest with Testing Library, and Playwright with axe as pnpm scripts (`lint`, `typecheck`, `test`, `e2e`), and Makefile targets `web-dev`, `web-check`, `web-build`; verify each script runs green on the scaffold
-- [ ] 1.4 Initialise shadcn/ui against the Fumadocs Tailwind setup; verify a shadcn Button and the Fumadocs docs layout render together without style conflicts
+- [x] 1.4 Initialise shadcn/ui against the Fumadocs Tailwind setup; verify a shadcn Button and the Fumadocs docs layout render together without style conflicts
 - [ ] 1.5 Add a CI assertion that `go list ./...` reports no package under `website/`; verify it passes with `node_modules` installed
 
 ## 2. Visual design in Claude Design
 
 - [ ] 2.1 Create the Claude Design project "gobento website" and produce the design direction: palette (light and dark), typography with licensed fonts, spacing, radius and shadow tokens, motifs; verify the maintainer can open it
-- [ ] 2.2 Design the mascot sheet (an original gopher-inspired character with a bento box: front, three-quarter and side views, expressions, hero pose); verify it contains no copied artwork and record the attribution text
+- [ ] 2.2 Prototype the mascot 3D-first: at least three original gopher-and-bento concepts in three.js (toon shading, direction A palette), rendered as front and three-quarter views on one contact sheet; the maintainer picks one; verify it contains no copied artwork and record the attribution text
 - [ ] 2.3 Design the home, configurator, and docs pages at desktop and mobile sizes in light and dark themes; verify every state named in the specs (disabled option with reason, invalid field, copied confirmation, pre-release notice, WebGL fallback) is drawn
 - [ ] 2.4 Review with the maintainer and record the approved direction, with the token values, in `website/DESIGN.md`; verify the maintainer's explicit approval before group 4 starts
 
 ## 3. Catalog and command logic (`website/lib`)
 
-- [ ] 3.1 Define the catalog schema (zod) and types, and write the first-slice fixture `src/generated/catalog.json`; verify schema tests accept the fixture and reject malformed variants
-- [ ] 3.2 Implement range and constraint evaluation and compatibility explanations; verify table tests mirroring the Go compat tests (each comparator, Go-version constraint, unmet trait)
-- [ ] 3.3 Implement the command builder (fixed flag order, defaults omitted) and the name and module validation from the catalog's rules; verify table tests for the scenarios *Changing a choice* and *Invalid project name*
-- [ ] 3.4 Implement URL state encoding and decoding with fallback for unknown values; verify tests for *Share a link* and *Unknown value in a shared link*
+- [x] 3.1 Define the catalog schema (zod) and types, and write the first-slice fixture `src/generated/catalog.json`; verify schema tests accept the fixture and reject malformed variants
+- [x] 3.2 Implement range and constraint evaluation and compatibility explanations; verify table tests mirroring the Go compat tests (each comparator, Go-version constraint, unmet trait)
+- [x] 3.3 Implement the command builder (fixed flag order, defaults omitted) and the name and module validation from the catalog's rules; verify table tests for the scenarios *Changing a choice* and *Invalid project name*
+- [x] 3.4 Implement URL state encoding and decoding with fallback for unknown values; verify tests for *Share a link* and *Unknown value in a shared link*
 
 ## 4. Theme, landing page, and mascot
 
