@@ -99,8 +99,11 @@ func Prepare(cat *catalog.Catalog, spec Spec) (*Prepared, error) {
 		p.Module = spec.Name
 	}
 
-	if !namePattern.MatchString(spec.Name) {
+	switch {
+	case !namePattern.MatchString(spec.Name):
 		errs = append(errs, fmt.Errorf("%w %q: start with a lowercase letter and use only lowercase letters, digits, - and _", ErrInvalidName, spec.Name))
+	case isWindowsReserved(spec.Name):
+		errs = append(errs, fmt.Errorf("%w %q: the name is reserved on Windows and cannot be used for files or directories; choose another name", ErrInvalidName, spec.Name))
 	}
 	if err := module.CheckImportPath(p.Module); err != nil {
 		errs = append(errs, fmt.Errorf("%w %q: %w; use a path such as example.com/%s", ErrInvalidModule, p.Module, err, safeExample(spec.Name)))
@@ -198,9 +201,23 @@ func supportedNames(supported []catalog.Selection, kind catalog.Kind) []string {
 	return names
 }
 
+// isWindowsReserved reports whether name is a device name that Windows
+// reserves for files and directories: con, prn, aux, nul, com1-com9, and
+// lpt1-lpt9.
+func isWindowsReserved(name string) bool {
+	switch name {
+	case "con", "prn", "aux", "nul":
+		return true
+	}
+	if len(name) == 4 && (strings.HasPrefix(name, "com") || strings.HasPrefix(name, "lpt")) {
+		return name[3] >= '1' && name[3] <= '9'
+	}
+	return false
+}
+
 // safeExample returns name if it is a valid path element, or "app".
 func safeExample(name string) string {
-	if namePattern.MatchString(name) {
+	if namePattern.MatchString(name) && !isWindowsReserved(name) {
 		return name
 	}
 	return "app"

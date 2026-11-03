@@ -214,3 +214,20 @@ func TestPrepareReportsVersionsWithSelectionProblems(t *testing.T) {
 		}
 	}
 }
+
+func TestPrepareRejectsWindowsReservedNames(t *testing.T) {
+	t.Parallel()
+
+	cat := shippedCatalog(t)
+	for _, name := range []string{"con", "prn", "aux", "nul", "com1", "com9", "lpt1", "lpt9"} {
+		_, err := Prepare(cat, Spec{Name: name})
+		if !errors.Is(err, ErrInvalidName) || !strings.Contains(err.Error(), "reserved on Windows") {
+			t.Errorf("Prepare(%q) error = %v, want a reserved-name error", name, err)
+		}
+	}
+	for _, name := range []string{"console", "com0", "com10", "lpt", "auxiliary", "nul-app"} {
+		if _, err := Prepare(cat, Spec{Name: name}); err != nil {
+			t.Errorf("Prepare(%q) error = %v, want nil", name, err)
+		}
+	}
+}
