@@ -3,6 +3,8 @@ import { join } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
+import { waitForAnimationsToSettle } from './helpers';
+
 const QUICK_START = 'gobento new shop --module example.com/shop';
 const released =
   JSON.parse(
@@ -138,7 +140,7 @@ test.describe('home page', () => {
         await page.mouse.wheel(0, 400);
         await page.waitForTimeout(60);
       }
-      await page.waitForTimeout(1200);
+      await waitForAnimationsToSettle(page);
       const results = await new AxeBuilder({ page }).analyze();
       expect(results.violations).toEqual([]);
     });

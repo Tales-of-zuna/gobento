@@ -17,7 +17,7 @@ import { useStaticSearch } from 'fumadocs-core/search/client';
 import { useI18n } from 'fumadocs-ui/contexts/i18n';
 import { basePath } from '@/lib/site';
 import { DOCS_SECTIONS, sectionClass, sectionOfUrl } from '@/lib/docs-sections';
-import { stillUrl } from '@/components/mascot/stills';
+import { headStill, stillUrl } from '@/components/mascot/stills';
 
 const KIND_LABELS: Record<string, string> = { page: 'Page', heading: 'Section', text: 'Text' };
 
@@ -73,8 +73,8 @@ function EmptySearch({ onNavigate }: { onNavigate: () => void }) {
     <div className="docs-search-empty">
       <div className="docs-search-emp">
         <picture>
-          <source srcSet={stillUrl(480, 'webp')} type="image/webp" />
-          <img src={stillUrl(480, 'png')} alt="" width={88} height={88} />
+          <source srcSet={stillUrl(headStill(256), 'webp')} type="image/webp" />
+          <img src={stillUrl(headStill(256), 'png')} alt="" width={88} height={88} />
         </picture>
         <div>
           <p className="docs-search-emp-t">What are you looking for?</p>

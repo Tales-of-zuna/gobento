@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type * as PageTree from 'fumadocs-core/page-tree';
 import { sectionClass, sectionOfUrl } from '@/lib/docs-sections';
-import { stillUrl } from '@/components/mascot/stills';
+import { headStill, stillUrl } from '@/components/mascot/stills';
 
 /**
  * The end of a docs page in the "Docs v2" design: the mascot pointing at the
@@ -20,9 +20,9 @@ export function DocsPageFooter({
     <div className="docs-end not-prose">
       <div className="docs-guide">
         <picture className="docs-guide-mascot">
-          <source srcSet={stillUrl(480, 'webp')} type="image/webp" />
+          <source srcSet={stillUrl(headStill(256), 'webp')} type="image/webp" />
           {/* Decorative: the bubble carries the message. */}
-          <img src={stillUrl(480, 'png')} alt="" width={76} height={76} loading="lazy" />
+          <img src={stillUrl(headStill(256), 'png')} alt="" width={76} height={76} loading="lazy" />
         </picture>
         <p className="docs-bubble">
           <span>Something unclear or out of date?</span>

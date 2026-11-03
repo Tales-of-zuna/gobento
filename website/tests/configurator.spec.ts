@@ -50,8 +50,9 @@ test.describe('configurator', () => {
     await page.getByLabel('Project name').fill('blog');
     const shown = await command(page).textContent();
     await page.getByRole('button', { name: 'Copy command' }).click();
-    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(shown);
+    // Check the visible feedback first: it deliberately reverts after 2 seconds.
     await expect(page.getByRole('button', { name: 'Copied' })).toHaveText('Copied ✓');
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(shown);
     await expect(
       page.getByText('Command copied to clipboard').locator('visible=true'),
     ).toBeVisible();

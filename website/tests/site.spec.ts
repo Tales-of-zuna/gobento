@@ -1,6 +1,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
+import { waitForAnimationsToSettle } from './helpers';
+
 /**
  * Records every request that answered with an HTTP error or never got a
  * response. Chromium reports Next's prefetch HEAD probes as aborted once the
@@ -57,7 +59,11 @@ for (const { name, path, heading } of pages) {
     });
 
     test('has no automated accessibility violations', async ({ page }) => {
+      // Audit the resting state: with reduced motion, every entrance animation
+      // shows its final frame, which is the base style by design.
+      await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.goto(path);
+      await waitForAnimationsToSettle(page);
       const results = await new AxeBuilder({ page }).analyze();
       expect(results.violations).toEqual([]);
     });
