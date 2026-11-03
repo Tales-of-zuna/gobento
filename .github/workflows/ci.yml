@@ -85,3 +85,54 @@ jobs:
           go-version-file: go.mod
       - name: Lint GitHub Actions workflows
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+
+  integration:
+    # Generates every supported selection with default and floor versions
+    # and builds, vets, and tests each project (internal/generate).
+    name: integration (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          # The newest Go in the go range of components/versions.yaml.
+          go-version: "1.27"
+          cache: true
+      - name: Integration tests
+        run: go test -count=1 -run TestIntegration ./internal/generate/
+
+  sqlc-fresh:
+    # The sqlc component ships generated code. Regenerate it with the pinned
+    # sqlc inside a generated project and fail if anything changes.
+    name: sqlc output is current
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Generate the reference project
+        run: go run ./cmd/gobento new shop --module example.com/shop --dir "$RUNNER_TEMP/shop"
+      - name: Regenerate with the pinned sqlc and compare
+        working-directory: ${{ runner.temp }}/shop
+        run: |
+          git init --quiet
+          git add --all
+          git -c user.name=ci -c user.email=ci@example.invalid commit --quiet --message generated
+          # The generated README holds the exact command, with the pinned version.
+          regenerate=$(grep -o 'go run github.com/sqlc-dev/sqlc/cmd/sqlc@v[^ ]* generate' README.md)
+          echo "$regenerate"
+          $regenerate
+          if [ -n "$(git status --porcelain)" ]; then
+            git diff
+            echo "::error::the shipped sqlc output is stale; regenerate it as described in docs/components.md"
+            exit 1
+          fi
