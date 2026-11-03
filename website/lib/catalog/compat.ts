@@ -6,7 +6,7 @@
  * then every matching constraint.
  */
 import type { Catalog, Component, KindId, Module } from './schema';
-import { KIND_IDS } from './schema';
+import { KIND_IDS } from './kinds';
 import { parseGoVersion, parseModuleVersion, satisfies } from './semver';
 
 /** Chosen components and versions. */

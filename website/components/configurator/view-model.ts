@@ -10,7 +10,8 @@ import {
   selectedModules,
   type Selection,
 } from '@/lib/catalog/compat';
-import { KIND_IDS, type Catalog, type KindId, type Module } from '@/lib/catalog/schema';
+import { KIND_IDS } from '@/lib/catalog/kinds';
+import type { Catalog, KindId, Module } from '@/lib/catalog/schema';
 import {
   compareVersions,
   parseGoVersion,

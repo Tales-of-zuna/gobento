@@ -4,7 +4,8 @@
  * `arch`, `framework`, `db`, `data`, `go`, and repeated `pin=<path>=<version>`.
  * Values equal to their default are left out to keep links short.
  */
-import { KIND_IDS, type Catalog } from '@/lib/catalog/schema';
+import { KIND_IDS } from '@/lib/catalog/kinds';
+import type { Catalog } from '@/lib/catalog/schema';
 import { parseGoVersion, parseModuleVersion, sameVersion, satisfies } from '@/lib/catalog/semver';
 import { KIND_FLAGS, type ConfigState } from './build';
 
