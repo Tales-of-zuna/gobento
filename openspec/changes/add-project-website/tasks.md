@@ -7,9 +7,9 @@ to be applied.
 
 - [x] 1.1 Scaffold `website/` (Next.js App Router, TypeScript strict, Tailwind, Fumadocs) with exact versions from the version research, `packageManager` (pnpm) and `.nvmrc` (Node 24); verify `pnpm install --frozen-lockfile` and `pnpm build` succeed and produce a static export
 - [x] 1.2 Configure the static export for GitHub Pages (`basePath: "/gobento"`, `images.unoptimized`, `trailingSlash`, `.nojekyll`); verify a test server on the `out/` folder at `/gobento/` serves the home page with all assets loading
-- [ ] 1.3 Add ESLint, Prettier, Vitest with Testing Library, and Playwright with axe as pnpm scripts (`lint`, `typecheck`, `test`, `e2e`), and Makefile targets `web-dev`, `web-check`, `web-build`; verify each script runs green on the scaffold
+- [x] 1.3 Add ESLint, Prettier, Vitest with Testing Library, and Playwright with axe as pnpm scripts (`lint`, `typecheck`, `test`, `e2e`), and Makefile targets `web-dev`, `web-check`, `web-build`; verify each script runs green on the scaffold
 - [x] 1.4 Initialise shadcn/ui against the Fumadocs Tailwind setup; verify a shadcn Button and the Fumadocs docs layout render together without style conflicts
-- [ ] 1.5 Add a CI assertion that `go list ./...` reports no package under `website/`; verify it passes with `node_modules` installed
+- [x] 1.5 Add a CI assertion that `go list ./...` reports no package under `website/`; verify it passes with `node_modules` installed
 
 ## 2. Visual design in Claude Design
 
@@ -52,8 +52,9 @@ to be applied.
 ## 8. CI, deployment, and maintenance
 
 - [ ] 8.1 Add `.github/workflows/website.yml` (path-filtered; install, lint, typecheck, test, build, e2e with axe, Lighthouse CI with the spec budget) with SHA-pinned actions; verify `actionlint` passes and a PR run is green
-- [ ] 8.2 Add `.github/workflows/pages.yml` (build and deploy to GitHub Pages on `main`) and the `npm` entry in `.github/dependabot.yml` (weekly, grouped, 7-day cooldown); verify `actionlint` passes
-- [ ] 8.3 Document in `docs/maintainers.md` the Pages setting (Settings → Pages → Source: GitHub Actions) and the website commands in `CONTRIBUTING.md`; verify the documented commands run as written
+  - Workflow written and `actionlint`-clean; the `website` and `website-e2e` steps pass locally. Not ticked: the Lighthouse budget fails locally (mobile performance: home 0.62, configurator 0.30, docs 0.69; accessibility 0.99-1.0), so a PR run cannot be green until the site meets it. Main causes: Zen Maru Gothic preloads 241 font slices (~4.2 MB; `preload: false` alone cut the page weight from 6.7 MB to 2.6 MB), and a configurator chunk with ~13 s of script boot-up time under mobile throttling.
+- [x] 8.2 Add `.github/workflows/pages.yml` (build and deploy to GitHub Pages on `main`) and the `npm` entry in `.github/dependabot.yml` (weekly, grouped, 7-day cooldown); verify `actionlint` passes
+- [x] 8.3 Document in `docs/maintainers.md` the Pages setting (Settings → Pages → Source: GitHub Actions) and the website commands in `CONTRIBUTING.md`; verify the documented commands run as written
 
 ## 9. Launch check
 
