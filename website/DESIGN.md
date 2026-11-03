@@ -52,6 +52,18 @@ Type: **Zen Maru Gothic** (display), **Figtree** (text), **JetBrains Mono**
 (code, ligatures off). All three are on Google Fonts, under the SIL Open Font
 License.
 
+Font loading (`app/layout.tsx`), all with `font-display: swap`:
+
+- **Zen Maru Gothic** is a Japanese font: Google Fonts serves it as about 120
+  slices per weight, and `next/font/google` preloaded every slice (about 4 MB).
+  The site shows no Japanese text, so only its Latin slice (weights 500, 700,
+  900, about 11 KB each) is self-hosted in `app/fonts/` with
+  `next/font/local`, next to its license (`OFL.txt`). Text outside that slice
+  falls back to the system's rounded sans-serif.
+- **Figtree** loads its `latin` subset from `next/font/google`, preloaded.
+- **JetBrains Mono** loads its `latin` subset from `next/font/google`, not
+  preloaded: code is never the first thing on screen.
+
 Component-kind colors: Architecture is sora, HTTP framework is shu, Database
 is tamago, and Data access is matcha.
 
@@ -92,4 +104,7 @@ final state is the base style.
 - Patterns and stickers are decorative (`aria-hidden`). The 3D canvas has a
   text alternative.
 - The Lighthouse mobile budget is at least 90 for performance and
-  accessibility. 3D loads lazily, after content.
+  accessibility. 3D loads lazily, after content, on the visitor's first
+  interaction; until then the mascot still holds its place.
+- The home hero's entrance only moves its text (no fade), so the heading is
+  painted at once and is the page's largest contentful paint.
