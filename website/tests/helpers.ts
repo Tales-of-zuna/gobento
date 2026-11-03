@@ -1,3 +1,5 @@
+import { readdirSync } from 'node:fs';
+import { join, sep } from 'node:path';
 import type { Page } from '@playwright/test';
 
 /**
@@ -30,4 +32,26 @@ export async function waitForAnimationsToSettle(page: Page, timeoutMs = 4000): P
       quietFrames = finiteRunning() ? 0 : quietFrames + 1;
     }
   }, timeoutMs);
+}
+
+/** Where the docs pages live; every `.mdx` file there is one page. */
+const DOCS_CONTENT = join(import.meta.dirname, '..', 'content', 'docs');
+
+/**
+ * The site path of every docs page, derived from the content files the way
+ * Fumadocs maps them (`a/b.mdx` and `a/b/index.mdx` are `docs/a/b/`), so a
+ * new page is covered without editing a list.
+ */
+export function docsPagePaths(): string[] {
+  return readdirSync(DOCS_CONTENT, { recursive: true, encoding: 'utf8' })
+    .filter((file) => file.endsWith('.mdx'))
+    .map((file) => {
+      const slug = file
+        .split(sep)
+        .join('/')
+        .replace(/\.mdx$/, '')
+        .replace(/(^|\/)index$/, '');
+      return slug ? `docs/${slug}/` : 'docs/';
+    })
+    .sort();
 }

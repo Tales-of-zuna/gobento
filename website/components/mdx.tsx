@@ -3,6 +3,7 @@ import type { MDXComponents } from 'mdx/types';
 import { Button } from '@/components/ui/button';
 import { ComponentsReference } from '@/components/components-reference';
 import { Callout } from '@/components/docs/callout';
+import { DocsPre } from '@/components/docs/code-block';
 
 /** Components available in every MDX page, optionally extended or overridden. */
 export function getMDXComponents(components?: MDXComponents) {
@@ -11,6 +12,7 @@ export function getMDXComponents(components?: MDXComponents) {
     Button,
     Callout,
     ComponentsReference,
+    pre: DocsPre,
     ...components,
   } satisfies MDXComponents;
 }

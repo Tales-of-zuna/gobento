@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { docsPagePaths, waitForAnimationsToSettle } from './helpers';
 
 /** Every docs page in sidebar order, as the previous/next links walk them. */
 const pages = [
@@ -159,16 +160,22 @@ test('the Components reference is generated from the catalog', async ({ page }) 
   );
 });
 
+test('the accessibility audit covers every docs page', () => {
+  expect(docsPagePaths()).toEqual(pages.map((p) => p.path).sort());
+});
+
 for (const colorScheme of ['light', 'dark'] as const) {
-  test(`docs pages have no automated accessibility violations in the ${colorScheme} theme`, async ({
-    page,
-  }) => {
-    await page.emulateMedia({ colorScheme });
-    for (const path of ['docs/concepts/traits/', 'docs/components/']) {
-      await page.goto(path);
-      await expect(page.locator('html')).toHaveClass(new RegExp(`\\b${colorScheme}\\b`));
-      const results = await new AxeBuilder({ page }).analyze();
-      expect(results.violations, path).toEqual([]);
+  test.describe(`Accessibility in the ${colorScheme} theme`, () => {
+    test.use({ colorScheme });
+
+    for (const path of docsPagePaths()) {
+      test(`${path} has no automated accessibility violations`, async ({ page }) => {
+        await page.goto(path);
+        await expect(page.locator('html')).toHaveClass(new RegExp(`\\b${colorScheme}\\b`));
+        await waitForAnimationsToSettle(page);
+        const results = await new AxeBuilder({ page }).analyze();
+        expect(results.violations).toEqual([]);
+      });
     }
   });
 }
