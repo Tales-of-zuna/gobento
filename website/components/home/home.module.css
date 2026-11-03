@@ -372,7 +372,11 @@
   width: 78px;
   height: 50px;
   border-radius: 14px;
-  background: repeating-linear-gradient(180deg, var(--tamago) 0 13px, color-mix(in oklab, var(--tamago) 78%, black) 13px 16px);
+  background: repeating-linear-gradient(
+    180deg,
+    var(--tamago) 0 13px,
+    color-mix(in oklab, var(--tamago) 78%, black) 13px 16px
+  );
   transform: rotate(var(--r));
 }
 .sUme {
@@ -382,7 +386,12 @@
   height: 44px;
   border-radius: 50%;
   background:
-    radial-gradient(circle at 34% 32%, color-mix(in oklab, var(--shu) 45%, white) 0 5px, transparent 6px), var(--shu);
+    radial-gradient(
+      circle at 34% 32%,
+      color-mix(in oklab, var(--shu) 45%, white) 0 5px,
+      transparent 6px
+    ),
+    var(--shu);
 }
 .sEda {
   --r: -12deg;
@@ -392,7 +401,8 @@
   height: 38px;
   border-radius: 999px;
   background:
-    radial-gradient(circle, color-mix(in oklab, var(--matcha) 65%, white) 0 9px, transparent 10px) 4px 0 / 26px 34px repeat-x,
+    radial-gradient(circle, color-mix(in oklab, var(--matcha) 65%, white) 0 9px, transparent 10px)
+      4px 0 / 26px 34px repeat-x,
     var(--matcha);
   transform: rotate(var(--r));
 }
@@ -426,11 +436,7 @@
   position: relative;
   margin-top: 40px;
   padding: 22px 0;
-  background: repeating-linear-gradient(
-    90deg,
-    var(--lacquer-2) 0 58px,
-    var(--lacquer-2) 58px 60px
-  );
+  background: repeating-linear-gradient(90deg, var(--lacquer-2) 0 58px, var(--lacquer-2) 58px 60px);
   border-top: 4px solid color-mix(in oklab, var(--tamago) 70%, var(--lacquer));
   border-bottom: 4px solid color-mix(in oklab, var(--tamago) 70%, var(--lacquer));
 }

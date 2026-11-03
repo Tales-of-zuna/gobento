@@ -1367,3 +1367,10 @@
     transform: none;
   }
 }
+
+/* Code blocks sit on the surface the Catppuccin Shiki themes are designed for
+   (Latte base / Frappé mantle), not on the raised card color. */
+#nd-docs-layout figure.shiki,
+#nd-docs-layout figure.shiki pre {
+  background: var(--code-bg);
+}

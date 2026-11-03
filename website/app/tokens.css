@@ -76,6 +76,8 @@
   --band-accent: #a6d189; /* Frappé green reads on both bands */
   /* recessed surfaces: command blocks, code, tray frames */
   --well: var(--ctp-text);
+  /* syntax-highlighted code blocks (Shiki catppuccin themes are tuned for these) */
+  --code-bg: var(--ctp-base);
   /* toy shadow and focus */
   --shadow-c: var(--ctp-text);
   --focus: var(--ctp-mauve);
@@ -189,6 +191,7 @@
   --on-band: var(--ctp-text);
   --band-accent: var(--ctp-green);
   --well: var(--ctp-mantle);
+  --code-bg: var(--ctp-mantle);
   --shadow-c: var(--ctp-crust);
   --focus: var(--ctp-mauve);
   --pat-color: color-mix(in oklab, var(--ctp-text) 7%, transparent);
