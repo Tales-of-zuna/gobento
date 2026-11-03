@@ -2,8 +2,8 @@ package compose
 
 // Data is the value every template is executed with. Its shape is part of
 // the contributor API for writing components and is documented in
-// docs/components.md; change it only together with that document and the
-// golden test.
+// website/content/docs/contributing/adding-a-component.mdx; change it only
+// together with that page and the golden test.
 type Data struct {
 	// Project describes the generated project.
 	Project Project
