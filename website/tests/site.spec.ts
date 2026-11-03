@@ -75,8 +75,12 @@ test('renders the shadcn Button with the shared theme', async ({ page }) => {
 
 test('static search loads its index from under the base path', async ({ page }) => {
   await page.goto('docs/');
-  await page.getByRole('button', { name: 'Search' }).first().click();
   const dialog = page.getByRole('dialog', { name: 'Search' });
+  // A click that lands before hydration is lost, as it would be for a person: click again.
+  await expect(async () => {
+    await page.getByRole('button', { name: 'Search' }).first().click();
+    await expect(dialog).toBeVisible({ timeout: 1_000 });
+  }).toPass();
   const index = page.waitForResponse((response) => response.url().endsWith('/gobento/api/search'));
   await dialog.getByRole('combobox', { name: 'Search' }).fill('go-blueprint');
   expect((await index).status()).toBe(200);
