@@ -113,6 +113,25 @@ test.describe('with JavaScript', () => {
     expect(await paintedOpacity(h1)).toBe(1);
   });
 
+  test('the hero heading is painted at once and is the largest contentful paint', async ({
+    page,
+  }) => {
+    await page.goto('./');
+    await expect(page.locator('html')).toHaveClass(/\bmotion-ready\b/);
+    // The entrance only moves the hero text; it never hides it, even mid-animation.
+    expect(await paintedOpacity(page.getByRole('heading', { level: 1 }))).toBe(1);
+    const lcp = await page.evaluate(
+      () =>
+        new Promise<string | undefined>((resolve) => {
+          new PerformanceObserver((list) => {
+            const entries = list.getEntries() as (PerformanceEntry & { element?: Element })[];
+            resolve(entries.at(-1)?.element?.tagName);
+          }).observe({ type: 'largest-contentful-paint', buffered: true });
+        }),
+    );
+    expect(lcp).toBe('H1');
+  });
+
   test('reduced motion shows the hero at once, with no entrance', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('./');
