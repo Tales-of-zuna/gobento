@@ -2,14 +2,24 @@
 
 The approved visual direction for the website (OpenSpec change
 `add-project-website`, task 2.4). Approved by the maintainer on 2026-11-03.
-Designs live in the Claude Design project **gobento website**:
+The designs were made in Claude Design and are kept here as full-canvas renders
+(desktop light, desktop dark, mobile), so anyone can see them without an
+account:
 
-| Page                  | File                                                                                                        |
-| --------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Home                  | [Home v2](https://claude.ai/design/p/4e0480c1-c7ec-40d2-8f4e-f8bcc42c3752?file=Home+v2.dc.html)             |
-| Configurator          | [Configurator](https://claude.ai/design/p/4e0480c1-c7ec-40d2-8f4e-f8bcc42c3752?file=Configurator.dc.html)   |
-| Docs                  | [Docs v2](https://claude.ai/design/p/4e0480c1-c7ec-40d2-8f4e-f8bcc42c3752?file=Docs+v2.dc.html)             |
-| Components and states | [Design System](https://claude.ai/design/p/4e0480c1-c7ec-40d2-8f4e-f8bcc42c3752?file=Design+System.dc.html) |
+| Page                         | Render                                               |
+| ---------------------------- | ---------------------------------------------------- |
+| Home                         | [design/home.jpg](design/home.jpg)                   |
+| Configurator                 | [design/configurator.jpg](design/configurator.jpg)   |
+| Docs                         | [design/docs.jpg](design/docs.jpg)                   |
+| Components and states        | [design/design-system.jpg](design/design-system.jpg) |
+| The three directions offered | [design/directions.jpg](design/directions.jpg)       |
+
+> [!NOTE]
+> The renders show the approved **layout, components, states and motion
+> notes**. Their colors are the original "washi" palette: the site switched to
+> **Catppuccin** afterwards (see [Catppuccin palette](#direction-playful-ekiben)
+> below), so for colors, `app/tokens.css` and this document are the source of
+> truth.
 
 ## Direction: "Playful ekiben"
 
