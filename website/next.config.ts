@@ -11,6 +11,8 @@ const config: NextConfig = {
   trailingSlash: true,
   images: { unoptimized: true },
   reactStrictMode: true,
+  // three ships modern ESM that React Three Fiber expects to be compiled with the app.
+  transpilePackages: ['three'],
 };
 
 export default withMDX(config);
