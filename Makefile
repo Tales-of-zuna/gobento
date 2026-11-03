@@ -14,8 +14,7 @@ WEB           := website
 	web-dev web-check web-build web-e2e
 
 help: ## Show this list of targets
-	@awk 'BEGIN {FS = ":.*## "} /^[a-z0-9-]+:.*## / {printf "  %-13s %s
-", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*## "} /^[a-z0-9-]+:.*## / {printf "  %-13s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 build: ## Build the gobento binary into bin/
 	@if [ -d cmd/gobento ]; then $(GO) build -o $(BIN) ./cmd/gobento; \
