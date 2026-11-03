@@ -57,10 +57,11 @@ non-zero exit.
 - **THEN** the output names both problems, lists the supported frameworks, and nothing is written
 
 ### Requirement: Dry run
-`gobento new --dry-run` SHALL perform every validation and composition step,
-list the files that would be created, and exit without writing anything or
-running the Go toolchain. It SHALL exit 0 when the input is valid, and
-otherwise exit non-zero with the same problem report as a normal run.
+`gobento new --dry-run` SHALL perform every input validation and composition
+step, list the files that would be created, and exit without writing anything,
+checking the target directory, or running the Go toolchain. It SHALL exit 0
+when the input is valid, and otherwise exit non-zero with the same problem
+report as a normal run.
 
 #### Scenario: Valid dry run
 - **WHEN** the user runs `gobento new shop --dry-run`

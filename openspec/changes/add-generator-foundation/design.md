@@ -56,7 +56,7 @@ package, filled by exactly one component kind:
 name: mvc
 title: Model-View-Controller
 slots:
-  entry:    { dir: "cmd/{{.Project.Name}}", filled_by: architecture }
+  entry:    { dir: "cmd/{{.Project.Name}}", package: main, filled_by: architecture }
   models:   { dir: internal/models,         filled_by: architecture }
   handlers: { dir: internal/controllers,    filled_by: framework, required: true }
   database: { dir: internal/database,       filled_by: database,  required: true }
@@ -86,6 +86,26 @@ by code.
 
 Components may also add files at the project root (for example `sqlc.yaml`).
 These are checked for path conflicts like any other file.
+
+**Manifest schema.** `component.yaml` has exactly these keys. Unknown keys are
+rejected, so a typo fails loading instead of being ignored:
+
+| Key | Type | Kinds | Meaning |
+|---|---|---|---|
+| `name` | string, `^[a-z][a-z0-9-]*$` | all | Must equal the directory name. |
+| `title` | string, required | all | Short display name, such as `SQLite`. |
+| `description` | string, optional | all | One-sentence summary. |
+| `slots` | map of slot name → slot | architecture only, at least one | Slot names match `^[a-z][a-z0-9_]*$` (they are template fields, `.Slots.<name>`), and `root` is reserved. |
+| `slots.<name>.dir` | string, required | | Directory relative to the project root. It is a template over `.Project`, for example `cmd/{{.Project.Name}}`. |
+| `slots.<name>.package` | string, optional | | Go package name. It defaults to the last element of the rendered `dir`, and is needed when that element is not a valid package name (`entry` sets `package: main`). |
+| `slots.<name>.filled_by` | kind, required | | `architecture`, `framework`, `database`, or `data`. |
+| `slots.<name>.required` | bool, default false | | The selection must fill the slot. |
+| `provides` | map of trait → value | all | Traits this component provides, such as `sql-dialect: sqlite`. |
+| `requires` | map of trait → list of values | all | For each trait, the values this component accepts, such as `sql-dialect: [sqlite]`. |
+
+A component does not list the slots it fills. They follow from its layout: a
+template under `files/<slot>/` fills `<slot>`, and `files/root/` adds files at
+the project root (D3).
 
 *Alternatives considered:*
 - Code hooks spliced into a shared `main.go` (the first draft). Rejected: hook
