@@ -56,6 +56,20 @@ non-zero exit.
 - **WHEN** the user passes both an invalid module path and `--framework express`
 - **THEN** the output names both problems, lists the supported frameworks, and nothing is written
 
+### Requirement: Dry run
+`gobento new --dry-run` SHALL perform every validation and composition step,
+list the files that would be created, and exit without writing anything or
+running the Go toolchain. It SHALL exit 0 when the input is valid, and
+otherwise exit non-zero with the same problem report as a normal run.
+
+#### Scenario: Valid dry run
+- **WHEN** the user runs `gobento new shop --dry-run`
+- **THEN** gobento lists the planned files, exits 0, and creates no directory
+
+#### Scenario: Invalid dry run
+- **WHEN** the user runs `gobento new "My App" --dry-run`
+- **THEN** gobento exits non-zero with the same problems a normal run would report, and creates nothing
+
 ### Requirement: Output location
 The project SHALL be generated into `--dir` when given, otherwise into `./<name>`.
 gobento SHALL refuse a target that exists and is not empty, and SHALL fill a
