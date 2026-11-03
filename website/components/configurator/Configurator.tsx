@@ -8,9 +8,9 @@
  * restores the same choices. Every rule comes from the catalog through
  * `buildCommand`, the compat helpers, and the URL-state codec.
  */
-import { MotionConfig } from 'motion/react';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { prefersReducedMotion } from '@/components/mascot/support';
+import { SiteMotion } from '@/components/motion/SiteMotion';
 import { PrereleaseNotice } from '@/components/site/PrereleaseNotice';
 import type { Catalog, KindId } from '@/lib/catalog/schema';
 import { buildCommand, type ConfigState } from '@/lib/command/build';
@@ -161,7 +161,7 @@ export function Configurator({ catalog, released = false }: ConfiguratorProps) {
   const toastNode = <div className={styles.toast}>{toast?.message}</div>;
 
   return (
-    <MotionConfig reducedMotion="user">
+    <SiteMotion>
       <div className={styles.root} data-hydrated={loaded}>
         <header className={styles.head}>
           <div className={`${styles.inner} ${styles.headInner}`}>
@@ -389,6 +389,6 @@ export function Configurator({ catalog, released = false }: ConfiguratorProps) {
           <CommandBox command={command} blocked={blocked} copied={copied} onCopy={copyCommand} />
         </div>
       </div>
-    </MotionConfig>
+    </SiteMotion>
   );
 }
