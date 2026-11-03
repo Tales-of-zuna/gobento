@@ -18,35 +18,44 @@ rather than text:
 
 - **Bento structure.** Content is organised in compartments: trays with rounded
   cells, one color per cell.
-- **Washi warmth.** Off-white paper background, sumi-ink text and outlines,
+- **Soft surfaces.** Calm Catppuccin surfaces with text-colored outlines and
   hard "toy" offset shadows.
 - **Patterns.** Seigaiha waves, ichimatsu checks and mizutama dots, drawn in
   CSS, on wide bands only and never behind body text.
-- **Food palette.** Umeboshi, tamagoyaki, edamame, sky and sakura pastels for
-  section bands and compartments, with vermilion and matcha as strong accents.
+- **Catppuccin palette.** [Catppuccin](https://catppuccin.com) (MIT): **Latte**
+  for the light theme and **Frappé** for the dark theme, chosen by the maintainer
+  on 2026-11-03. The bento roles map onto Catppuccin accents: peach is the
+  primary action ("shu"), green is selected and success ("matcha"), blue is the
+  mascot and architecture ("sora"), yellow and pink are the food stickers, and
+  mauve is the focus ring. Pastel bands are Catppuccin accents mixed into base.
 - **English only.** No Japanese characters in the interface. The wordmark is
   plain `gobento`.
-- **Light-first.** A warm "evening bento" dark theme is derived from the light
-  one: cocoa-brown surfaces (page lightness about 0.28, not near-black), lightened
-  on the maintainer's request on 2026-11-03.
+- **Light-first.** Latte is the default light theme; Frappé follows the system
+  dark preference. Compartments are recessed (darker than the page) in both.
 
 ## Tokens
 
-Defined in [`app/tokens.css`](app/tokens.css), with the same names as the
-design files.
+Defined in [`app/tokens.css`](app/tokens.css). The raw Catppuccin colors are
+`--ctp-*` (all 26 per flavor); the semantic tokens below point at them.
 
-| Group             | Tokens                                                                         | Use                                                                           |
-| ----------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| Surfaces          | `--wash`, `--paper`, `--tray`                                                  | page, raised surfaces, compartments                                           |
-| Text              | `--ink`, `--ink-2`, `--line`                                                   | text and outlines, secondary text, hairlines                                  |
-| Strong accents    | `--shu`, `--matcha`, `--sora` (+ `--on-*`)                                     | buttons, selected states, display type                                        |
-| Text-safe accents | `--shu-text`, `--matcha-ink`, `--sora-ink`, `--tamago-ink`, `--danger-ink`     | links, labels, errors (at least 4.5:1)                                        |
-| Food pastels      | `--shu-soft`, `--tamago-soft`, `--matcha-soft`, `--sora-soft`, `--sakura-soft` | section bands, compartments                                                   |
-| Illustration      | `--tamago`, `--sakura`, `--nori`                                               | stickers and decoration only, never text                                      |
-| Recessed          | `--well`                                                                       | command blocks, code snippets, tray frames (ink in light, deep cocoa in dark) |
-| Shape             | `--r-sm/md/lg/xl`, `--stroke`, `--toy-1/2/3`                                   | radii, outline width, offset shadows                                          |
-| Kind identity     | `--kind-architecture/framework/database/data`                                  | the same color per component kind everywhere                                  |
-| Patterns          | `--pat-seigaiha`, `--pat-ichimatsu`, `--pat-mizutama`, `--scallop`             | band backgrounds and scalloped edges                                          |
+**Accessibility exception:** several Latte accents (peach, yellow, green, blue,
+red) are below WCAG AA 4.5:1 _as text_ on Latte surfaces. Their text-safe tokens
+(`--shu-text`, `--tamago-ink`, `--matcha-ink`, `--sora-ink`, `--danger-ink`) are
+darkened versions of the same hue (at least 5:1 on mantle). Button text on peach
+and green uses Frappé crust. Frappé accents pass as-is.
+
+| Group             | Tokens                                                                         | Use                                                                                           |
+| ----------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| Surfaces          | `--wash`, `--paper`, `--tray`                                                  | page, raised surfaces, compartments                                                           |
+| Text              | `--ink`, `--ink-2`, `--line`                                                   | text and outlines, secondary text, hairlines                                                  |
+| Strong accents    | `--shu`, `--matcha`, `--sora` (+ `--on-*`)                                     | buttons, selected states, display type                                                        |
+| Text-safe accents | `--shu-text`, `--matcha-ink`, `--sora-ink`, `--tamago-ink`, `--danger-ink`     | links, labels, errors (at least 4.5:1)                                                        |
+| Food pastels      | `--shu-soft`, `--tamago-soft`, `--matcha-soft`, `--sora-soft`, `--sakura-soft` | section bands, compartments                                                                   |
+| Illustration      | `--tamago`, `--sakura`, `--nori`                                               | stickers and decoration only, never text                                                      |
+| Recessed          | `--well`                                                                       | command blocks, code snippets, tray frames (Latte text color in light, Frappé mantle in dark) |
+| Shape             | `--r-sm/md/lg/xl`, `--stroke`, `--toy-1/2/3`                                   | radii, outline width, offset shadows                                                          |
+| Kind identity     | `--kind-architecture/framework/database/data`                                  | the same color per component kind everywhere                                                  |
+| Patterns          | `--pat-seigaiha`, `--pat-ichimatsu`, `--pat-mizutama`, `--scallop`             | band backgrounds and scalloped edges                                                          |
 
 Type: **Zen Maru Gothic** (display), **Figtree** (text), **JetBrains Mono**
 (code, ligatures off). All three are on Google Fonts, under the SIL Open Font

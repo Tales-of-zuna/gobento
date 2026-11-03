@@ -7,21 +7,15 @@
 
 .page {
   position: relative;
-  --lacquer: oklch(0.3 0.07 32);
-  --lacquer-2: oklch(0.25 0.06 32);
-  --on-lacquer: oklch(0.96 0.015 85);
-  --rice: oklch(0.985 0.008 85);
+  --lacquer: var(--band);
+  --lacquer-2: var(--band-2);
+  --on-lacquer: var(--on-band);
+  --rice: var(--paper);
   flex: 1;
   background: var(--wash);
   color: var(--ink);
   font-family: var(--f-body);
   overflow-x: clip;
-}
-
-:global(.dark) .page {
-  position: relative;
-  --lacquer: oklch(0.27 0.06 32);
-  --lacquer-2: oklch(0.2 0.045 32);
 }
 
 .page main a:not(.btn) {
@@ -254,7 +248,7 @@
   overflow-wrap: anywhere;
 }
 .prompt {
-  color: oklch(0.8 0.14 140);
+  color: var(--band-accent);
 }
 
 .cur {
@@ -263,7 +257,7 @@
   height: 1.1em;
   margin-left: 4px;
   vertical-align: -0.2em;
-  background: oklch(0.8 0.14 140);
+  background: var(--band-accent);
 }
 
 .copy {
@@ -287,7 +281,7 @@
   background: var(--matcha);
 }
 .copy:focus-visible {
-  outline-color: oklch(0.8 0.14 140);
+  outline-color: var(--band-accent);
 }
 
 .note {
@@ -378,7 +372,7 @@
   width: 78px;
   height: 50px;
   border-radius: 14px;
-  background: repeating-linear-gradient(180deg, var(--tamago) 0 13px, oklch(0.8 0.15 80) 13px 16px);
+  background: repeating-linear-gradient(180deg, var(--tamago) 0 13px, color-mix(in oklab, var(--tamago) 78%, black) 13px 16px);
   transform: rotate(var(--r));
 }
 .sUme {
@@ -388,7 +382,7 @@
   height: 44px;
   border-radius: 50%;
   background:
-    radial-gradient(circle at 34% 32%, oklch(0.8 0.1 20) 0 5px, transparent 6px), var(--shu);
+    radial-gradient(circle at 34% 32%, color-mix(in oklab, var(--shu) 45%, white) 0 5px, transparent 6px), var(--shu);
 }
 .sEda {
   --r: -12deg;
@@ -398,8 +392,8 @@
   height: 38px;
   border-radius: 999px;
   background:
-    radial-gradient(circle, oklch(0.78 0.16 135) 0 9px, transparent 10px) 4px 0 / 26px 34px repeat-x,
-    oklch(0.66 0.15 140);
+    radial-gradient(circle, color-mix(in oklab, var(--matcha) 65%, white) 0 9px, transparent 10px) 4px 0 / 26px 34px repeat-x,
+    var(--matcha);
   transform: rotate(var(--r));
 }
 .sSak {
@@ -421,7 +415,7 @@
 }
 .bLacq .eyebrow,
 .bLacq .lead {
-  color: oklch(0.88 0.03 70);
+  color: color-mix(in oklab, var(--on-lacquer) 85%, var(--lacquer));
 }
 .bLacq .eyebrow i {
   background: var(--tamago);
@@ -435,10 +429,10 @@
   background: repeating-linear-gradient(
     90deg,
     var(--lacquer-2) 0 58px,
-    oklch(0.34 0.06 32) 58px 60px
+    var(--lacquer-2) 58px 60px
   );
-  border-top: 4px solid oklch(0.62 0.1 60);
-  border-bottom: 4px solid oklch(0.62 0.1 60);
+  border-top: 4px solid color-mix(in oklab, var(--tamago) 70%, var(--lacquer));
+  border-bottom: 4px solid color-mix(in oklab, var(--tamago) 70%, var(--lacquer));
 }
 
 .track {
@@ -465,7 +459,7 @@
   background: var(--paper);
   border: 7px solid var(--k);
   border-radius: 50%;
-  box-shadow: 0 6px 0 oklch(0.15 0.03 32);
+  box-shadow: 0 6px 0 var(--shadow-c);
 }
 .plate .pk {
   font: 700 var(--t-xs) / 1 var(--f-body);
@@ -691,8 +685,8 @@
 .code .hl {
   margin: 0 -6px;
   padding: 2px 6px;
-  color: oklch(0.985 0.01 85);
-  background: oklch(0.5 0.15 35);
+  color: var(--paper);
+  background: var(--danger-ink);
   border-radius: 6px;
 }
 

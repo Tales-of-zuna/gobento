@@ -1,47 +1,84 @@
 /*
- * gobento design tokens (approved direction "Playful ekiben", v2).
+ * gobento design tokens: Catppuccin (https://catppuccin.com, MIT) mapped onto
+ * the bento roles. Light theme = Latte, dark theme = Frappé.
+ * A few Latte accents are darkened ("text-safe") where Catppuccin's own value
+ * is below WCAG AA 4.5:1 as text; everything else is a stock Catppuccin color.
+ * Approved direction "Playful ekiben" (structure, motion) is unchanged.
  * Source of truth: website/DESIGN.md and the Claude Design project
  * "gobento website" (tokens.css). Names match the design files 1:1.
  * Light theme on :root, warm "evening bento" dark theme on .dark.
  */
 
 :root {
+  /* Catppuccin Latte */
+  --ctp-rosewater: #dc8a78;
+  --ctp-flamingo: #dd7878;
+  --ctp-pink: #ea76cb;
+  --ctp-mauve: #8839ef;
+  --ctp-red: #d20f39;
+  --ctp-maroon: #e64553;
+  --ctp-peach: #fe640b;
+  --ctp-yellow: #df8e1d;
+  --ctp-green: #40a02b;
+  --ctp-teal: #179299;
+  --ctp-sky: #04a5e5;
+  --ctp-sapphire: #209fb5;
+  --ctp-blue: #1e66f5;
+  --ctp-lavender: #7287fd;
+  --ctp-text: #4c4f69;
+  --ctp-subtext1: #5c5f77;
+  --ctp-subtext0: #6c6f85;
+  --ctp-overlay2: #7c7f93;
+  --ctp-overlay1: #8c8fa1;
+  --ctp-overlay0: #9ca0b0;
+  --ctp-surface2: #acb0be;
+  --ctp-surface1: #bcc0cc;
+  --ctp-surface0: #ccd0da;
+  --ctp-base: #eff1f5;
+  --ctp-mantle: #e6e9ef;
+  --ctp-crust: #dce0e8;
+
   /* surfaces */
-  --wash: oklch(0.975 0.012 85);
-  --paper: oklch(0.99 0.006 85);
-  --tray: oklch(0.935 0.025 75);
+  --wash: var(--ctp-mantle);
+  --paper: var(--ctp-base);
+  --tray: var(--ctp-crust);
   /* text */
-  --ink: oklch(0.26 0.03 45);
-  --ink-2: oklch(0.43 0.03 50);
-  --line: oklch(0.86 0.02 70);
-  /* strong accents: fills, buttons, display type (same L and C, different hue) */
-  --shu: oklch(0.56 0.15 35);
-  --on-shu: oklch(0.985 0.01 85);
-  --matcha: oklch(0.56 0.15 140);
-  --on-matcha: oklch(0.985 0.01 85);
-  --sora: oklch(0.56 0.15 245);
-  --on-sora: oklch(0.985 0.01 85);
-  /* text-safe accents: at least 4.5:1 on wash and paper */
-  --shu-text: oklch(0.5 0.15 35);
-  --matcha-ink: oklch(0.4 0.1 140);
-  --sora-ink: oklch(0.45 0.13 245);
-  --tamago-ink: oklch(0.45 0.1 85);
-  --danger-ink: oklch(0.47 0.15 30);
-  /* bento food pastels: section bands, compartments, selected states */
-  --shu-soft: oklch(0.93 0.045 35);
-  --tamago-soft: oklch(0.93 0.045 90);
-  --matcha-soft: oklch(0.93 0.045 140);
-  --sora-soft: oklch(0.93 0.045 245);
-  --sakura-soft: oklch(0.93 0.045 355);
-  /* bright food accents for stickers and illustration only (never text) */
-  --tamago: oklch(0.86 0.15 90);
-  --sakura: oklch(0.8 0.1 355);
-  --nori: oklch(0.3 0.03 160);
+  --ink: var(--ctp-text);
+  --ink-2: var(--ctp-subtext1);
+  --line: var(--ctp-surface1);
+  /* strong accents: fills, buttons, display type */
+  --shu: var(--ctp-peach);
+  --on-shu: #232634; /* Frappé crust: dark text on bright Latte peach (5:1) */
+  --matcha: var(--ctp-green);
+  --on-matcha: #232634;
+  --sora: var(--ctp-blue);
+  --on-sora: var(--ctp-base);
+  /* text-safe accents (>= 4.5:1 on wash and paper) */
+  --shu-text: #a03c08; /* darkened Latte peach (>= 5:1 on mantle) */
+  --matcha-ink: #276a17; /* darkened Latte green */
+  --sora-ink: #1a56cf; /* darkened Latte blue */
+  --tamago-ink: #855209; /* darkened Latte yellow */
+  --danger-ink: #b00c30; /* darkened Latte red */
+  /* soft pastels: section bands, compartments, selected states */
+  --shu-soft: color-mix(in oklab, var(--ctp-peach) 14%, var(--ctp-base));
+  --tamago-soft: color-mix(in oklab, var(--ctp-yellow) 18%, var(--ctp-base));
+  --matcha-soft: color-mix(in oklab, var(--ctp-green) 14%, var(--ctp-base));
+  --sora-soft: color-mix(in oklab, var(--ctp-blue) 12%, var(--ctp-base));
+  --sakura-soft: color-mix(in oklab, var(--ctp-pink) 14%, var(--ctp-base));
+  /* illustration only (never text) */
+  --tamago: var(--ctp-yellow);
+  --sakura: var(--ctp-pink);
+  --nori: var(--ctp-text);
+  /* contrast bands (the conveyor "lacquer" band) */
+  --band: #4c4f69;
+  --band-2: #5c5f77;
+  --on-band: var(--ctp-base);
+  --band-accent: #a6d189; /* Frappé green reads on both bands */
   /* recessed surfaces: command blocks, code, tray frames */
-  --well: var(--ink);
+  --well: var(--ctp-text);
   /* toy shadow and focus */
-  --shadow-c: var(--ink);
-  --focus: oklch(0.56 0.15 35);
+  --shadow-c: var(--ctp-text);
+  --focus: var(--ctp-mauve);
   /* shape */
   --r-sm: 10px;
   --r-md: 16px;
@@ -57,7 +94,7 @@
   --kind-database: var(--tamago-soft);
   --kind-data: var(--matcha-soft);
   /* patterns: background-image values for wide bands; keep body text on solid panels */
-  --pat-color: oklch(0.26 0.03 45 / 0.07);
+  --pat-color: color-mix(in oklab, var(--ctp-text) 8%, transparent);
   --pat-seigaiha:
     radial-gradient(
         circle at 50% 100%,
@@ -93,33 +130,66 @@
 }
 
 .dark {
-  --wash: oklch(0.28 0.022 45);
-  --paper: oklch(0.32 0.024 45);
-  --tray: oklch(0.36 0.026 45);
-  --ink: oklch(0.95 0.015 85);
-  --ink-2: oklch(0.8 0.02 75);
-  --line: oklch(0.47 0.026 50);
-  --shu: oklch(0.7 0.14 38);
-  --on-shu: oklch(0.22 0.02 45);
-  --matcha: oklch(0.74 0.14 140);
-  --on-matcha: oklch(0.2 0.02 45);
-  --sora: oklch(0.76 0.11 245);
-  --on-sora: oklch(0.2 0.02 45);
-  --shu-text: oklch(0.76 0.13 38);
-  --matcha-ink: oklch(0.84 0.1 140);
-  --sora-ink: oklch(0.82 0.09 245);
-  --tamago-ink: oklch(0.86 0.1 90);
-  --danger-ink: oklch(0.78 0.12 35);
-  --shu-soft: oklch(0.4 0.055 35);
-  --tamago-soft: oklch(0.41 0.055 90);
-  --matcha-soft: oklch(0.4 0.055 140);
-  --sora-soft: oklch(0.4 0.055 245);
-  --sakura-soft: oklch(0.4 0.055 355);
-  --tamago: oklch(0.82 0.14 90);
-  --sakura: oklch(0.78 0.09 355);
-  --nori: oklch(0.3 0.025 160);
-  --well: oklch(0.21 0.02 45);
-  --shadow-c: oklch(0.18 0.02 45);
-  --focus: oklch(0.74 0.14 140);
-  --pat-color: oklch(0.95 0.015 85 / 0.06);
+  /* Catppuccin Frappé */
+  --ctp-rosewater: #f2d5cf;
+  --ctp-flamingo: #eebebe;
+  --ctp-pink: #f4b8e4;
+  --ctp-mauve: #ca9ee6;
+  --ctp-red: #e78284;
+  --ctp-maroon: #ea999c;
+  --ctp-peach: #ef9f76;
+  --ctp-yellow: #e5c890;
+  --ctp-green: #a6d189;
+  --ctp-teal: #81c8be;
+  --ctp-sky: #99d1db;
+  --ctp-sapphire: #85c1dc;
+  --ctp-blue: #8caaee;
+  --ctp-lavender: #babbf1;
+  --ctp-text: #c6d0f5;
+  --ctp-subtext1: #b5bfe2;
+  --ctp-subtext0: #a5adce;
+  --ctp-overlay2: #949cbb;
+  --ctp-overlay1: #838ba7;
+  --ctp-overlay0: #737994;
+  --ctp-surface2: #626880;
+  --ctp-surface1: #51576d;
+  --ctp-surface0: #414559;
+  --ctp-base: #303446;
+  --ctp-mantle: #292c3c;
+  --ctp-crust: #232634;
+
+  --wash: var(--ctp-base);
+  --paper: var(--ctp-surface0);
+  --tray: var(--ctp-mantle); /* recessed compartments; subtext1 on surface1 is only 3.9:1 */
+  --ink: var(--ctp-text);
+  --ink-2: var(--ctp-subtext1);
+  --line: var(--ctp-surface2);
+  --shu: var(--ctp-peach);
+  --on-shu: var(--ctp-crust);
+  --matcha: var(--ctp-green);
+  --on-matcha: var(--ctp-crust);
+  --sora: var(--ctp-blue);
+  --on-sora: var(--ctp-crust);
+  /* Frappé accents already pass 4.5:1 on base and surface0 */
+  --shu-text: var(--ctp-peach);
+  --matcha-ink: var(--ctp-green);
+  --sora-ink: var(--ctp-blue);
+  --tamago-ink: var(--ctp-yellow);
+  --danger-ink: var(--ctp-red);
+  --shu-soft: color-mix(in oklab, var(--ctp-peach) 15%, var(--ctp-base));
+  --tamago-soft: color-mix(in oklab, var(--ctp-yellow) 14%, var(--ctp-base));
+  --matcha-soft: color-mix(in oklab, var(--ctp-green) 14%, var(--ctp-base));
+  --sora-soft: color-mix(in oklab, var(--ctp-blue) 15%, var(--ctp-base));
+  --sakura-soft: color-mix(in oklab, var(--ctp-pink) 14%, var(--ctp-base));
+  --tamago: var(--ctp-yellow);
+  --sakura: var(--ctp-pink);
+  --nori: var(--ctp-crust);
+  --band: var(--ctp-crust);
+  --band-2: var(--ctp-mantle);
+  --on-band: var(--ctp-text);
+  --band-accent: var(--ctp-green);
+  --well: var(--ctp-mantle);
+  --shadow-c: var(--ctp-crust);
+  --focus: var(--ctp-mauve);
+  --pat-color: color-mix(in oklab, var(--ctp-text) 7%, transparent);
 }
