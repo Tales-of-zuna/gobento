@@ -37,6 +37,7 @@ export const PALETTE = {
   blush: '#F29A82',
   tooth: '#FFFFFF',
   cream: '#FFF1DC',
+  band: '#F3E6CF',
 } as const;
 
 /** Outline thickness (world units) for meshes that do not set their own. */

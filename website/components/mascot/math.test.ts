@@ -3,8 +3,11 @@ import { describe, expect, it } from 'vitest';
 import {
   BLINK_DURATION,
   blinkClosure,
+  daifukuProfile,
   ellipsoidPose,
   headTurn,
+  latheRadiusAt,
+  lathePose,
   MAX_PITCH,
   MAX_YAW,
   mulberry32,
@@ -51,6 +54,35 @@ describe('ellipsoidPose', () => {
     const { position, quaternion } = ellipsoidPose([1, 1, 1], [0, 0, 1], -0.1);
     expect(position[2]).toBeCloseTo(0.9, 9);
     expect(rotateZ(quaternion).z).toBeCloseTo(1, 9);
+  });
+});
+
+describe('daifuku body', () => {
+  const profile = daifukuProfile(2.6, 1.18);
+
+  it('stands on y = 0 and is widest below the middle', () => {
+    expect(Math.min(...profile.height)).toBeCloseTo(0, 9);
+    const widest = profile.radius.indexOf(Math.max(...profile.radius));
+    expect(profile.height[widest]).toBeLessThan(Math.max(...profile.height) / 2);
+  });
+
+  it('interpolates the radius and is empty outside the profile', () => {
+    expect(latheRadiusAt(profile, -0.1)).toBe(0);
+    expect(latheRadiusAt(profile, 10)).toBe(0);
+    expect(latheRadiusAt(profile, 1.2)).toBeGreaterThan(1);
+  });
+
+  it('places a feature on the surface where the prototype raycast did', () => {
+    const { position, quaternion } = lathePose(profile, [0, 1.74, 0], [0.36, 0.12, 1]);
+    expect(position.map((n) => n.toFixed(2))).toEqual(['0.32', '1.85', '0.89']);
+    expect(Math.hypot(position[0], position[2])).toBeCloseTo(
+      latheRadiusAt(profile, position[1]),
+      3,
+    );
+    // Faces outward and a little up, like the surface there.
+    const facing = rotateZ(quaternion);
+    expect(facing.z).toBeGreaterThan(0.7);
+    expect(facing.y).toBeGreaterThan(0.3);
   });
 });
 

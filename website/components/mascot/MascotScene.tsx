@@ -1,11 +1,11 @@
 'use client';
 /**
  * The live mascot scene, loaded lazily (never on the server). It renders only
- * while on screen and in a visible tab, waves on mount and on hover, and
- * follows the pointer with its head. With `animate` off it holds a static
- * pose and draws only when something changes.
+ * while on screen and in a visible tab, waves on mount and on hover, lifts
+ * the lid while hovered, and turns towards the pointer. With `animate` off it
+ * holds a static pose and draws only when something changes.
  */
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useInView, usePageVisible, usePointerTarget, useWave } from './hooks';
 import { MascotCanvas } from './MascotCanvas';
 import type { Packed } from './parts/bento';
@@ -29,15 +29,26 @@ export default function MascotScene({ animate, packed, onReady, onError }: Masco
   const pageVisible = usePageVisible();
   const lookAt = usePointerTarget(container);
   const { waving, restart } = useWave(WAVE_MS);
+  const [hovered, setHovered] = useState(false);
 
   const frameloop = !animate ? 'demand' : inView && pageVisible ? 'always' : 'never';
 
   return (
-    <div ref={container} className="absolute inset-0" onPointerEnter={restart} aria-hidden>
+    <div
+      ref={container}
+      className="absolute inset-0"
+      onPointerEnter={() => {
+        setHovered(true);
+        restart();
+      }}
+      onPointerLeave={() => setHovered(false)}
+      aria-hidden
+    >
       <MascotCanvas
         frameloop={frameloop}
         animate={animate}
         wave={waving}
+        lidLift={hovered}
         lookAt={lookAt}
         packed={packed}
         onReady={onReady}

@@ -1,7 +1,7 @@
 'use client';
 /**
  * The bare R3F canvas for the mascot: camera, lights, contact shadow, and the
- * mascot itself. Runtime policy (when to pause, when to animate) lives in
+ * mascot itself (or, for the `head` view, just the gopher's round head). Runtime policy (when to pause, when to animate) lives in
  * MascotScene; the stills generator renders this component directly.
  */
 import { Canvas, useFrame, useThree, type RootState } from '@react-three/fiber';
@@ -9,26 +9,46 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { CanvasTexture, PlaneGeometry, SRGBColorSpace, Vector3 } from 'three';
 import { useToonKit, ToonKitProvider, useGeometry } from './kit';
 import { Mascot, type MascotProps } from './Mascot';
+import { GopherHead } from './parts/face';
+import { PALETTE } from './toon';
 
-/** Camera framing of the approved three-quarter view. */
-const CAMERA = {
-  fov: 26,
-  position: [4.675, 4.626, 9.525] as const,
-  target: new Vector3(0.064, 2.004, 0.072),
-};
+/** A camera framing: where the camera sits and what it looks at. */
+interface Framing {
+  readonly position: readonly [number, number, number];
+  readonly target: readonly [number, number, number];
+}
+
+/**
+ * Camera framings, all with a 26° vertical field of view. `hero` is the
+ * approved three-quarter view and `front` the straight-on view, both for a
+ * 3:2 canvas; `head` is a slight three-quarter portrait of the head for a
+ * square canvas.
+ */
+export const VIEWS = {
+  hero: { position: [3.934, 4.073, 7.596], target: [-0.051, 0.765, -0.572] },
+  front: { position: [0, 2.63, 7.353], target: [0, 0.919, -0.693] },
+  head: { position: [1.86, 1.12, 5.75], target: [0, 0.22, 0] },
+} as const satisfies Record<string, Framing>;
+
+/** Name of a camera framing. */
+export type MascotView = keyof typeof VIEWS;
+
+const FOV = 26;
 /** Key light (upper left front) and the rim light that drives the toon rim band. */
 const KEY_LIGHT = new Vector3(-5, 5.5, 3.5);
 const RIM_LIGHT = new Vector3(5, 4, -4);
-const SHADOW = { radius: 1.84, x: 0.064, z: 0.072 };
+const SHADOW = { radius: 2.52, x: 0, z: -0.73 };
 
-/** Points the camera at the mascot and keeps the toon light directions in view space. */
-function Rig() {
+/** Frames the subject and keeps the toon light directions in view space. */
+function Rig({ view }: { view: MascotView }) {
   const camera = useThree((state) => state.camera);
   const kit = useToonKit();
   useLayoutEffect(() => {
-    camera.lookAt(CAMERA.target);
+    const { position, target } = VIEWS[view];
+    camera.position.fromArray(position);
+    camera.lookAt(new Vector3().fromArray(target));
     camera.updateMatrixWorld();
-  }, [camera]);
+  }, [camera, view]);
   useFrame(() => {
     const view = camera.matrixWorldInverse;
     kit.lights.uKeyDir.value.copy(KEY_LIGHT).normalize().transformDirection(view);
@@ -42,7 +62,7 @@ function Rig() {
   );
 }
 
-/** A soft radial contact shadow under the feet, painted into a small texture. */
+/** A soft radial contact shadow under the box, painted into a small texture. */
 function ContactShadow() {
   const geometry = useGeometry(() => new PlaneGeometry(SHADOW.radius * 2, SHADOW.radius * 2));
   const [texture] = useState(() => {
@@ -83,6 +103,8 @@ function FirstFrame({ onReady }: { onReady?: () => void }) {
 
 /** Props of {@link MascotCanvas}. */
 export type MascotCanvasProps = MascotProps & {
+  /** Camera framing; `head` shows only the round head. Defaults to `hero`. */
+  readonly view?: MascotView;
   /** R3F frame loop: "always" animates, "demand" draws only on change, "never" pauses. */
   readonly frameloop: 'always' | 'demand' | 'never';
   /** Device pixel ratio range. */
@@ -97,6 +119,7 @@ export type MascotCanvasProps = MascotProps & {
 
 /** Transparent canvas with the mascot in its approved framing. */
 export function MascotCanvas({
+  view = 'hero',
   frameloop,
   dpr = [1, 2],
   preserveDrawingBuffer = false,
@@ -119,13 +142,19 @@ export function MascotCanvas({
       dpr={dpr}
       flat
       gl={{ antialias: true, alpha: true, powerPreference: 'low-power', preserveDrawingBuffer }}
-      camera={{ fov: CAMERA.fov, near: 0.1, far: 100, position: [...CAMERA.position] }}
+      camera={{ fov: FOV, near: 0.1, far: 100, position: [...VIEWS[view].position] }}
       onCreated={handleCreated}
     >
       <ToonKitProvider>
-        <Rig />
-        <ContactShadow />
-        <Mascot {...mascot} />
+        <Rig view={view} />
+        {view === 'head' ? (
+          <GopherHead color={mascot.color ?? PALETTE.sora} />
+        ) : (
+          <>
+            <ContactShadow />
+            <Mascot {...mascot} />
+          </>
+        )}
         <FirstFrame onReady={onReady} />
       </ToonKitProvider>
     </Canvas>

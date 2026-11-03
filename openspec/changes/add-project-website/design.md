@@ -197,9 +197,16 @@ Tailwind, shadcn, and Fumadocs.
   *Alternative:* a GLB modelled in Blender, kept as the fallback if the
   procedural version cannot reach the approved look. That decision is made at
   task 4.2, with the maintainer.
+- **Chosen concept:** the maintainer picked concept 1, "In the box" (the
+  gopher sunk into the big compartment of an open bento, paws over the rim,
+  the lid leaning behind as a backrest, four food compartments beside it), in
+  sora blue `#A9C6E6`. Its framing is landscape, 3:2.
 - **Static fallback:** rendered stills of the approved 3D model (WebP/PNG at
-  1× and 2×, plus a small favicon render). They are used for reduced motion,
-  without WebGL, while loading, in the favicon, and in social images.
+  1× and 2×, 720×480 and 1440×960), plus a head-only render (the round head
+  with ears and sprout, slight three-quarter) at 64, 128, and 256 px. The
+  hero stills are used for reduced motion, without WebGL, and while loading;
+  the head renders are the favicon (64), the apple-touch icon (128), and the
+  avatar or social image (256).
   `pnpm mascot:stills` renders them from the R3F scene itself (Vite plus
   headless Chromium, transparent background) into `public/mascot/`, so the
   stills cannot drift from the 3D model.
