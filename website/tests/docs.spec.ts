@@ -31,7 +31,7 @@ const pages = [
     source: 'concepts/version-rules.mdx',
   },
   { path: 'docs/cli/new/', title: 'gobento new', source: 'cli/new.mdx' },
-  { path: 'docs/components/', title: 'Components', source: 'components.mdx' },
+  { path: 'docs/components/', title: 'Component reference', source: 'components.mdx' },
   {
     path: 'docs/contributing/adding-a-component/',
     title: 'Adding a component',
@@ -45,7 +45,7 @@ const sections = [
   'Getting started',
   'Concepts',
   'CLI reference',
-  'Components',
+  'Component reference',
   'Contributing',
 ];
 

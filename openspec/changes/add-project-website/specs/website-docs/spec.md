@@ -10,15 +10,15 @@ match what the CLI supports.
 
 ### Requirement: Documentation structure
 The documentation SHALL contain at least these sections: Getting started,
-Concepts (slots, contracts, traits, version rules), CLI reference, Components,
-and Contributing a component, all navigable from a persistent sidebar.
+Concepts (slots, contracts, traits, version rules), CLI reference, Component reference,
+and Contributing (including adding a component), all navigable from a persistent sidebar.
 
 #### Scenario: Navigation
 - **WHEN** a visitor opens any docs page
 - **THEN** the sidebar lists every section, highlights the current page, and offers previous and next links
 
 ### Requirement: Component reference is generated from the catalog
-The Components section SHALL list every component in the catalog with its
+The Component reference SHALL list every component in the catalog with its
 kind, description, the traits it provides or requires, and the supported and
 default versions of its modules, generated at build time.
 

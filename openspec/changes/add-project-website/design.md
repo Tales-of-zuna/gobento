@@ -146,9 +146,9 @@ base-path constant as `next.config.ts`.
 ### D5. Documentation
 
 - Fumadocs serves `content/docs`. Sections follow the spec: Getting started,
-  Concepts, CLI reference, Components, and Contributing a component.
-- The Components section is a server component that renders from
-  `catalog.json` at build time, so no MDX contains a version number.
+  Concepts, CLI reference, Component reference, and Contributing.
+- The Component reference is a server component that renders from
+  `catalog.json` at build time, so it contains no hand-written version numbers (a test enforces this). Other pages may show clearly labelled illustrative versions.
 - Search is Fumadocs' static index, built at export time and queried in the
   browser.
 - "Edit this page" links to
