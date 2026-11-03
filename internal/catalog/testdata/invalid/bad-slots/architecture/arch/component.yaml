@@ -1,0 +1,8 @@
+name: arch
+title: Arch
+slots:
+  root:     { dir: internal/root, filled_by: architecture }
+  handlers: { dir: internal/handlers, filled_by: frontend }
+  store:    { filled_by: data }
+  models:   { dir: internal/models, package: Models, filled_by: architecture }
+  entry:    { dir: "cmd/{{.Project.Name", filled_by: architecture }

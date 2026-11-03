@@ -1,0 +1,9 @@
+name: mvc
+title: Model-View-Controller
+description: Models, controllers, and a data store in separate packages, wired together in cmd/<name>.
+slots:
+  entry:    { dir: "cmd/{{.Project.Name}}", package: main, filled_by: architecture }
+  models:   { dir: internal/models,         filled_by: architecture }
+  handlers: { dir: internal/controllers,    filled_by: framework, required: true }
+  database: { dir: internal/database,       filled_by: database,  required: true }
+  store:    { dir: internal/store,          filled_by: data,      required: true }

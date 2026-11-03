@@ -1,0 +1,4 @@
+name: arch
+title: Arch
+slots:
+  entry: { dir: cmd/app, package: main, filled_by: architecture }

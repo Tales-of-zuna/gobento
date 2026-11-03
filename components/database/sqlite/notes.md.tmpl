@@ -1,0 +1,7 @@
+## Database schema
+
+`{{.Slots.database.Dir}}/schema.sql` is embedded in the binary and applied
+every time the application starts. It uses `CREATE TABLE IF NOT EXISTS`, so it
+creates missing tables but never changes existing ones: it is not a migration
+system. Before you change the schema of a database that already holds data,
+add a migration tool or change the existing tables by hand.
