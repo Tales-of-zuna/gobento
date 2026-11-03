@@ -34,8 +34,8 @@ to be applied.
 
 ## 5. Configurator page
 
-- [ ] 5.1 Build the configurator UI on the logic from group 3 (choices, Advanced versions, live command, copy, disabled options with explanations, URL sync); verify e2e tests for *Defaults*, *Changing a choice*, *Copy command*, *Version too new for Go*, and *Share a link*
-- [ ] 5.2 Verify keyboard-only operation and axe in both themes on the configurator and home pages (spec *Keyboard only*, *Automated audit*)
+- [x] 5.1 Build the configurator UI on the logic from group 3 (choices, Advanced versions, live command, copy, disabled options with explanations, URL sync); verify e2e tests for *Defaults*, *Changing a choice*, *Copy command*, *Version too new for Go*, and *Share a link*
+- [x] 5.2 Verify keyboard-only operation and axe in both themes on the configurator and home pages (spec *Keyboard only*, *Automated audit*)
 
 ## 6. Documentation
 
