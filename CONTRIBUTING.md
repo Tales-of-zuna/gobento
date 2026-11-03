@@ -55,9 +55,6 @@ commands, so you can always run them directly.
 | `cover` | Prints test coverage per function | `go test -short -coverprofile=coverage.out ./...` then `go tool cover -func=coverage.out` |
 | `clean` | Removes build and coverage output | Delete `bin/` and `coverage.out` |
 
-The `build` target has nothing to build until the generator's `cmd/gobento`
-package exists.
-
 ### Notes for Windows
 
 - If you do not have `make`, run the plain commands from the table above in
@@ -162,8 +159,7 @@ you get stuck, ask in the issue; there are no silly questions.
 Components (frameworks, databases, data access libraries, architectures,
 frontends) are the heart of gobento. To suggest one, open a
 [component request](https://github.com/Tales-of-zuna/gobento/issues/new?template=component_request.yml).
-For how to build one, see `docs/components.md` (coming with the generator
-foundation).
+For how to build one, see [docs/components.md](docs/components.md).
 
 ## License
 
