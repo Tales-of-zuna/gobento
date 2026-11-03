@@ -59,7 +59,7 @@ func installFakeGo(dir string) (string, error) {
 		name = "go.exe"
 	}
 	dst := filepath.Join(dir, name)
-	src, err := os.Open(self)
+	src, err := os.Open(self) //nolint:gosec // G304: copying the running test binary
 	if err != nil {
 		return "", err
 	}
@@ -79,7 +79,7 @@ func fakeGo(args []string) int {
 	if log := os.Getenv("FAKE_GO_LOG"); log != "" {
 		f, err := os.OpenFile(log, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) //nolint:gosec // G304: test-controlled path
 		if err == nil {
-			fmt.Fprintf(f, "go %s | GOWORK=%s GOFLAGS=%s GOPROXY=%s\n",
+			_, _ = fmt.Fprintf(f, "go %s | GOWORK=%s GOFLAGS=%s GOPROXY=%s\n",
 				strings.Join(args, " "), os.Getenv("GOWORK"), os.Getenv("GOFLAGS"), os.Getenv("GOPROXY"))
 			_ = f.Close()
 		}
@@ -109,7 +109,7 @@ func fakeGet(mods []string) int {
 		fmt.Fprintln(os.Stderr, "go: example.com/lib@v1.0.0: dial tcp: lookup proxy.golang.org: no such host")
 		return 1
 	case "hang":
-		_ = os.WriteFile(os.Getenv("FAKE_GO_STARTED"), nil, 0o600)
+		_ = os.WriteFile(os.Getenv("FAKE_GO_STARTED"), nil, 0o600) //nolint:gosec // G703: test-controlled path
 		time.Sleep(time.Minute)
 		return 1
 	}
@@ -144,7 +144,7 @@ func editModFile(edit func(*modfile.File) error) int {
 			if err = edit(f); err == nil {
 				f.Cleanup()
 				if data, err = f.Format(); err == nil {
-					err = os.WriteFile("go.mod", data, 0o600)
+					err = os.WriteFile("go.mod", data, 0o600) //nolint:gosec // G703: fixed file name in the fake's working directory
 				}
 			}
 		}
