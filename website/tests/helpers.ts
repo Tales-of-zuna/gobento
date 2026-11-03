@@ -1,6 +1,7 @@
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join, sep } from 'node:path';
 import type { Page } from '@playwright/test';
+import { parseReleaseManifest, type ReleaseStatus } from '../lib/release';
 
 /**
  * Waits until the page has no finite animation running, so audits such as
@@ -54,4 +55,16 @@ export function docsPagePaths(): string[] {
       return slug ? `docs/${slug}/` : 'docs/';
     })
     .sort();
+}
+
+/** The release manifest at the repository root, which the site build reads too. */
+const RELEASE_MANIFEST = join(import.meta.dirname, '..', '..', '.release-please-manifest.json');
+
+/**
+ * The release status the site under test was built with, parsed by the same
+ * function the build uses (lib/release), so expectations that depend on it
+ * (the pre-release notice, the install note) follow a release automatically.
+ */
+export function releaseStatus(): ReleaseStatus {
+  return parseReleaseManifest(readFileSync(RELEASE_MANIFEST, 'utf8'));
 }

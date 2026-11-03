@@ -1,15 +1,10 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
-import { waitForAnimationsToSettle } from './helpers';
+import { releaseStatus, waitForAnimationsToSettle } from './helpers';
 
 const QUICK_START = 'gobento new shop --module example.com/shop';
-const released =
-  JSON.parse(
-    readFileSync(join(import.meta.dirname, '..', '..', '.release-please-manifest.json'), 'utf8'),
-  )['.'] !== '0.0.0';
+const release = releaseStatus();
 
 test.describe('home page', () => {
   test.describe('First visit', () => {
@@ -56,18 +51,38 @@ test.describe('home page', () => {
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(QUICK_START);
   });
 
-  test('No release yet: shows the early-development notice while unreleased', async ({ page }) => {
-    await page.goto('./');
-    const notice = page.getByText('Early development · not released yet');
-    const planned = page.getByText('Planned interface. There is nothing to install yet.');
-    if (released) {
-      await expect(notice).toHaveCount(0);
-      await expect(planned).toHaveCount(0);
-    } else {
-      await expect(notice).toBeVisible();
-      await expect(planned).toBeVisible();
-    }
-  });
+  test(
+    release.released
+      ? 'Released: shows the install note instead of the early-development notice'
+      : 'No release yet: shows the early-development notice while unreleased',
+    async ({ page }) => {
+      await page.goto('./');
+      const notice = page.getByText('Early development · not released yet');
+      const planned = page.getByText('Planned interface. There is nothing to install yet.');
+      const install = page.locator('main [data-install-note]');
+      const closing = page.getByText(/the CLI follows when the first release is ready/);
+      if (release.released) {
+        await expect(notice).toHaveCount(0);
+        await expect(planned).toHaveCount(0);
+        await expect(closing).toHaveCount(0);
+        await expect(install).toBeVisible();
+        await expect(install).toContainText(`gobento v${release.version} is out.`);
+        await expect(install.getByRole('link', { name: 'Install it' })).toHaveAttribute(
+          'href',
+          /\/gobento\/docs\/getting-started\/installation\/$/,
+        );
+        await expect(install.getByRole('link', { name: 'prebuilt binary' })).toHaveAttribute(
+          'href',
+          'https://github.com/Tales-of-zuna/gobento/releases',
+        );
+      } else {
+        await expect(notice).toBeVisible();
+        await expect(planned).toBeVisible();
+        await expect(closing).toHaveCount(1);
+        await expect(install).toHaveCount(0);
+      }
+    },
+  );
 
   test('Footer credits: attribution with license link and non-affiliation', async ({ page }) => {
     await page.goto('./');

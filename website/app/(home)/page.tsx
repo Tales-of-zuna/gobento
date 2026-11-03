@@ -11,18 +11,18 @@ import s from '@/components/home/home.module.css';
 import { releaseStatus } from '@/lib/release.server';
 
 export default function HomePage() {
-  const { released } = releaseStatus();
+  const release = releaseStatus();
   return (
     <div className={s.page}>
       <SiteNav variant="overlay" />
       <main>
-        <Hero released={released} />
+        <Hero release={release} />
         <Conveyor />
         <HowItPacks />
         <Stack />
         <Versions />
         <ProvenInCI />
-        <ClosingCta />
+        <ClosingCta release={release} />
       </main>
       <SiteFooter />
     </div>

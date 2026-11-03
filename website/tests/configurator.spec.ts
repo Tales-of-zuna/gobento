@@ -1,6 +1,10 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
+import { releaseStatus } from './helpers';
+
+const { released } = releaseStatus();
+
 /** Opens the configurator and waits until it has read the URL (after hydration). */
 async function open(page: Page, query = '') {
   await page.goto(`configurator/${query}`);
@@ -16,7 +20,10 @@ test.describe('configurator', () => {
   test('Defaults: single options and default versions are preselected', async ({ page }) => {
     await open(page);
     await expect(page.getByRole('heading', { level: 1, name: 'Pack your project' })).toBeVisible();
-    await expect(page.getByText('Early development · not released yet')).toBeVisible();
+    // The pre-release notice follows the release manifest (spec "Pre-release notice").
+    const notice = page.getByText('Early development · not released yet');
+    if (released) await expect(notice).toHaveCount(0);
+    else await expect(notice).toBeVisible();
     for (const [kind, option] of [
       ['Architecture', 'Model-View-Controller'],
       ['HTTP framework', 'net/http'],

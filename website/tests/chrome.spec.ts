@@ -1,16 +1,13 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
+
+import { docsPagePaths, releaseStatus } from './helpers';
 
 /**
  * The shared site chrome (bar and footer) and the pre-release notice, on
  * every kind of page.
  */
 
-const released =
-  JSON.parse(
-    readFileSync(join(import.meta.dirname, '..', '..', '.release-please-manifest.json'), 'utf8'),
-  )['.'] !== '0.0.0';
+const { released } = releaseStatus();
 
 const PAGES = [
   { name: 'home', path: './', active: undefined },
@@ -49,20 +46,30 @@ for (const { name, path, active } of PAGES) {
       await expect(footer).toContainText('not affiliated with or endorsed by the Go project');
       await expect(footer.getByRole('link', { name: 'CC BY 4.0' })).toBeAttached();
     });
+  });
+}
 
-    test('Pre-release notice: shows while nothing is released', async ({ page }) => {
+/**
+ * Spec "Pre-release notice" and "Release-aware install guidance": the notice
+ * follows the release manifest on every page, docs pages included.
+ */
+test.describe('pre-release notice', () => {
+  for (const path of ['./', 'configurator/', ...docsPagePaths()]) {
+    const scenario = released ? 'Released: no notice' : 'No release yet: shows the notice';
+    test(`${scenario} on ${path}`, async ({ page }) => {
       await page.goto(path);
       const notice = page.locator('[data-prerelease-notice]');
       if (released) {
         await expect(notice).toHaveCount(0);
+        await expect(page.getByText('not released yet')).toHaveCount(0);
       } else {
         await expect(notice).toHaveCount(1);
         await expect(notice).toBeVisible();
         await expect(notice).toHaveText('Early development · not released yet');
       }
     });
-  });
-}
+  }
+});
 
 test.describe('docs chrome', () => {
   test('the bar sticks above the sidebar, which stays below it', async ({ page }) => {

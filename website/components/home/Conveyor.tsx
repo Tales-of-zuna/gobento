@@ -41,8 +41,8 @@ export function Conveyor() {
         </Item>
         <Item>
           <p className={s.lead}>
-            Solid plates ship in the first release. Dashed plates are on the roadmap and join once
-            they pass CI.
+            Solid plates are supported today. Dashed plates are on the roadmap and join once they
+            pass CI.
           </p>
         </Item>
       </Stagger>
