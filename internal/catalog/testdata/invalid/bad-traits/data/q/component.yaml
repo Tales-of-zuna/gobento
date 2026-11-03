@@ -1,0 +1,7 @@
+name: q
+title: Q
+provides:
+  Dialect: sqlite
+  conn: ""
+requires:
+  sql-dialect: []

@@ -10,14 +10,15 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Status: early development](https://img.shields.io/badge/status-early%20development-orange.svg)](#roadmap)
 
-[Why gobento](#why-gobento) · [Planned usage](#planned-usage) · [How it works](#how-it-works) · [Contributing](#contributing) · [Roadmap](#roadmap)
+[Why gobento](#why-gobento) · [Usage](#usage) · [How it works](#how-it-works) · [Contributing](#contributing) · [Roadmap](#roadmap)
 
 </div>
 
 > [!NOTE]
 > gobento is in **early development** and **nothing is released yet**. The
-> commands below show the planned interface, not a working tool. To follow what
-> is being built, see the proposals in [`openspec/changes/`](openspec/changes).
+> first stack works when built from source, as shown below, but the interface
+> may still change. To follow what is being built, see the proposals in
+> [`openspec/changes/`](openspec/changes).
 
 ## Why gobento?
 
@@ -35,18 +36,58 @@
   up with upstream releases is a one-line, reviewed change instead of a hunt
   through templates.
 
-## Planned usage
+## Usage
 
 > [!IMPORTANT]
-> This is the **planned interface**. It does not work yet.
+> There is no release yet, so `go install ...@latest` does not work. Build
+> gobento from source instead. You need [Go](https://go.dev/dl/) 1.26 or newer.
 
 ```sh
-# Planned: install the CLI
-go install github.com/Tales-of-zuna/gobento/cmd/gobento@latest
-
-# Planned: generate a project
-gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
+git clone https://github.com/Tales-of-zuna/gobento.git
+cd gobento
+go install ./cmd/gobento
 ```
+
+Generate a project. Every flag is optional: a component kind with a single
+option is chosen automatically, and versions come from gobento's
+compatibility rules.
+
+```sh
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
+cd shop
+go test ./...
+go run ./cmd/shop
+```
+
+More examples:
+
+```sh
+# See the files gobento would create, without writing anything
+gobento new shop --dry-run
+
+# Choose the Go version and a library version within the supported ranges
+gobento new shop --go 1.26 --pin modernc.org/sqlite=v1.61.0
+
+# Fill the current directory, which must be empty
+mkdir shop && cd shop && gobento new shop --dir .
+
+# List every flag
+gobento new --help
+```
+
+Generation runs `go get` and `go mod tidy`, so it needs access to the Go module
+proxy. gobento checks every input before writing anything, refuses non-empty
+directories, and removes everything it created if a step fails or you press
+Ctrl-C. After an interrupt it prints `interrupted; nothing was left behind`
+and exits with status 130.
+
+Project names start with a lowercase letter and use only lowercase letters,
+digits, `-`, and `_`. Names that Windows reserves for devices, such as `con`,
+`nul`, `com1`, or `lpt1`, are rejected.
+
+The generated project's README describes its API, including its error
+responses (`400` for invalid JSON, `413` for bodies over 1 MiB), and how its
+schema and sqlc code are maintained.
 
 The first supported stack generates a project like this, with a health
 endpoint and one example resource that builds and passes its own tests:
@@ -58,7 +99,7 @@ shop/
 │   ├── models/            # domain types and store interface
 │   ├── controllers/       # router, health and items handlers, tests
 │   ├── database/          # opens SQLite, applies the embedded schema
-│   └── store/             # sqlc queries and generated code, tests
+│   └── store/             # sqlc queries, adapter, tests; generated code in sqlcgen/
 ├── sqlc.yaml
 ├── go.mod
 ├── go.sum

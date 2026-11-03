@@ -1,0 +1,170 @@
+package compat
+
+import (
+	"errors"
+	"fmt"
+	"sort"
+)
+
+// Errors returned by Resolve, wrapped with details. Test for them with
+// errors.Is.
+var (
+	// ErrOutOfRange reports a chosen version outside its supported range.
+	ErrOutOfRange = errors.New("version outside the supported range")
+	// ErrNotSelected reports a pin for a module that no selected component
+	// uses.
+	ErrNotSelected = errors.New("module not used by the selection")
+	// ErrNotPinnable reports a pin for a tool module, whose version is fixed
+	// per gobento release.
+	ErrNotPinnable = errors.New("tool version is fixed")
+	// ErrConstraint reports a violated constraint between chosen versions.
+	ErrConstraint = errors.New("incompatible versions")
+)
+
+// Request is the input to Resolve.
+type Request struct {
+	// Components lists the selected components as "<kind>/<name>"
+	// identifiers.
+	Components []string
+	// Go is the Go version chosen by the user, or "" for the default.
+	Go string
+	// Pins maps module paths to versions chosen by the user.
+	Pins map[string]string
+}
+
+// Resolved is the outcome of Resolve: the exact versions a generated project
+// uses.
+type Resolved struct {
+	// Go is the chosen Go version as written in go.mod, for example 1.27.
+	Go string
+	// Modules lists every module the selection uses, sorted by path.
+	Modules []ModuleVersion
+}
+
+// ModuleVersion is one module with its chosen version.
+type ModuleVersion struct {
+	// Path is the module path.
+	Path string
+	// Version is the chosen version.
+	Version string
+	// Role says whether the module is a library or a tool.
+	Role Role
+}
+
+// Versions returns the chosen versions keyed by module path.
+func (r Resolved) Versions() map[string]string {
+	out := make(map[string]string, len(r.Modules))
+	for _, m := range r.Modules {
+		out[m.Path] = m.Version
+	}
+	return out
+}
+
+// Resolve chooses the Go version and the version of every module the
+// selected components use. It starts from the defaults, applies the user's
+// Go version and pins, checks every chosen version against its range, and
+// then evaluates every applicable constraint. All problems are returned
+// together, joined with errors.Join.
+func (r *Rules) Resolve(req Request) (Resolved, error) {
+	var errs []error
+	res := Resolved{Go: r.Go.Default}
+
+	if req.Go != "" {
+		res.Go = req.Go
+		norm, err := NormalizeGo(req.Go)
+		switch {
+		case err != nil:
+			errs = append(errs, fmt.Errorf("go version: %w", err))
+		case !r.Go.Range.Contains(norm):
+			errs = append(errs, fmt.Errorf("%w: go %s; supported range is %q", ErrOutOfRange, req.Go, r.Go.Range))
+		}
+	}
+
+	chosen := make(map[string]int) // module path -> index in res.Modules
+	for _, m := range r.Modules {
+		if !m.usedBy(req.Components) {
+			continue
+		}
+		chosen[m.Path] = len(res.Modules)
+		res.Modules = append(res.Modules, ModuleVersion{Path: m.Path, Version: m.Default, Role: m.Role})
+	}
+
+	for _, path := range sortedKeys(req.Pins) {
+		version := req.Pins[path]
+		m, known := r.Module(path)
+		i, used := chosen[path]
+		switch {
+		case !known || !used:
+			errs = append(errs, fmt.Errorf("%w: cannot pin %s, no selected component uses it", ErrNotSelected, path))
+		case m.Role == RoleTool:
+			errs = append(errs, fmt.Errorf("%w: cannot pin %s, tool versions are fixed per gobento release (this release uses %s)", ErrNotPinnable, path, m.Default))
+		default:
+			if err := CheckModuleVersion(version); err != nil {
+				errs = append(errs, fmt.Errorf("pin %s: %w", path, err))
+				continue
+			}
+			if !m.Range.Contains(version) {
+				errs = append(errs, fmt.Errorf("%w: %s %s; supported range is %q", ErrOutOfRange, path, version, m.Range))
+				continue
+			}
+			res.Modules[i].Version = version
+		}
+	}
+
+	// Constraints are only meaningful once every chosen version is valid.
+	if len(errs) == 0 {
+		errs = append(errs, r.checkConstraints(res, chosen)...)
+	}
+	if err := errors.Join(errs...); err != nil {
+		return Resolved{}, err
+	}
+	return res, nil
+}
+
+// checkConstraints evaluates every constraint of every chosen module whose
+// When range contains the chosen version. A requirement on a module that is
+// not part of the selection does not apply.
+func (r *Rules) checkConstraints(res Resolved, chosen map[string]int) []error {
+	goVersion, err := NormalizeGo(res.Go)
+	if err != nil {
+		return []error{fmt.Errorf("go version: %w", err)}
+	}
+
+	var errs []error
+	for _, mv := range res.Modules {
+		m, _ := r.Module(mv.Path)
+		for _, c := range m.Constraints {
+			if !c.When.Contains(mv.Version) {
+				continue
+			}
+			for _, req := range c.Requires {
+				if req.Target == GoTarget {
+					if !req.Range.Contains(goVersion) {
+						errs = append(errs, fmt.Errorf("%w: %s %s requires go %s, but go %s is selected",
+							ErrConstraint, mv.Path, mv.Version, req.Range, res.Go))
+					}
+					continue
+				}
+				i, ok := chosen[req.Target]
+				if !ok {
+					continue
+				}
+				other := res.Modules[i]
+				if !req.Range.Contains(other.Version) {
+					errs = append(errs, fmt.Errorf("%w: %s %s requires %s %s, but %s %s is selected",
+						ErrConstraint, mv.Path, mv.Version, req.Target, req.Range, other.Path, other.Version))
+				}
+			}
+		}
+	}
+	return errs
+}
+
+func sortedKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}

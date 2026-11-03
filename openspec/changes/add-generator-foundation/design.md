@@ -34,9 +34,9 @@ gobento must run on Linux, macOS, and Windows without cgo.
 ```
 cmd/gobento/          main: wires the CLI only
 internal/cli/         cobra commands and flag parsing
-internal/catalog/     loads manifests + versions.yaml from an fs.FS; lists supported selections
+internal/catalog/     loads manifests + versions.yaml from an fs.FS; lists trait-compatible selections
 internal/compat/      version ranges, constraint evaluation, resolution
-internal/compose/     slot resolution, conflict detection, rendering into an in-memory Plan
+internal/compose/     slot resolution, conflict detection, rendering into an in-memory Plan; supported selections
 internal/generate/    preflight, writing a Plan, Go toolchain steps, atomic placement, cleanup
 components/           data only: component dirs, versions.yaml, embed.go
 ```
@@ -49,14 +49,17 @@ contributors change most, and they need isolated tests.
 ### D2. Slots are Go packages, contracts are Go code
 
 An architecture declares slots. Each slot is one directory, which means one Go
-package, filled by exactly one component kind:
+package, filled by exactly one component kind. The owning component may also
+put its own subpackages below the slot directory (for example sqlc's generated
+code in `internal/store/sqlcgen`); they belong to the same owner, and other
+slots never import them:
 
 ```yaml
 # components/architecture/mvc/component.yaml
 name: mvc
 title: Model-View-Controller
 slots:
-  entry:    { dir: "cmd/{{.Project.Name}}", filled_by: architecture }
+  entry:    { dir: "cmd/{{.Project.Name}}", package: main, filled_by: architecture }
   models:   { dir: internal/models,         filled_by: architecture }
   handlers: { dir: internal/controllers,    filled_by: framework, required: true }
   database: { dir: internal/database,       filled_by: database,  required: true }
@@ -69,7 +72,7 @@ fixed functions:
 | Slot | Contract the filling component must provide |
 |---|---|
 | `models` (architecture) | `type Item struct{ID int64; Name string; CreatedAt time.Time}`, `type ItemStore interface{ List(ctx) ([]Item, error); Create(ctx, name string) (Item, error) }` |
-| `database` | `func Open(ctx context.Context, dsn string) (T, error)`, where `T` has `Close()` and is named by the `conn` trait |
+| `database` | `func Open(ctx context.Context, dsn string) (T, error)`, where `T` has `Close() error` and is named by the `conn` trait |
 | `store` | `func New(db T) models.ItemStore` |
 | `handlers` | `func NewRouter(items models.ItemStore) http.Handler` |
 
@@ -84,8 +87,34 @@ Traits are plain key/value data. sqlite provides
 declare their own `conn` values, so incompatible pairs are rejected by data, not
 by code.
 
+Traits also carry the few facts one component needs about another's files.
+sqlite provides `sql-schema: schema.sql`, the schema file in its slot, and sqlc
+requires `sql-schema` in `[schema.sql]` and points `sqlc.yaml` at
+`{{.Slots.database.Dir}}/{{index .Traits "sql-schema"}}`. So sqlc depends on a
+trait, not on the sqlite component.
+
 Components may also add files at the project root (for example `sqlc.yaml`).
 These are checked for path conflicts like any other file.
+
+**Manifest schema.** `component.yaml` has exactly these keys. Unknown keys are
+rejected, so a typo fails loading instead of being ignored:
+
+| Key | Type | Kinds | Meaning |
+|---|---|---|---|
+| `name` | string, `^[a-z][a-z0-9-]*$` | all | Must equal the directory name. |
+| `title` | string, required | all | Short display name, such as `SQLite`. |
+| `description` | string, optional | all | One-sentence summary. |
+| `slots` | map of slot name → slot | architecture only, at least one | Slot names match `^[a-z][a-z0-9_]*$` (they are template fields, `.Slots.<name>`), and `root` is reserved. |
+| `slots.<name>.dir` | string, required | | Directory relative to the project root. It is a template over `.Project`, for example `cmd/{{.Project.Name}}`. |
+| `slots.<name>.package` | string, optional | | Go package name. It defaults to the last element of the rendered `dir`, and is needed when that element is not a valid package name (`entry` sets `package: main`). |
+| `slots.<name>.filled_by` | kind, required | | `architecture`, `framework`, `database`, or `data`. |
+| `slots.<name>.required` | bool, default false | | The selection must fill the slot. |
+| `provides` | map of trait → value | all | Traits this component provides, such as `sql-dialect: sqlite`. |
+| `requires` | map of trait → list of values | all | For each trait, the values this component accepts, such as `sql-dialect: [sqlite]`. |
+
+A component does not list the slots it fills. They follow from its layout: a
+template under `files/<slot>/` fills `<slot>`, and `files/root/` adds files at
+the project root (D3).
 
 *Alternatives considered:*
 - Code hooks spliced into a shared `main.go` (the first draft). Rejected: hook
@@ -111,14 +140,26 @@ These are checked for path conflicts like any other file.
   GoVersion), `.Slots.<name>` (Dir, Package, Import), `.Traits`, and `.Versions`
   (module → version). This shape is the contributor API, documented in
   `docs/components.md`.
-- Each component may add `notes.md.tmpl`. The architecture's README template
-  appends the notes in kind order (for example, sqlc's "how to regenerate").
+- Each component may add `notes.md.tmpl`. Composition renders every
+  component's notes and appends them, in kind order, to the root `README.md`
+  (for example, sqlc's "how to regenerate"). The template data stays as listed
+  above. If any component has notes but no component produces `README.md`,
+  that is a composition error.
 - `.go` outputs go through `go/format.Source`. A failure there is reported as a
   composition error naming the component and the file.
 - Output is a `Plan`: an ordered list of {slash path, mode, content}.
   Composition collects every error (unknown slot, unfilled required slot, two
   owners, root-path conflict, unmet trait, render or format error) and returns
-  them together with `errors.Join`.
+  them together with `errors.Join`. It also rejects:
+  - a slot filled by a component of a kind other than its `filled_by`;
+  - two components providing different values for the same trait;
+  - a component producing `go.mod` or `go.sum`, which generation writes (D5);
+  - a root file that lies inside a slot directory;
+  - two slots whose rendered directories are the same.
+- A selection is *supported* when its traits are met and it composes. The
+  catalog lists trait-compatible candidates; `compose.Supported` keeps those
+  that compose without error, so the supported list is derived from the
+  catalog alone (spec *Supported combinations*).
 
 ### D4. Version rules file
 
@@ -152,7 +193,9 @@ confirmed during apply.)
   all ANDed, compared with `golang.org/x/mod/semver`. Go versions are
   normalized internally (`1.27` → `v1.27.0`).
 - Resolution: defaults, then `--go` and `--pin` overrides, then range checks,
-  then every matching constraint. All errors are collected.
+  then every matching constraint. All errors are collected. Constraints are
+  evaluated only when every chosen version is valid and in range, so a rejected
+  pin does not also produce misleading constraint errors.
 - Tool modules have exact ranges, so `--pin` on them is rejected.
 - Only versions inside a range are offered, and CI tests both the defaults and
   the range floors (D9), so the range claim is tested.
@@ -171,12 +214,20 @@ would touch many places.
    version. If the selected version is newer and `GOTOOLCHAIN=local`, fail.
    If it is newer otherwise, warn that Go will download it. Check the target
    directory (missing, or empty, is OK).
-3. **Write** the Plan into `.gobento-tmp-<random>` in the target's parent (same
-   filesystem). `go.mod` is rendered directly from data (module and `go`
-   directive), not created by `go mod init`.
+3. **Write** the Plan into `.gobento-tmp-<random>`: in the target's parent when
+   the target is missing, and inside the target when it exists and is empty.
+   Either way the final rename stays on one file system, and an existing target
+   needs no write access to its parent. Directories are created with mode
+   `0755` (before the umask), files with `0644`. `go.mod` is rendered directly from data (module and `go`
+   directive), not created by `go mod init`. The `go` directive is written as a
+   full release version (`1.27` → `go 1.27.0`, that is `NormalizeGo` without
+   the `v`). Go orders `1.26` before `1.26.0`, so a short directive would be
+   raised by dependencies that declare `go 1.26.0`, such as modernc.org/sqlite,
+   and step 5 would reject it.
 4. **Resolve:** run one `go get mod1@v1 mod2@v2 ...`, then `go mod tidy`. All go
-   commands get a controlled environment: `GOWORK=off`, `GOFLAGS=-mod=mod`, and
-   the user's `GOPROXY`/`GONOSUMDB`/`GOPRIVATE` passed through unchanged.
+   commands get a controlled environment: `GOWORK=off`, and `-mod=mod` in
+   `GOFLAGS` (replacing only a user `-mod` flag). Everything else, such as
+   `GOPROXY`, `GOPRIVATE`, and other `GOFLAGS`, is passed through unchanged.
 5. **Re-check:** parse `go.mod` (`golang.org/x/mod/modfile`). The `go` directive
    and every direct requirement must equal the chosen values. A difference is
    reported as a missing rules constraint. A `toolchain` line added by the local
@@ -185,14 +236,19 @@ would touch many places.
 6. **Place:**
    - If the target is missing, rename the temp dir to the target.
    - If the target exists and is empty (including `.`), move each top-level
-     entry into it, then remove the temp dir.
-   - On Windows, a rename or move that fails with an access-denied error is
-     retried with short backoff, because antivirus and indexers briefly hold
-     new files.
+     entry up into it, then remove the temp dir. An entry that already exists
+     in the target (checked with `Lstat`) stops the move and triggers the
+     rollback.
+   - On Windows, a rename, move, or cleanup that fails with access denied or a
+     sharing violation is retried with short backoff, because antivirus and
+     indexers briefly hold new files. A rename across file systems (`EXDEV`)
+     is reported as such.
 7. **Cleanup and interrupts:** everything runs under `signal.NotifyContext`
-   (os.Interrupt), and go subprocesses use `exec.CommandContext`. On any error
-   or interrupt, the temp dir is removed, along with any entries already moved
-   into a pre-existing target. The target directory itself is never deleted.
+   (os.Interrupt and SIGTERM), and go subprocesses use `exec.CommandContext`.
+   On any error or interrupt, the temp dir is removed, along with any entries
+   already moved into a pre-existing target. The target directory itself is
+   never deleted. After an interrupt gobento prints that nothing was left
+   behind (or names what it could not remove) and exits with status 130.
 
 ### D6. sqlc output is pre-generated and shipped
 
@@ -203,8 +259,11 @@ roughly 76 MB tool on the user's machine to regenerate a fixed example, which
 is slow and network-heavy.
 
 - The shipped `sqlc.yaml` sets `omit_sqlc_version: true`, so generated files
-  contain no version numbers (spec: *Compatibility rules are data*). The
-  package name comes from `.Slots.store.Package`.
+  contain no version numbers (spec: *Compatibility rules are data*). sqlc
+  always generates `func New(db DBTX) *Queries`, which would clash with the
+  store contract's `New`, so its output goes into the fixed subpackage
+  `<store dir>/sqlcgen` (package `sqlcgen`). The store package's `New` adapter
+  wraps it and maps `sqlcgen.Item` to `models.Item`.
 - The generated README explains how to regenerate:
   `go run github.com/sqlc-dev/sqlc/cmd/sqlc@<.Versions value> generate`.
 - **CI freshness check:** generate the reference project, run the pinned sqlc
@@ -225,7 +284,7 @@ adds sqlc's large dependency tree to every generated project.
   internal/models/             architecture: Item, ItemStore
   internal/controllers/        framework: NewRouter, health + items handlers, tests with a fake ItemStore
   internal/database/           database: Open, embedded schema.sql applied at startup
-  internal/store/              data: queries.sql, sqlc output, New() adapter, test against real SQLite
+  internal/store/              data: queries.sql, New() adapter, test against real SQLite; sqlc output in sqlcgen/
   sqlc.yaml, README.md, .gitignore, go.mod, go.sum
 ```
 

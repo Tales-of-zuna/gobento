@@ -1,0 +1,4 @@
+name: pgonly
+title: Postgres only
+requires:
+  sql-dialect: [postgres]

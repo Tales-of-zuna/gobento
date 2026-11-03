@@ -1,0 +1,7 @@
+name: layered
+title: Layered
+description: A fixture architecture.
+slots:
+  entry:    { dir: "cmd/{{.Project.Name}}", package: main, filled_by: architecture }
+  handlers: { dir: internal/handlers, filled_by: framework, required: true }
+  store:    { dir: internal/store, filled_by: data, required: true }
