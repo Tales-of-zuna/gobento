@@ -1,14 +1,14 @@
 // Command gobento generates new Go projects from a selection of components.
 //
 // The command-line interface lives in package internal/cli; this package only
-// provides the entry point, the build version, and the process exit status.
+// provides the entry point, the build version, and signal handling.
 package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
+	"syscall"
 
 	"github.com/Tales-of-zuna/gobento/internal/cli"
 )
@@ -18,11 +18,10 @@ import (
 var version = "dev"
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	err := cli.Execute(ctx, version)
+	// Ctrl-C and SIGTERM cancel the context; gobento then removes
+	// everything it created and exits with status 130.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	code := cli.Run(ctx, version)
 	stop()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "gobento:", err)
-		os.Exit(1)
-	}
+	os.Exit(code)
 }

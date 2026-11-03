@@ -26,7 +26,7 @@ type newFlags struct {
 	dryRun    bool
 }
 
-// kindFlags names the flag that selects each component kind.
+// kindFlag returns the flag that selects components of kind k.
 func kindFlag(k catalog.Kind) string {
 	switch k {
 	case catalog.KindArchitecture:
@@ -40,6 +40,7 @@ func kindFlag(k catalog.Kind) string {
 	}
 }
 
+// newNewCommand returns the `gobento new` command.
 func newNewCommand(a *app) *cobra.Command {
 	var f newFlags
 	cmd := &cobra.Command{
@@ -93,6 +94,8 @@ access to the Go module proxy. --dry-run needs neither.`,
 	return cmd
 }
 
+// runNew validates the input, composes the project, and either lists the
+// planned files (--dry-run) or generates the project and prints next steps.
 func (a *app) runNew(cmd *cobra.Command, name string, f newFlags) error {
 	cat, err := catalog.Load(a.catalog)
 	if err != nil {
@@ -204,6 +207,8 @@ type reportError struct {
 func (e *reportError) Error() string   { return e.msg }
 func (e *reportError) Unwrap() []error { return e.errs }
 
+// printDryRun lists the files a run would create, including go.mod and
+// go.sum, which generation adds.
 func (a *app) printDryRun(p *generate.Prepared, target string) error {
 	paths := append(p.Plan.Paths(), "go.mod", "go.sum")
 	slices.Sort(paths)
@@ -218,12 +223,13 @@ func (a *app) printDryRun(p *generate.Prepared, target string) error {
 	return err
 }
 
+// printNextSteps reports the created project and the commands to try next.
 func (a *app) printNextSteps(p *generate.Prepared, target string) error {
 	var b strings.Builder
 	if abs, err := filepath.Abs(target); err == nil && isCurrentDir(abs) {
 		fmt.Fprintf(&b, "Created %s in the current directory.\n\nNext steps:\n", p.Module)
 	} else {
-		fmt.Fprintf(&b, "Created %s in %s.\n\nNext steps:\n  cd %s\n", p.Module, target, target)
+		fmt.Fprintf(&b, "Created %s in %s.\n\nNext steps:\n  cd %s\n", p.Module, target, shellQuote(target))
 	}
 	b.WriteString("  go test ./...\n")
 	if entry, ok := p.Plan.Slots["entry"]; ok {
@@ -237,4 +243,13 @@ func (a *app) printNextSteps(p *generate.Prepared, target string) error {
 func isCurrentDir(abs string) bool {
 	wd, err := filepath.Abs(".")
 	return err == nil && wd == abs
+}
+
+// shellQuote quotes path for a copy-pasted shell command when it contains
+// spaces or other characters a shell would split or expand.
+func shellQuote(path string) string {
+	if path != "" && !strings.ContainsAny(path, " \t'\"$`\\*?[]{}()<>|&;#~!") {
+		return path
+	}
+	return "'" + strings.ReplaceAll(path, "'", `'\''`) + "'"
 }

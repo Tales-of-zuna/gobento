@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -333,5 +334,91 @@ func TestNewIntoCurrentDirectory(t *testing.T) {
 	}
 	if !strings.Contains(out, "Created shop in the current directory.") || strings.Contains(out, "cd ") {
 		t.Errorf("output =\n%s\nwant the current directory and no cd step", out)
+	}
+}
+
+func TestExitStatus(t *testing.T) {
+	t.Parallel()
+
+	cancelled, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	tests := []struct {
+		name    string
+		ctx     context.Context
+		err     error
+		want    int
+		wantErr string
+	}{
+		{name: "success", ctx: context.Background(), want: 0},
+		{name: "failure", ctx: context.Background(), err: errors.New("boom"), want: 1, wantErr: "gobento: boom\n"},
+		{
+			name: "interrupted", ctx: cancelled, err: fmt.Errorf("go get: %w", context.Canceled),
+			want: ExitInterrupted, wantErr: "gobento: interrupted; nothing was left behind\n",
+		},
+		{
+			name: "interrupted with cleanup failure", ctx: cancelled,
+			err:  errors.Join(context.Canceled, fmt.Errorf("%w: remove /x", generate.ErrCleanup)),
+			want: ExitInterrupted, wantErr: "some files could not be removed",
+		},
+		{
+			name: "canceled error without a signal", ctx: context.Background(), err: context.Canceled,
+			want: 1, wantErr: "gobento: context canceled\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var stderr bytes.Buffer
+			a := &app{stderr: &stderr}
+			if got := a.exitStatus(tt.ctx, tt.err); got != tt.want {
+				t.Errorf("exitStatus() = %d, want %d", got, tt.want)
+			}
+			if !strings.Contains(stderr.String(), tt.wantErr) {
+				t.Errorf("stderr = %q, want it to contain %q", stderr.String(), tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestNewInterrupted(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	var stdout, stderr bytes.Buffer
+	a := &app{
+		catalog: components.FS(),
+		generate: func(context.Context, generate.Request) error {
+			cancel() // the user presses Ctrl-C during generation
+			return fmt.Errorf("go get: %w", context.Canceled)
+		},
+		stdout: &stdout,
+		stderr: &stderr,
+	}
+	cmd := newRootCommand("dev", a)
+	cmd.SetArgs([]string{"new", "shop"})
+	if got := a.exitStatus(ctx, cmd.ExecuteContext(ctx)); got != ExitInterrupted {
+		t.Errorf("exit status = %d, want %d", got, ExitInterrupted)
+	}
+	if !strings.Contains(stderr.String(), "interrupted; nothing was left behind") {
+		t.Errorf("stderr = %q", stderr.String())
+	}
+}
+
+func TestShellQuote(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]string{
+		"shop":       "shop",
+		"out/app":    "out/app",
+		"my shop":    "'my shop'",
+		"it's":       `'it'\''s'`,
+		"$HOME/shop": "'$HOME/shop'",
+	}
+	for in, want := range tests {
+		if got := shellQuote(in); got != want {
+			t.Errorf("shellQuote(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
