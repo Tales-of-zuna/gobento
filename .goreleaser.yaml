@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# GoReleaser builds release binaries; run by .github/workflows/release.yml.
+# Validate locally with: goreleaser check
+version: 2
+
+project_name: gobento
+
+builds:
+  - id: gobento
+    main: ./cmd/gobento
+    binary: gobento
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+# release-please writes CHANGELOG.md and the release notes.
+changelog:
+  disable: true
+
+release:
+  # Upload to the release that release-please already created.
+  mode: keep-existing

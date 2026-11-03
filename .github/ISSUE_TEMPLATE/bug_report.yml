@@ -1,0 +1,83 @@
+name: Bug report
+description: Report something in gobento that does not work as expected.
+title: "bug: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill in as much as you can.
+        To report a security vulnerability, do **not** use this form; see SECURITY.md instead.
+  - type: input
+    id: version
+    attributes:
+      label: gobento version
+      description: Output of `gobento --version`, or the commit you built from.
+      placeholder: v0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: go-version
+    attributes:
+      label: Go version
+      description: Output of `go version`.
+      placeholder: go version go1.26.0 linux/amd64
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Exact command
+      description: The full command you ran, including all flags.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and output
+      description: Full terminal output or error messages. This is formatted as code automatically.
+      render: text
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Anything else that helps, such as how to reproduce it reliably.
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this bug has not been reported yet.
+          required: true
+        - label: I agree to follow this project's Code of Conduct.
+          required: true

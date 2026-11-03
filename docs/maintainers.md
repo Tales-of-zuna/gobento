@@ -1,0 +1,137 @@
+# Maintainer guide
+
+This guide is for people with admin access to
+[Tales-of-zuna/gobento](https://github.com/Tales-of-zuna/gobento). Repository
+settings live on GitHub, not in the repository, so they are listed here to be
+applied by hand. Each setting comes with the reason it exists.
+
+## Repository settings
+
+### About: description and topics
+
+The **About** box on the repository page (gear icon) is the first thing people
+and search engines see. Keep it accurate as the project grows:
+
+- **Description:** "Go project generator: choose your framework, database,
+  data access, architecture and dependency versions — compatibility-checked and
+  proven to build in CI. Early development." Drop "Early development." with
+  the first release.
+- **Topics:** `go`, `golang`, `cli`, `project-generator`, `scaffolding`,
+  `code-generator`, `boilerplate`, `templates`.
+- **Website:** leave empty until there is a documentation site.
+
+The same values can be set from a terminal:
+
+```sh
+gh repo edit Tales-of-zuna/gobento --description "..." --add-topic go,golang
+```
+
+### Branch protection for `main`
+
+**Settings → Rules → Rulesets** (or **Settings → Branches → Add branch
+protection rule**), targeting `main`:
+
+| Setting | Value | Why |
+|---|---|---|
+| Require a pull request before merging | On (required approvals: 0 while there is a single maintainer; raise to 1 when a second maintainer joins) | Every change goes through a pull request and passes CI before it reaches `main`. GitHub does not let you approve your own pull request, so requiring an approval with one maintainer would block every merge. |
+| Require status checks to pass | On, with the checks `lint`, `test`, `vuln`, `actions`, and `pr-title` | These are the CI job names. `test` runs as a matrix, so select each `test (...)` entry GitHub lists after the first CI run. `pr-title` enforces the Conventional Commits title that becomes the squash commit. |
+| Require branches to be up to date before merging | On | Checks run against the code that will actually land. |
+| Require linear history | On | Keeps `main` a simple list of squash commits, which release-please reads to build the changelog. |
+| Block force pushes and deletions | On | `main` history is never rewritten. |
+
+Status checks only appear in the picker after they have run once, so open a
+first pull request before configuring them.
+
+See [About protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
+
+### Merge options
+
+**Settings → General → Pull Requests**:
+
+| Setting | Value | Why |
+|---|---|---|
+| Allow merge commits | Off | One merge method keeps history predictable. |
+| Allow squash merging | On, default message **Pull request title** (or "Pull request title and description") | The PR title, checked by `pr-title`, becomes the Conventional Commit on `main`, so contributors' branch commits can stay free-form. |
+| Allow rebase merging | Off | Rebasing would put unchecked commit messages on `main`. |
+| Automatically delete head branches | On | Merged branches do not pile up. |
+
+See [Configuring commit squashing](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/configuring-commit-squashing-for-pull-requests)
+and [Managing the automatic deletion of branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-the-automatic-deletion-of-branches).
+
+### Security
+
+**Settings → Advanced Security** (called **Code security** on some accounts):
+
+| Setting | Value | Why |
+|---|---|---|
+| Private vulnerability reporting | Enabled | [SECURITY.md](../SECURITY.md) and the issue form contact link send reporters to the private "Report a vulnerability" form. |
+| Dependabot alerts | Enabled | Notifies maintainers about known vulnerabilities in dependencies. |
+| Dependabot security updates | Enabled | Opens fix pull requests for those alerts automatically. Regular version updates are configured in `.github/dependabot.yml`. |
+
+See [Configuring private vulnerability reporting](https://docs.github.com/en/code-security/security-advisories/working-with-repository-security-advisories/configuring-private-vulnerability-reporting-for-a-repository),
+[Configuring Dependabot alerts](https://docs.github.com/en/code-security/dependabot/dependabot-alerts/configuring-dependabot-alerts),
+and [Configuring Dependabot security updates](https://docs.github.com/en/code-security/dependabot/dependabot-security-updates/configuring-dependabot-security-updates).
+
+### GitHub Actions
+
+**Settings → Actions → General → Workflow permissions**:
+
+| Setting | Value | Why |
+|---|---|---|
+| Allow GitHub Actions to create and approve pull requests | On | release-please opens the release pull request with the workflow's `GITHUB_TOKEN`. |
+
+Leave the default workflow permissions on read-only. Each workflow requests
+the extra permissions it needs.
+
+See [Managing GitHub Actions settings for a repository](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository).
+
+### Labels
+
+**Issues → Labels**: the issue forms and docs use these labels. GitHub creates
+`bug`, `enhancement`, `question`, and `good first issue` by default; create the
+others.
+
+| Label | Used by |
+|---|---|
+| `bug` | Bug report form |
+| `enhancement` | Feature request form |
+| `component` | Component request form |
+| `triage` | All issue forms, until a maintainer has looked at the issue |
+| `question` | Questions, as described in [SUPPORT.md](../SUPPORT.md) |
+| `good first issue` | Issues suited to newcomers, linked from [CONTRIBUTING.md](../CONTRIBUTING.md) |
+
+## Cutting a release
+
+Releases are automated with [release-please](https://github.com/googleapis/release-please)
+and GoReleaser (see `.github/workflows/release.yml`):
+
+1. Every push to `main` makes release-please open or update a release pull
+   request. It proposes the next SemVer version and a `CHANGELOG.md` entry
+   built from the Conventional Commit titles. While gobento is pre-1.0, breaking
+   changes bump the minor version.
+2. To release, review and **merge the release pull request**. Nothing is
+   published before that.
+3. The same workflow then tags the release, creates the GitHub release, and
+   runs GoReleaser to build and attach the Linux, macOS, and Windows binaries
+   with `checksums.txt`.
+
+To change the proposed version, edit the release pull request as described in
+the release-please documentation, or add a `Release-As: x.y.z` footer to a
+commit on `main`.
+
+## Bumping golangci-lint
+
+The golangci-lint version is pinned in two places, which must stay in sync:
+
+- the golangci-lint action's `version` input in `.github/workflows/ci.yml`
+- the install command in [CONTRIBUTING.md](../CONTRIBUTING.md)
+
+To bump it:
+
+1. Read the [golangci-lint changelog](https://golangci-lint.run/docs/product/changelog/)
+   for new or changed linters.
+2. Update the version in both files in one pull request (for example
+   `ci: bump golangci-lint to vX.Y.Z`).
+3. Run `golangci-lint run` locally with the new version and fix any new
+   findings, or adjust [.golangci.yml](../.golangci.yml), in the same pull
+   request.

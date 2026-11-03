@@ -1,0 +1,9 @@
+# Store and check out every text file with LF line endings, on every OS.
+# gobento's templates and golden test files must be byte-identical everywhere.
+* text=auto eol=lf
+
+# Binary files: never normalize or diff as text.
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
