@@ -119,6 +119,12 @@ To change the proposed version, edit the release pull request as described in
 the release-please documentation, or add a `Release-As: x.y.z` footer to a
 commit on `main`.
 
+**First release.** With no previous release, release-please proposes `1.0.0`
+regardless of `bump-minor-pre-major`. `release-please-config.json` therefore
+sets `"release-as": "0.1.0"`. **Remove that line in the first pull request
+after `v0.1.0` is released**, otherwise every later release would also be
+forced to `0.1.0`.
+
 ## Bumping golangci-lint
 
 The golangci-lint version is pinned in two places, which must stay in sync:
