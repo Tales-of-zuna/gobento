@@ -10,11 +10,12 @@ PNPM          ?= pnpm
 BIN           := bin/gobento
 WEB           := website
 
-.PHONY: help build test test-all lint fmt tidy cover clean \
+.PHONY: help build test test-all lint fmt tidy cover catalog catalog-check clean \
 	web-dev web-check web-build web-e2e
 
 help: ## Show this list of targets
-	@awk 'BEGIN {FS = ":.*## "} /^[a-z0-9-]+:.*## / {printf "  %-10s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*## "} /^[a-z0-9-]+:.*## / {printf "  %-13s %s
+", $$1, $$2}' $(MAKEFILE_LIST)
 
 build: ## Build the gobento binary into bin/
 	@if [ -d cmd/gobento ]; then $(GO) build -o $(BIN) ./cmd/gobento; \
@@ -38,6 +39,15 @@ tidy: ## Tidy go.mod and go.sum
 cover: ## Run unit tests with coverage and print a summary
 	$(GO) test -short -coverprofile=coverage.out ./...
 	$(GO) tool cover -func=coverage.out
+
+catalog: ## Regenerate the website's catalog.json (and its CLI cross-check commands)
+	$(GO) run ./internal/tools/catalogexport -o website/src/generated/catalog.json
+	@if [ -d website/node_modules ]; then cd website && pnpm exec vitest run lib/command/cli-commands.test.ts --update; \
+	else echo "website/node_modules is missing; run pnpm install and pnpm test -u in website/ to refresh lib/command/supported-commands.txt"; fi
+
+catalog-check: ## Fail if catalog.json is stale or the website's commands fail in the CLI
+	$(GO) run ./internal/tools/catalogexport | diff -u website/src/generated/catalog.json -
+	$(GO) test -count=1 -run 'TestCommittedCatalogIsCurrent|TestWebsiteCommands' ./internal/tools/catalogexport ./internal/cli
 
 clean: ## Remove build and coverage output
 	$(RM) -r bin dist coverage.out

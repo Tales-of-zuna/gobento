@@ -3,7 +3,7 @@ import { catalogSchema } from './schema';
 import { fixtureData, type CatalogData } from '@/lib/test/catalog';
 
 describe('catalog schema', () => {
-  it('accepts the first-slice fixture', () => {
+  it('accepts the exported catalog', () => {
     const result = catalogSchema.safeParse(fixtureData());
     expect(result.error?.issues).toBeUndefined();
     expect(result.data?.components.map((c) => c.id)).toEqual([
@@ -106,6 +106,27 @@ describe('catalog schema', () => {
       name: 'invalid rule pattern',
       edit: (d) => (d.rules.projectName.pattern = '^[a-z'),
       expected: 'projectName: invalid regular expression',
+    },
+    {
+      name: 'supported selection naming an unknown component',
+      edit: (d) => (d.supported[0]!.database = 'postgres'),
+      expected: 'supported selection names unknown component "database/postgres"',
+    },
+    {
+      name: 'supported selection without every kind',
+      edit: (d) => delete (d.supported[0] as Partial<CatalogData['supported'][number]>).data,
+      expected: 'Invalid input',
+    },
+    {
+      name: 'no supported selection',
+      edit: (d) => (d.supported = []),
+      expected: 'Too small',
+    },
+    {
+      name: 'project name rule without reserved names',
+      edit: (d) =>
+        delete (d.rules.projectName as Partial<CatalogData['rules']['projectName']>).reserved,
+      expected: 'Invalid input',
     },
     {
       name: 'missing rules',

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { catalogWith } from '@/lib/test/catalog';
+import { catalogWith, moduleOf } from '@/lib/test/catalog';
 import { beltPlates, ROADMAP, shortTitle, stackCells, versionShowcase } from './menu';
 
 describe('shortTitle', () => {
@@ -67,7 +67,7 @@ describe('versionShowcase', () => {
 
   it('tracks a changed default version', () => {
     const catalog = catalogWith((data) => {
-      data.modules[0]!.default = 'v1.62.0';
+      moduleOf(data, 'modernc.org/sqlite').default = 'v1.62.0';
     });
     expect(versionShowcase(catalog)?.reason).toBe(
       'modernc.org/sqlite v1.62.0 needs Go 1.26 or newer',

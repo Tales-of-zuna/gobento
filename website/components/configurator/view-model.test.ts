@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildCommand } from '@/lib/command/build';
 import { defaultState } from '@/lib/command/url-state';
-import { addPostgres, catalogWith } from '@/lib/test/catalog';
+import { addPostgres, catalogWith, moduleOf } from '@/lib/test/catalog';
 import {
   blockedMessage,
   errorsByField,
@@ -58,7 +58,7 @@ describe('Version too new for Go', () => {
   // The shipped fixture has no module version that needs a newer Go, so the
   // scenario adds one: modernc.org/sqlite v1.62.0 and later need Go 1.27.
   const strict = catalogWith((data) => {
-    data.modules[0]!.constraints.push({
+    moduleOf(data, 'modernc.org/sqlite').constraints.push({
       when: '>=v1.62.0',
       requires: { target: 'go', range: '>=1.27' },
     });
@@ -88,8 +88,8 @@ describe('moduleFields', () => {
   it('shows tools as fixed', () => {
     const fields = moduleFields(catalog, defaults, new Map());
     expect(fields.map((f) => [f.path, f.fixed])).toEqual([
-      ['modernc.org/sqlite', false],
       ['github.com/sqlc-dev/sqlc', true],
+      ['modernc.org/sqlite', false],
     ]);
   });
 });

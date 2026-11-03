@@ -30,8 +30,8 @@ modules:
 ```
 
 <Callout type="info">
-  The values above illustrate the format. The current ranges and defaults are in the [Components
-  reference](/docs/components), generated from the real rules file.
+  This is the rules file at the time of writing. The [Components reference](/docs/components) is
+  generated from the real file, so it always shows the current ranges and defaults.
 </Callout>
 
 | Field                    | Meaning                                                                                                       |
@@ -82,7 +82,9 @@ gobento new shop --go 1.26 --pin modernc.org/sqlite=v1.61.0
 
 - the version is outside the module's range (the error shows the range);
 - no selected component uses the module (the error names it);
-- the module is a tool.
+- the module is a tool (the error shows the version this release uses).
+
+See [Errors](/docs/cli/new#errors) for the exact messages.
 
 ## Tool versions are fixed
 
@@ -101,16 +103,26 @@ go run github.com/sqlc-dev/sqlc/cmd/sqlc@<version> generate
 
 A constraint ties one version to another. In the example above, sqlite
 `>=v1.61.0` requires Go `>=1.26`. If you choose a module version that needs a
-newer Go than the one selected, gobento exits non-zero naming the module, its
-required Go version, and the selected Go version, and writes nothing.
+newer Go than the one selected, gobento exits with status `1` and writes
+nothing. The error names the module, its version, the required range, and the
+selected version; if the rules allowed Go 1.25, choosing it would report:
+
+```text
+incompatible versions: modernc.org/sqlite v1.61.0 requires go >=1.26, but go 1.25 is selected
+```
+
+A constraint can also require another module (`require: { example.com/b: ">=v0.2.0" }`);
+it applies only when that module is part of the selection.
 
 ## The rules file is checked
 
 Loading fails, with an error naming the module, if the rules file:
 
+- has an unknown field (a typo fails instead of being ignored),
 - declares a default outside its own range,
-- references an unknown constraint or component,
-- contains a malformed range.
+- gives a tool a range other than one exact version, such as `=v1.31.1`,
+- references an unknown component or constraint target,
+- contains a malformed range or version.
 
 gobento's test suite checks the shipped rules file, and CI generates every
 supported selection twice: once with the defaults and once with the range
@@ -131,8 +143,8 @@ gobento never accepts that silently:
 1. It runs `go get` with every chosen version, then `go mod tidy`.
 2. It parses the resulting `go.mod`. The `go` directive and every direct
    requirement must equal the chosen values.
-3. If anything was raised, gobento exits non-zero naming the module, the
-   chosen version, and the raised version, and leaves no files behind. A raise
+3. If anything was raised, gobento exits with status `1` naming the module,
+   the chosen version, and the raised version, and leaves no files behind. A raise
    means the rules file is missing a constraint, so please
    [open an issue](https://github.com/Tales-of-zuna/gobento/issues).
 

@@ -5,7 +5,8 @@ description: The four kinds of components gobento composes into a project, and h
 
 A **component** is one piece of a generated project: an architecture, an HTTP
 framework, a database, or a data-access library. Components are data (a
-manifest plus template files), not Go code inside gobento.
+`component.yaml` manifest plus `.tmpl` template files), not Go code inside
+gobento.
 
 ## The four kinds
 
@@ -43,12 +44,26 @@ Not every selection can be built. A selection is **supported** exactly when:
 
 The list of supported selections is derived from the component catalog alone.
 CI generates, builds, and tests every one of them on Linux, macOS, and
-Windows, and the website's configurator only offers supported selections.
+Windows. The website's configurator reads the same list from the exported
+catalog, and a test runs the command it builds for each one through
+`gobento new --dry-run`.
 
 ## Where components live
 
 Each component is a directory in the repository under
-`components/<kind>/<name>/`. To see every component with its traits and
+`components/<kind>/<name>/`. Its `component.yaml` has these keys, and unknown
+keys are rejected:
+
+| Key           | Kinds             | Meaning                                                          |
+| ------------- | ----------------- | ---------------------------------------------------------------- |
+| `name`        | all               | Equal to the directory name; matches `^[a-z][a-z0-9-]*$`         |
+| `title`       | all               | Required display name, such as `SQLite`                          |
+| `description` | all               | Optional one-sentence summary                                    |
+| `slots`       | architecture only | The [slots](/docs/concepts/slots-and-contracts) it declares      |
+| `provides`    | all               | [Traits](/docs/concepts/traits) it provides: trait → value       |
+| `requires`    | all               | Traits it needs from the others: trait → list of accepted values |
+
+To see every component with its traits and
 versions, open the [Components reference](/docs/components), which is
 generated from the catalog. To write one, see
 [Adding a component](/docs/contributing/adding-a-component).

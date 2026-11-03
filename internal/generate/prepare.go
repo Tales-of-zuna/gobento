@@ -23,8 +23,47 @@ var (
 	ErrInvalidModule = errors.New("invalid module path")
 )
 
-// namePattern is the rule for project names.
-var namePattern = regexp.MustCompile(`^[a-z][a-z0-9_-]*$`)
+// Project name and module path rules. They are exported so that tools
+// outside the CLI, such as the website's configurator (through
+// internal/tools/catalogexport), apply the same rules.
+const (
+	// NamePattern is the regular expression a project name must match. It
+	// uses only syntax that Go's regexp and JavaScript's RegExp share.
+	NamePattern = `^[a-z][a-z0-9_-]*$`
+	// NameRule explains NamePattern; it completes the message of an
+	// ErrInvalidName error.
+	NameRule = "start with a lowercase letter and use only lowercase letters, digits, - and _"
+	// ReservedNameRule explains why a name in ReservedNames is rejected.
+	ReservedNameRule = "the name is reserved on Windows and cannot be used for files or directories; choose another name"
+
+	// ModulePathPattern approximates module.CheckImportPath, which Prepare
+	// uses to validate module paths, as a regular expression for clients
+	// that cannot call it. It accepts every path CheckImportPath accepts:
+	// non-empty elements of ASCII letters, digits, and "-._~+", separated
+	// by single slashes, with no element ending in "." and no leading "-".
+	// It does not reject the path elements CheckImportPath forbids for
+	// Windows (device names such as "con" or "con.go", and short names such
+	// as "abc~1"), which the CLI then still reports.
+	ModulePathPattern = `^(?:[A-Za-z0-9_~+]|[A-Za-z0-9._~+][A-Za-z0-9._~+-]*[A-Za-z0-9_~+-])(?:/[A-Za-z0-9._~+-]*[A-Za-z0-9_~+-])*$`
+	// ModulePathRule explains ModulePathPattern.
+	ModulePathRule = "use a Go module path such as example.com/shop: elements of letters, digits, '.', '_', '~', '+' and '-', separated by '/', none ending in '.'"
+)
+
+// namePattern is the compiled NamePattern.
+var namePattern = regexp.MustCompile(NamePattern)
+
+// ReservedNames returns the project names Windows reserves as device names
+// for files and directories, which gobento rejects on every system: con,
+// prn, aux, nul, com1 to com9, and lpt1 to lpt9.
+func ReservedNames() []string {
+	names := []string{"con", "prn", "aux", "nul"}
+	for _, prefix := range []string{"com", "lpt"} {
+		for d := '1'; d <= '9'; d++ {
+			names = append(names, prefix+string(d))
+		}
+	}
+	return names
+}
 
 // Spec is the user's description of a project, before validation.
 type Spec struct {
@@ -101,9 +140,9 @@ func Prepare(cat *catalog.Catalog, spec Spec) (*Prepared, error) {
 
 	switch {
 	case !namePattern.MatchString(spec.Name):
-		errs = append(errs, fmt.Errorf("%w %q: start with a lowercase letter and use only lowercase letters, digits, - and _", ErrInvalidName, spec.Name))
+		errs = append(errs, fmt.Errorf("%w %q: %s", ErrInvalidName, spec.Name, NameRule))
 	case isWindowsReserved(spec.Name):
-		errs = append(errs, fmt.Errorf("%w %q: the name is reserved on Windows and cannot be used for files or directories; choose another name", ErrInvalidName, spec.Name))
+		errs = append(errs, fmt.Errorf("%w %q: %s", ErrInvalidName, spec.Name, ReservedNameRule))
 	}
 	if err := module.CheckImportPath(p.Module); err != nil {
 		errs = append(errs, fmt.Errorf("%w %q: %w; use a path such as example.com/%s", ErrInvalidModule, p.Module, err, safeExample(spec.Name)))
@@ -201,18 +240,9 @@ func supportedNames(supported []catalog.Selection, kind catalog.Kind) []string {
 	return names
 }
 
-// isWindowsReserved reports whether name is a device name that Windows
-// reserves for files and directories: con, prn, aux, nul, com1-com9, and
-// lpt1-lpt9.
+// isWindowsReserved reports whether name is one of ReservedNames.
 func isWindowsReserved(name string) bool {
-	switch name {
-	case "con", "prn", "aux", "nul":
-		return true
-	}
-	if len(name) == 4 && (strings.HasPrefix(name, "com") || strings.HasPrefix(name, "lpt")) {
-		return name[3] >= '1' && name[3] <= '9'
-	}
-	return false
+	return slices.Contains(ReservedNames(), name)
 }
 
 // safeExample returns name if it is a valid path element, or "app".

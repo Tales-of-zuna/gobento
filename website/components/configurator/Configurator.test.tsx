@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { catalogWith } from '@/lib/test/catalog';
+import { catalogWith, moduleOf } from '@/lib/test/catalog';
 import { Configurator } from './Configurator';
 
 beforeEach(() => {
@@ -54,7 +54,7 @@ describe('Configurator', () => {
   // needs a newer Go, so this test adds one: sqlite v1.62.0+ needs Go 1.27.
   it('disables a Go version that a module version is too new for', async () => {
     const strict = catalogWith((data) => {
-      data.modules[0]!.constraints.push({
+      moduleOf(data, 'modernc.org/sqlite').constraints.push({
         when: '>=v1.62.0',
         requires: { target: 'go', range: '>=1.27' },
       });

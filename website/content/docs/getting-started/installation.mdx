@@ -1,11 +1,11 @@
 ---
 title: Installation
-description: What you need to run gobento, and the planned way to install it.
+description: What you need to run gobento, and how to install it.
 ---
 
-<Callout type="warn" title="Planned">
-  Nothing is released yet. The install command below is the planned interface and does not work
-  today.
+<Callout type="info" title="Not released yet">
+  There is no tagged release yet. Until the first one, `go install ...@latest` builds the newest
+  commit of the main branch.
 </Callout>
 
 ## Requirements
@@ -22,7 +22,6 @@ description: What you need to run gobento, and the planned way to install it.
 ## Install the CLI
 
 ```sh
-# Planned
 go install github.com/Tales-of-zuna/gobento/cmd/gobento@latest
 ```
 
@@ -32,8 +31,11 @@ Check that it is on your `PATH`:
 gobento --help
 ```
 
-Prebuilt binaries are on the roadmap. Until then, `go install` is the only
-planned install method.
+To build from a clone instead, run `make build` (or
+`go build -o bin/gobento ./cmd/gobento`), which writes `bin/gobento`.
+
+Prebuilt binaries are on the roadmap. Until then, `go install` and building
+from source are the install methods.
 
 ## Go version of generated projects
 
@@ -45,8 +47,9 @@ supported one with `--go`.
 Before writing anything, gobento compares the selected Go version with your
 local toolchain:
 
-- If the selected version is newer and `GOTOOLCHAIN=local` is set, gobento
-  stops with an error naming both versions.
+- If the selected version is newer and `GOTOOLCHAIN` forbids downloads
+  (`local`, `path`, or a value ending in `+path`), gobento stops with an error
+  naming both versions.
 - If the selected version is newer otherwise, gobento warns that Go will
   download the newer toolchain.
 - If no `go` command is found, gobento stops with instructions to install Go.

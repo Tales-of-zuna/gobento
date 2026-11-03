@@ -1,7 +1,9 @@
 /**
  * Schema of `src/generated/catalog.json`, the component catalog and version
- * rules the CLI uses, exported for the website (design D3). The Go exporter
- * mirrors these types; this schema is the contract between the two.
+ * rules the CLI uses, exported for the website (design D3) by
+ * `internal/tools/catalogexport` (`make catalog`). The exporter's Go types
+ * mirror this schema; this schema is the contract between the two, and both
+ * change together.
  */
 import { z } from 'zod';
 import { parseRange, parseVersion, satisfies, type VersionKind } from './semver';
@@ -27,7 +29,8 @@ const componentSchema = z.object({
   /** Value of the kind's flag (for example `sqlite` for `--db`). */
   name: z.string().regex(/^[a-z][a-z0-9-]*$/),
   title: text,
-  description: text,
+  /** One-sentence summary; optional in component.yaml, so it may be empty. */
+  description: z.string(),
   /** Traits this component provides, as trait → value. */
   provides: z.record(text, text),
   /** Traits this component needs from the others, as trait → allowed values. */
@@ -62,12 +65,28 @@ const ruleSchema = z.object({
   message: text,
 });
 
+const projectNameRuleSchema = ruleSchema.extend({
+  /** Names that match the pattern but are reserved (Windows device names). */
+  reserved: z.array(text),
+  /** Explanation shown for a reserved name. */
+  reservedMessage: text,
+});
+
+/** One component name per kind, as `kind → name`. */
+const supportedSelectionSchema = z.record(z.enum(KIND_IDS), text);
+
 const rawCatalogSchema = z.object({
   kinds: z.array(kindSchema),
   components: z.array(componentSchema),
   go: z.object({ range: text, default: text }),
   modules: z.array(moduleSchema),
-  rules: z.object({ projectName: ruleSchema, modulePath: ruleSchema }),
+  /**
+   * The selections the CLI supports (compose.Supported): traits met, default
+   * versions resolved, and composition without errors. Every one of them is
+   * generated and tested in gobento's CI.
+   */
+  supported: z.array(supportedSelectionSchema).min(1),
+  rules: z.object({ projectName: projectNameRuleSchema, modulePath: ruleSchema }),
 });
 
 type RawCatalog = z.infer<typeof rawCatalogSchema>;
@@ -144,6 +163,19 @@ function checkConsistency(catalog: RawCatalog, ctx: z.RefinementCtx): void {
     });
   });
 
+  catalog.supported.forEach((selection, i) => {
+    for (const kind of KIND_IDS) {
+      const name = selection[kind];
+      if (name === undefined) issue(['supported', i], `supported selection lacks a ${kind}`);
+      else if (!componentIds.has(`${kind}/${name}`)) {
+        issue(
+          ['supported', i, kind],
+          `supported selection names unknown component "${kind}/${name}"`,
+        );
+      }
+    }
+  });
+
   for (const key of ['projectName', 'modulePath'] as const) {
     try {
       new RegExp(catalog.rules[key].pattern);
@@ -162,6 +194,8 @@ export type Catalog = z.infer<typeof catalogSchema>;
 export type Component = Catalog['components'][number];
 /** A Go module used by one or more components. */
 export type Module = Catalog['modules'][number];
+/** A selection the CLI supports. */
+export type SupportedSelection = Catalog['supported'][number];
 
 /** Parses and validates catalog data, throwing a ZodError that lists every problem. */
 export function parseCatalog(data: unknown): Catalog {

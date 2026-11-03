@@ -7,7 +7,7 @@ import {
   selectionProblems,
   type Selection,
 } from './compat';
-import { addPostgres, catalogWith, type CatalogData } from '@/lib/test/catalog';
+import { addPostgres, catalogWith, type CatalogData, moduleOf } from '@/lib/test/catalog';
 
 const SQLITE = 'modernc.org/sqlite';
 const SQLC = 'github.com/sqlc-dev/sqlc';
@@ -61,7 +61,7 @@ describe('selectionProblems', () => {
       name: 'constraint that does not apply to the chosen version',
       edit: (d) => {
         allowGo125(d);
-        d.modules[0]!.constraints[0]!.when = '>=v1.62.0';
+        moduleOf(d, 'modernc.org/sqlite').constraints[0]!.when = '>=v1.62.0';
       },
       selection: { ...firstSlice, go: '1.25' },
       expected: [],
@@ -69,7 +69,7 @@ describe('selectionProblems', () => {
     {
       name: 'constraint on another module',
       edit: (d) =>
-        d.modules[0]!.constraints.push({
+        moduleOf(d, 'modernc.org/sqlite').constraints.push({
           when: '>=v1.62.0',
           requires: { target: SQLC, range: '>=v1.32.0' },
         }),
@@ -91,8 +91,8 @@ describe('selectionProblems', () => {
       edit: addPostgres,
       selection: { ...firstSlice, components: { ...firstSlice.components, database: 'postgres' } },
       expected: [
-        'sqlc requires sql-dialect sqlite, but PostgreSQL provides postgresql.',
         'sqlc requires conn database/sql, but PostgreSQL provides pgx.',
+        'sqlc requires sql-dialect sqlite, but PostgreSQL provides postgresql.',
       ],
     },
     {
@@ -100,8 +100,9 @@ describe('selectionProblems', () => {
       edit: (d) => (d.components.find((c) => c.name === 'sqlite')!.provides = {}),
       selection: firstSlice,
       expected: [
-        'sqlc requires a component that provides sql-dialect sqlite.',
         'sqlc requires a component that provides conn database/sql.',
+        'sqlc requires a component that provides sql-dialect sqlite.',
+        'sqlc requires a component that provides sql-schema schema.sql.',
       ],
     },
     {
@@ -146,7 +147,7 @@ describe('resolvedVersions', () => {
 describe('option reasons', () => {
   it('disables a module version that needs a newer Go and names it (spec: Version too new for Go)', () => {
     const catalog = catalogWith((d) => {
-      d.modules[0]!.constraints.push({
+      moduleOf(d, 'modernc.org/sqlite').constraints.push({
         when: '>=v1.62.0',
         requires: { target: 'go', range: '>=1.27' },
       });
@@ -169,8 +170,8 @@ describe('option reasons', () => {
   it('disables components with unmet traits, from either side', () => {
     const catalog = catalogWith(addPostgres);
     expect(componentReasons(catalog, firstSlice, 'database', 'postgres')).toEqual([
-      'sqlc requires sql-dialect sqlite, but PostgreSQL provides postgresql.',
       'sqlc requires conn database/sql, but PostgreSQL provides pgx.',
+      'sqlc requires sql-dialect sqlite, but PostgreSQL provides postgresql.',
     ]);
     expect(componentReasons(catalog, firstSlice, 'database', 'sqlite')).toEqual([]);
     const onPostgres = {
