@@ -39,3 +39,28 @@ updates:
     groups:
       website-minor-and-patch:
         update-types: [minor, patch]
+    # Major upgrades of the toolchain are planned changes (an OpenSpec proposal),
+    # not automatic PRs: @types/node must match the Node major in website/.nvmrc,
+    # and TypeScript, Next.js, React and three/R3F majors need compatibility work.
+    # Security updates are not affected by this list.
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      - dependency-name: next
+        update-types: [version-update:semver-major]
+      - dependency-name: eslint-config-next
+        update-types: [version-update:semver-major]
+      - dependency-name: react
+        update-types: [version-update:semver-major]
+      - dependency-name: react-dom
+        update-types: [version-update:semver-major]
+      - dependency-name: "@types/react*"
+        update-types: [version-update:semver-major]
+      - dependency-name: three
+        update-types: [version-update:semver-major]
+      - dependency-name: "@types/three"
+        update-types: [version-update:semver-major]
+      - dependency-name: "@react-three/*"
+        update-types: [version-update:semver-major]

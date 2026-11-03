@@ -66,7 +66,7 @@ and [Managing the automatic deletion of branches](https://docs.github.com/en/rep
 |---|---|---|
 | Private vulnerability reporting | Enabled | [SECURITY.md](../SECURITY.md) and the issue form contact link send reporters to the private "Report a vulnerability" form. |
 | Dependabot alerts | Enabled | Notifies maintainers about known vulnerabilities in dependencies. |
-| Dependabot security updates | Enabled | Opens fix pull requests for those alerts automatically. Regular version updates are configured in `.github/dependabot.yml`. |
+| Dependabot security updates | Enabled | Opens fix pull requests for those alerts automatically. Regular version updates are configured in `.github/dependabot.yml`; major upgrades of the website toolchain (TypeScript, `@types/node`, Next.js, React, three.js/R3F) are ignored there and done as planned OpenSpec changes, with `@types/node` kept on the Node major in `website/.nvmrc`. |
 
 See [Configuring private vulnerability reporting](https://docs.github.com/en/code-security/security-advisories/working-with-repository-security-advisories/configuring-private-vulnerability-reporting-for-a-repository),
 [Configuring Dependabot alerts](https://docs.github.com/en/code-security/dependabot/dependabot-alerts/configuring-dependabot-alerts),
