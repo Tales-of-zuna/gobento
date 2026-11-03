@@ -100,16 +100,26 @@ base-path constant as `next.config.ts`.
   - the Go version range and default;
   - modules per component, with role, range, default, and constraints already
     normalized (each constraint as `{ when, requires: { module|go, range } }`);
-  - the CLI's name and module-path rules as regular expressions.
+  - the selections the CLI supports (`compose.Supported`), one component
+    name per kind;
+  - the CLI's name and module-path rules as regular expressions, exported
+    from `internal/generate`: the project-name pattern with the reserved
+    Windows device names, and a module-path pattern that approximates
+    `module.CheckImportPath` (it accepts every valid path, but does not
+    reject Windows-reserved path elements such as `con` or `abc~1`, which
+    `gobento new` still reports; a Go fuzz test holds it to that).
 - **Producer:** a small Go program `internal/tools/catalogexport`, which uses
-  the real `internal/catalog` and `internal/compat` packages, writes
-  `website/src/generated/catalog.json`. The file is committed, so website
-  contributors do not need Go. A CI job re-runs the exporter and fails if the
-  file changes, the same freshness pattern as sqlc in
-  `add-generator-foundation` (D6).
-- **Before the generator lands:** `catalog.json` is a hand-written fixture
-  describing the first slice (mvc, nethttp, sqlite, sqlc), validated by the same
-  zod schema. Task group 7 switches to the exporter.
+  the real `internal/catalog`, `internal/compat`, and `internal/compose`
+  packages, writes `website/src/generated/catalog.json` (`make catalog`). The
+  file is committed, so website contributors do not need Go. The Go test
+  `TestCommittedCatalogIsCurrent` (run by `go test` in CI) and
+  `make catalog-check` re-run the exporter and fail if the file differs, the
+  same freshness pattern as sqlc in `add-generator-foundation` (D6). Kind
+  titles and descriptions, which the catalog has no text for, live in the
+  exporter.
+- **Before the generator landed,** `catalog.json` was a hand-written fixture
+  of the first slice, validated by the same zod schema; task group 7 replaced
+  it with the exporter's output.
 - **In the browser:** `lib/catalog` evaluates ranges and constraints with a
   small semver comparison. The logic is deliberately tiny, because the rules
   arrive pre-normalized. The cross-check test (D4) guards against any
@@ -137,11 +147,17 @@ base-path constant as `next.config.ts`.
   values. It is unit-tested with table tests.
 - Incompatible options are rendered disabled, with a tooltip and an
   `aria-describedby` explanation built from the failed trait or constraint.
-- **Cross-check test** (spec: *Generated commands are accepted by the CLI*): a
-  Vitest suite enumerates every supported selection from the real
-  `catalog.json`, builds each command, and runs
-  `go run ./cmd/gobento new … --dry-run` in a CI job that has Go. It runs only
-  when the real exporter output is present (task group 7).
+- **Cross-check test** (spec: *Generated commands are accepted by the CLI*),
+  split so that neither toolchain needs the other and the command builder is
+  never duplicated: a Vitest suite (`lib/command/cli-commands.test.ts`)
+  enumerates every supported selection from the real `catalog.json`, builds
+  each command with `lib/command/build.ts` (with the defaults, and with every
+  flag explicit at the range floors), and keeps them in the committed file
+  `lib/command/supported-commands.txt` as a file snapshot, so a stale file
+  fails the suite. The Go test `TestWebsiteCommands` (`internal/cli`) runs
+  each command with `--dry-run` and checks that together they cover every
+  supported selection. Driving `build.ts` from Go through Node was rejected:
+  it would make `go test` depend on Node and `node_modules`.
 
 ### D5. Documentation
 
@@ -256,8 +272,8 @@ Tailwind, shadcn, and Fumadocs.
   - lint, type-check, Vitest, `next build`;
   - Playwright e2e with axe in both themes;
   - Lighthouse CI against the export with the budget from the spec.
-  - Once the exporter exists, also the catalog freshness check and the CLI
-    cross-check.
+  - The catalog freshness check and the Go half of the CLI cross-check run
+    with the Go tests in `ci.yml`; Vitest checks the commands file.
 - `.github/workflows/pages.yml` runs on pushes to `main` touching the same
   paths. It builds and deploys with `actions/configure-pages`,
   `actions/upload-pages-artifact`, and `actions/deploy-pages`, with permissions
