@@ -50,8 +50,9 @@ const sections = [
 ];
 
 const sidebar = (page: Page) => page.locator('#nd-sidebar');
-/** The previous/next links are the last block of the page article. */
-const pageFooter = (page: Page) => page.locator('#nd-page > div').last();
+/** The previous/next cards at the end of the page. */
+const pageFooter = (page: Page) =>
+  page.getByRole('navigation', { name: 'Previous and next pages' });
 const url = (path: string) => `/gobento/${path}`;
 
 test.describe('Navigation', () => {
@@ -74,7 +75,9 @@ test.describe('Navigation', () => {
       await expect(active).toHaveText(current.title);
 
       const expected = [pages[i - 1], pages[i + 1]].filter((p) => p !== undefined);
-      const links = pageFooter(page).getByRole('link');
+      const links = page
+        .getByRole('navigation', { name: 'Previous and next pages' })
+        .getByRole('link');
       await expect(links).toHaveCount(expected.length);
       for (const [j, neighbour] of expected.entries()) {
         await expect(links.nth(j)).toHaveAttribute('href', url(neighbour.path));
@@ -100,8 +103,12 @@ test.describe('Navigation', () => {
 
 test('Searching for "traits" finds and opens the Concepts page on traits', async ({ page }) => {
   await page.goto('docs/');
-  await page.getByRole('button', { name: 'Search' }).first().click();
   const dialog = page.getByRole('dialog', { name: 'Search' });
+  // A click that lands before hydration is lost, as it would be for a person: click again.
+  await expect(async () => {
+    await page.getByRole('button', { name: 'Search' }).first().click();
+    await expect(dialog).toBeVisible({ timeout: 1_000 });
+  }).toPass();
   await dialog.getByRole('combobox', { name: 'Search' }).fill('traits');
   // Results show the page's breadcrumb (Docs > Concepts) before the title.
   const result = dialog
