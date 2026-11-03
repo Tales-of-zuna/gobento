@@ -1,0 +1,25 @@
+# Build output
+/bin/
+/dist/
+/gobento
+/gobento.exe
+
+# Test and coverage output
+coverage.out
+*.test
+*.prof
+
+# Temporary directories left by an interrupted gobento run
+.gobento-tmp-*
+
+# AI assistant integrations generated locally by `openspec init --tools <tool>`.
+# They are personal tooling; for tools other than these, prefer your global
+# gitignore (git config core.excludesFile).
+.claude/
+
+# Editors and operating systems
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

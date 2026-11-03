@@ -80,6 +80,13 @@ Commits form.
 - `.gitignore`: built binaries (`/gobento`, `/dist/`), coverage output,
   `.gobento-tmp-*`, and OS/editor junk. No `vendor/`, because modules are not
   vendored.
+- AI-assistant integrations are not committed. `.claude/` (created by
+  `openspec init --tools claude`) is untracked and ignored. `openspec/` stays
+  committed, because it is the project's specification. Each contributor
+  generates their own tool's integration with `openspec init --tools <tool>`,
+  as CONTRIBUTING explains.
+  *Alternative:* commit the shared commands plus an `AGENTS.md`. Rejected by
+  the maintainer to keep the repository tool-neutral.
 
 ### D5. Makefile is a thin, self-documenting wrapper
 
@@ -138,7 +145,9 @@ runs. `permissions: contents: read` by default.
 ### D8. Dependabot
 
 `.github/dependabot.yml`: `gomod` and `github-actions` ecosystems, weekly, with
-minor and patch updates grouped into one PR per ecosystem. Commit messages use
+minor and patch updates grouped into one PR per ecosystem, and a 7-day
+`cooldown` so a release is proposed only after it has been public for a week
+(a malicious or broken release is usually caught by then). Commit messages use
 the `build(deps):` / `ci(deps):` prefixes, so they satisfy D3.
 
 Note that `components/versions.yaml` (the generator's version data) is *not*

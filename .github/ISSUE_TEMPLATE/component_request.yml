@@ -1,0 +1,72 @@
+name: Component request
+description: Ask for a new framework, database, data access library, architecture, or frontend.
+title: "component: "
+labels: ["component", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        gobento only supports components that are actively maintained and that can be proven to build in CI. The details below help us judge that.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      description: What kind of component is this?
+      options:
+        - Framework
+        - Database
+        - Data access
+        - Architecture
+        - Frontend
+    validations:
+      required: true
+  - type: input
+    id: name
+    attributes:
+      label: Library name
+      description: The name of the library, tool, or architecture.
+      placeholder: e.g. chi, PostgreSQL, GORM, hexagonal, htmx
+    validations:
+      required: true
+  - type: input
+    id: upstream
+    attributes:
+      label: Upstream URL
+      description: Link to the repository or official website.
+      placeholder: https://github.com/owner/project
+    validations:
+      required: true
+  - type: textarea
+    id: maintenance
+    attributes:
+      label: Maintenance status
+      description: Recent releases, commit activity, number of maintainers, and supported Go versions, if known.
+      placeholder: Latest release v1.2.3 in 2026-10; regular commits; supports the last two Go versions.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why should gobento support it?
+      description: Who would use it, and what does it offer over the components gobento already supports?
+    validations:
+      required: true
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you like to add it yourself?
+      options:
+        - "Yes"
+        - "Maybe, with some guidance"
+        - "No"
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this component has not been requested yet.
+          required: true
+        - label: I agree to follow this project's Code of Conduct.
+          required: true

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/Tales-of-zuna/gobento/security/advisories/new
+    about: Please report security vulnerabilities privately, not in a public issue.
+  - name: Ask a question
+    url: https://github.com/Tales-of-zuna/gobento/blob/main/SUPPORT.md
+    about: Read how to get help before opening an issue.

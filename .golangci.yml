@@ -1,0 +1,31 @@
+# golangci-lint v2 configuration: https://golangci-lint.run/docs/configuration/
+# The golangci-lint version is pinned in .github/workflows/ci.yml and
+# CONTRIBUTING.md; keep both in sync.
+version: "2"
+
+linters:
+  # govet, staticcheck, errcheck, ineffassign, unused
+  default: standard
+  enable:
+    - bodyclose # HTTP response bodies are closed
+    - errorlint # errors are compared and wrapped correctly (errors.Is/As, %w)
+    - gosec # common security problems
+    - misspell # spelling in comments and strings
+    - nolintlint # every //nolint names the linter and says why
+    - revive # style, including doc comments on exported identifiers
+    - usestdlibvars # use http.MethodGet etc. instead of literals
+  settings:
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+  exclusions:
+    generated: lax
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/Tales-of-zuna/gobento
