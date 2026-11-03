@@ -116,7 +116,7 @@ requests, so a required check from it would block them forever.
 | Job | What it checks |
 |---|---|
 | `website` | `pnpm install --frozen-lockfile`, that `go list ./...` sees nothing under `website/`, lint, type-check, Prettier, Vitest, and the static build |
-| `website-e2e` | Playwright end-to-end tests with axe accessibility audits against the static export under `/gobento/` |
+| `website-e2e` | Playwright end-to-end tests with axe accessibility audits against the static export under `/gobento/`; when it fails, the HTML report, traces, and screenshots are attached to the run as the `playwright-report` artifact (kept for 7 days) |
 | `lighthouse` | The Lighthouse budget (below); the reports are attached to the run as the `lighthouse-reports` artifact |
 | `website-ok` | Always runs, and fails if any job above failed or was cancelled (skipped counts as passing) |
 
@@ -127,7 +127,7 @@ reports on pull requests that do not touch the site.
 **Lighthouse budget.** The `project-website` spec requires the home page, the
 configurator, and a docs page to score at least 90 (0.9) for both performance
 and accessibility in a mobile Lighthouse audit. `website/lighthouserc.cjs`
-holds the URLs and the assertions; each page is audited three times and the
+holds the URLs and the assertions; each page is audited five times and the
 median run counts, which smooths out runner noise. Lighthouse simulates a
 mid-range phone on a slow 4G connection, so a failure usually means the page
 ships too much JavaScript, CSS, or fonts, or renders its main text late. Open

@@ -15,8 +15,11 @@ module.exports = {
       startServerCommand: `node scripts/serve-static.mjs ${port}`,
       startServerReadyPattern: 'Serving',
       url: [`${base}/`, `${base}/configurator/`, `${base}/docs/getting-started/quick-start/`],
-      // Lighthouse scores vary between runs; assertions use the median run.
-      numberOfRuns: 3,
+      // Lighthouse scores vary between runs, most on shared CI runners, where a
+      // single run of a page scoring 0.94 locally has dropped to 0.89. The
+      // assertions use the median run; with five runs per URL, three runs
+      // have to be slow to fail the budget instead of two.
+      numberOfRuns: 5,
       settings: {
         formFactor: 'mobile',
         // Containers (CI runners) often cannot use the Chrome sandbox.
