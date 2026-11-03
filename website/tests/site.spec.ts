@@ -27,7 +27,7 @@ function collectFailedRequests(page: Page): () => Promise<string[]> {
 }
 
 const pages = [
-  { name: 'home', path: './', heading: 'gobento' },
+  { name: 'home', path: './', heading: 'Pack your Go project like a bento.' },
   { name: 'docs', path: 'docs/', heading: 'Introduction' },
 ];
 
@@ -64,14 +64,36 @@ for (const { name, path, heading } of pages) {
   });
 }
 
-test('renders the shadcn Button with the shared theme', async ({ page }) => {
-  await page.goto('./');
-  const button = page.locator('[data-slot="button"]').first();
-  await expect(button).toBeVisible();
-  expect(await button.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(
-    'rgba(0, 0, 0, 0)',
-  );
-});
+for (const colorScheme of ['light', 'dark'] as const) {
+  test(`maps the gobento tokens onto the shadcn variables (${colorScheme})`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme });
+    await page.goto('./');
+    const vars = await page.evaluate(() => {
+      const root = getComputedStyle(document.documentElement);
+      const get = (name: string) => root.getPropertyValue(name).trim();
+      return {
+        pairs: [
+          ['--background', '--wash'],
+          ['--foreground', '--ink'],
+          ['--card', '--paper'],
+          ['--muted', '--tray'],
+          ['--muted-foreground', '--ink-2'],
+          ['--primary', '--shu-text'],
+          ['--primary-foreground', '--on-shu'],
+          ['--accent', '--matcha-soft'],
+          ['--border', '--line'],
+          ['--ring', '--focus'],
+        ].map(([shadcn, token]) => [get(shadcn!), get(token!)]),
+        dark: document.documentElement.classList.contains('dark'),
+      };
+    });
+    expect(vars.dark).toBe(colorScheme === 'dark');
+    for (const [shadcn, token] of vars.pairs) {
+      expect(token).not.toBe('');
+      expect(shadcn).toBe(token);
+    }
+  });
+}
 
 test('static search loads its index from under the base path', async ({ page }) => {
   await page.goto('docs/');
