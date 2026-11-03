@@ -4,3 +4,4 @@ description: SQLite through modernc.org/sqlite, a pure-Go driver that needs no c
 provides:
   sql-dialect: sqlite
   conn: database/sql
+  sql-schema: schema.sql

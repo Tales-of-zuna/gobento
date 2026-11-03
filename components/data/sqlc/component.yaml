@@ -4,3 +4,4 @@ description: Type-safe Go code generated from SQL queries by sqlc.
 requires:
   sql-dialect: [sqlite]
   conn: [database/sql]
+  sql-schema: [schema.sql]
