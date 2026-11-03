@@ -40,9 +40,9 @@ func TestShippedCatalog(t *testing.T) {
 				}
 			}
 
-			supported := cat.Supported()
+			supported := cat.Candidates()
 			if len(supported) == 0 {
-				t.Fatal("Supported() is empty")
+				t.Fatal("Candidates() is empty")
 			}
 			for _, s := range supported {
 				var ids []string
@@ -65,11 +65,11 @@ func TestShippedCatalogFirstSlice(t *testing.T) {
 		t.Fatalf("Load() error = %v", err)
 	}
 	var got []string
-	for _, s := range cat.Supported() {
+	for _, s := range cat.Candidates() {
 		got = append(got, s.String())
 	}
 	if len(got) != 1 || got[0] != "mvc/nethttp/sqlite/sqlc" {
-		t.Errorf("Supported() = %v, want [mvc/nethttp/sqlite/sqlc]", got)
+		t.Errorf("Candidates() = %v, want [mvc/nethttp/sqlite/sqlc]", got)
 	}
 }
 

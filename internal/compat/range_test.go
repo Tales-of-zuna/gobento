@@ -209,3 +209,23 @@ func TestRangeExactAndString(t *testing.T) {
 		}
 	}
 }
+
+func TestGoDirective(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		in, want string
+		wantErr  bool
+	}{
+		{in: "1.27", want: "1.27.0"},
+		{in: "1.26", want: "1.26.0"},
+		{in: "1.26.3", want: "1.26.3"},
+		{in: "go1.27", wantErr: true},
+	}
+	for _, tt := range tests {
+		got, err := GoDirective(tt.in)
+		if (err != nil) != tt.wantErr || got != tt.want {
+			t.Errorf("GoDirective(%q) = %q, %v; want %q, wantErr %v", tt.in, got, err, tt.want, tt.wantErr)
+		}
+	}
+}

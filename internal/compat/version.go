@@ -59,3 +59,15 @@ func isDecimal(s string) bool {
 	}
 	return true
 }
+
+// GoDirective returns the Go version as written in a generated go.mod: the
+// full release version, such as 1.27.0 for 1.27. Go orders 1.27 before
+// 1.27.0, so a short directive would be raised by any dependency that
+// declares go 1.27.0.
+func GoDirective(v string) (string, error) {
+	norm, err := NormalizeGo(v)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimPrefix(norm, "v"), nil
+}

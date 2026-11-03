@@ -408,11 +408,10 @@ func (c *Catalog) Component(kind Kind, name string) (*Component, bool) {
 	return c.components[i], true
 }
 
-// Supported returns every selection of one component per kind whose trait
-// requirements are met, in kind order and then by name. Whether a listed
-// selection also composes is checked by package compose and by the
-// integration tests, which generate every listed selection.
-func (c *Catalog) Supported() []Selection {
+// Candidates returns every selection of one component per kind whose trait
+// requirements are met, in kind order and then by name. A candidate is
+// supported only if it also composes; compose.Supported checks that.
+func (c *Catalog) Candidates() []Selection {
 	var out []Selection
 	for _, a := range c.Components(KindArchitecture) {
 		for _, f := range c.Components(KindFramework) {

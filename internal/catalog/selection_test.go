@@ -6,23 +6,23 @@ import (
 	"testing"
 )
 
-// TestSupportedExcludesTraitMismatch covers the spec scenario "Trait
+// TestCandidatesExcludesTraitMismatch covers the spec scenario "Trait
 // mismatch is not supported": data/pgonly requires the postgres dialect,
 // which no database in the fixture catalog provides.
-func TestSupportedExcludesTraitMismatch(t *testing.T) {
+func TestCandidatesExcludesTraitMismatch(t *testing.T) {
 	t.Parallel()
 
 	cat := loadFixture(t, "catalog")
 	var got []string
-	for _, s := range cat.Supported() {
+	for _, s := range cat.Candidates() {
 		got = append(got, s.String())
 	}
 	if want := "layered/web/lite/query"; strings.Join(got, ",") != want {
-		t.Errorf("Supported() = %v, want [%s]", got, want)
+		t.Errorf("Candidates() = %v, want [%s]", got, want)
 	}
 }
 
-func TestSupportedCrossProduct(t *testing.T) {
+func TestCandidatesCrossProduct(t *testing.T) {
 	t.Parallel()
 
 	comp := func(kind Kind, name string, provides map[string]string) *Component {
@@ -37,17 +37,17 @@ func TestSupportedCrossProduct(t *testing.T) {
 		comp(KindData, "x1", nil),
 	}}
 	var got []string
-	for _, s := range cat.Supported() {
+	for _, s := range cat.Candidates() {
 		got = append(got, s.String())
 	}
 	want := "a1/f1/d1/x1,a1/f1/d2/x1,a2/f1/d1/x1,a2/f1/d2/x1"
 	if strings.Join(got, ",") != want {
-		t.Errorf("Supported() = %v, want %s", got, want)
+		t.Errorf("Candidates() = %v, want %s", got, want)
 	}
 
 	cat.components = cat.components[:5] // no data component
-	if s := cat.Supported(); len(s) != 0 {
-		t.Errorf("Supported() without a data component = %v, want none", s)
+	if s := cat.Candidates(); len(s) != 0 {
+		t.Errorf("Candidates() without a data component = %v, want none", s)
 	}
 }
 
