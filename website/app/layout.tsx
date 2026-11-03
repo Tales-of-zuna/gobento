@@ -36,6 +36,18 @@ export default function Layout({ children }: LayoutProps<'/'>) {
       className={cn('font-sans', display.variable, body.variable, mono.variable)}
       suppressHydrationWarning
     >
+      <head>
+        {/*
+         * Marks <html> before the first paint when scripts run, so entrance
+         * animations can play. Without JavaScript the class never appears and
+         * the server-rendered page stays fully visible (components/home/motion).
+         */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "document.documentElement.classList.add('motion-ready')",
+          }}
+        />
+      </head>
       <body className="flex min-h-screen flex-col">
         <Provider>{children}</Provider>
       </body>

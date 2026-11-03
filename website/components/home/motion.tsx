@@ -1,78 +1,77 @@
 'use client';
 /**
- * Motion helpers for the home page. Reveals animate opacity and position
- * once; under prefers-reduced-motion they jump straight to the end state,
- * which is also what the server renders after hydration. Presses spring.
+ * Motion helpers for the home page.
+ *
+ * Reveals are progressive enhancement: the server-rendered HTML is fully
+ * visible, so content shows without JavaScript, before hydration, and to
+ * crawlers. Animations only add to that (motion.module.css):
+ *
+ * - Page-load reveals (the hero) are CSS keyframes gated by the
+ *   `motion-ready` class, which an inline script in the root layout puts on
+ *   <html> before the first paint. Without JavaScript the class never
+ *   appears and nothing animates.
+ * - In-view reveals start when their group scrolls into the window, after
+ *   hydration. A group that is already on screen when the page hydrates
+ *   stays as it is instead of blinking out and back in.
+ *
+ * Everything sits behind prefers-reduced-motion: no-preference. Presses
+ * spring with Motion.
  */
 import Link from 'next/link';
-import {
-  motion,
-  MotionConfig,
-  useReducedMotion,
-  type HTMLMotionProps,
-  type Variants,
-} from 'motion/react';
-import type { ComponentProps, ReactNode } from 'react';
+import { motion, MotionConfig, type HTMLMotionProps } from 'motion/react';
+import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
+import { cn } from '@/lib/utils';
+import m from './motion.module.css';
 
 /** Wraps the page so Motion honours the visitor's reduced-motion setting. */
 export function HomeMotion({ children }: { children: ReactNode }) {
   return <MotionConfig reducedMotion="user">{children}</MotionConfig>;
 }
 
-const hiddenRise = { opacity: 0, y: 18 };
-const shownRise = { opacity: 1, y: 0 };
-const hiddenPop = { opacity: 0, scale: 0.9, y: 10 };
-const shownPop = { opacity: 1, scale: 1, y: 0 };
-
-/** Builds an item's variants; under reduced motion the end state is reached at once. */
-function itemVariants(kind: 'rise' | 'pop', reduce: boolean | null): Variants {
-  const instant = { duration: 0 };
-  if (kind === 'pop') {
-    return {
-      hidden: hiddenPop,
-      shown: {
-        ...shownPop,
-        transition: reduce ? instant : { type: 'spring', stiffness: 320, damping: 18 },
-      },
-    };
-  }
-  return {
-    hidden: hiddenRise,
-    shown: {
-      ...shownRise,
-      transition: reduce ? instant : { duration: 0.7, ease: [0.2, 0.7, 0.2, 1] },
-    },
-  };
-}
-
-/** Plays its children's reveals in sequence when the page loads. */
+/**
+ * Plays its children's reveals in sequence: on page load, or with `inView`
+ * when the group first scrolls into the window.
+ */
 export function Stagger({
   children,
   className,
   inView = false,
-  ...rest
-}: { children: ReactNode; className?: string; inView?: boolean } & Omit<
-  HTMLMotionProps<'div'>,
-  'children'
->) {
-  const reduce = useReducedMotion();
-  const play = reduce || !inView ? { animate: 'shown' } : { whileInView: 'shown' };
+}: {
+  children: ReactNode;
+  className?: string;
+  inView?: boolean;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [playing, setPlaying] = useState(false);
+
+  useEffect(() => {
+    const group = ref.current;
+    if (!inView || !group || typeof IntersectionObserver === 'undefined') return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    group.querySelectorAll<HTMLElement>('[data-reveal-item]').forEach((item, i) => {
+      item.style.setProperty('--i', String(i));
+    });
+    let first = true;
+    const observer = new IntersectionObserver(([entry]) => {
+      const initial = first;
+      first = false;
+      if (!entry?.isIntersecting) return;
+      // Already visible at hydration: leave it be. Otherwise it is entering now.
+      if (!initial) setPlaying(true);
+      observer.disconnect();
+    });
+    observer.observe(group);
+    return () => observer.disconnect();
+  }, [inView]);
+
   return (
-    <motion.div
-      className={className}
-      initial="hidden"
-      {...play}
-      viewport={{ once: true, amount: 0.25 }}
-      variants={{
-        hidden: {},
-        shown: {
-          transition: reduce ? { duration: 0 } : { staggerChildren: 0.1, delayChildren: 0.05 },
-        },
-      }}
-      {...rest}
+    <div
+      ref={ref}
+      className={cn(inView ? m.view : m.load, className)}
+      data-reveal={playing ? 'play' : undefined}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
@@ -81,17 +80,15 @@ export function Item({
   children,
   className,
   kind = 'rise',
-  as = 'div',
+  as: Tag = 'div',
 }: {
   children: ReactNode;
   className?: string;
   kind?: 'rise' | 'pop';
   as?: 'div' | 'li';
 }) {
-  const variants = itemVariants(kind, useReducedMotion());
-  const Tag = as === 'li' ? motion.li : motion.div;
   return (
-    <Tag className={className} variants={variants}>
+    <Tag className={cn(m.item, kind === 'pop' && m.pop, className)} data-reveal-item>
       {children}
     </Tag>
   );
