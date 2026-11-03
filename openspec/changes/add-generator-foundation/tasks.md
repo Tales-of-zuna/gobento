@@ -37,7 +37,7 @@
 - [x] 6.1 Implement preflight (`go` on PATH, `go env GOVERSION` vs the selected Go version under `GOTOOLCHAIN`, target directory state); verify tests for the *Go toolchain preflight* and *Output location* scenarios using a fake `go` binary in a temp PATH
 - [x] 6.2 Implement writing to `.gobento-tmp-*`, rendering `go.mod`, the single `go get` plus `go mod tidy` under the controlled environment, the modfile re-check, and `toolchain` removal; verify a test where a fake `go` raises a version and the error names it as a missing constraint
 - [x] 6.3 Implement placement (rename, move into an existing empty target, Windows retry) and cleanup on error and interrupt via `signal.NotifyContext`; verify tests for *No partial projects* (a failing fake `go get`, and a cancelled context mid-run) that assert no leftovers and an untouched pre-existing target
-- [ ] 6.4 Add the integration test (skipped under `-short`): for each supported selection, generate with defaults and with range floors, then run build, vet, test, `gofmt -l`, `go mod verify`, the pin assertions, and the `go list -deps` contract check; verify it passes locally
+- [x] 6.4 Add the integration test (skipped under `-short`): for each supported selection, generate with defaults and with range floors, then run build, vet, test, `gofmt -l`, `go mod verify`, the pin assertions, and the `go list -deps` contract check; verify it passes locally
 
 ## 7. CLI (`internal/cli`)
 

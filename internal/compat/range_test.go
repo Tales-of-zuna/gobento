@@ -229,3 +229,34 @@ func TestGoDirective(t *testing.T) {
 		}
 	}
 }
+
+func TestRangeFloor(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		rng    string
+		want   string
+		wantOK bool
+	}{
+		{rng: ">=v1.61.0 <v2.0.0", want: "v1.61.0", wantOK: true},
+		{rng: "=v1.31.1", want: "v1.31.1", wantOK: true},
+		{rng: ">=v1.0.0 >=v1.2.0", want: "v1.2.0", wantOK: true},
+		{rng: ">v1.0.0", wantOK: false},
+		{rng: "<v2.0.0", wantOK: false},
+		{rng: ">=v2.0.0 <v1.0.0", wantOK: false},
+	}
+	for _, tt := range tests {
+		r, err := ParseRange(tt.rng)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, ok := r.Floor()
+		if got != tt.want || ok != tt.wantOK {
+			t.Errorf("Range(%q).Floor() = %q, %v; want %q, %v", tt.rng, got, ok, tt.want, tt.wantOK)
+		}
+	}
+	g, _ := ParseGoRange(">=1.26 <1.28")
+	if got, ok := g.Floor(); got != "v1.26.0" || !ok {
+		t.Errorf("go range Floor() = %q, %v; want v1.26.0, true", got, ok)
+	}
+}

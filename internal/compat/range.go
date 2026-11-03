@@ -109,3 +109,20 @@ func (r Range) Exact() (string, bool) {
 func (r Range) String() string {
 	return r.raw
 }
+
+// Floor returns the lowest version r allows: the highest version named by a
+// >= or = comparator. It reports false when r has no such lower bound, for
+// example ">v1.0.0" or "<v2.0.0". Go ranges return normalized versions such
+// as v1.26.0.
+func (r Range) Floor() (string, bool) {
+	floor := ""
+	for _, c := range r.comparators {
+		if (c.op == ">=" || c.op == "=") && (floor == "" || semver.Compare(c.version, floor) > 0) {
+			floor = c.version
+		}
+	}
+	if floor == "" || !r.Contains(floor) {
+		return "", false
+	}
+	return floor, true
+}
