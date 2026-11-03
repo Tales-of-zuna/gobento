@@ -28,7 +28,7 @@ to be applied.
 ## 4. Theme, landing page, and mascot
 
 - [x] 4.1 Apply the approved tokens as CSS variables for Tailwind, shadcn, and Fumadocs, with a theme switch that follows the system preference and remembers a choice without a flash; verify e2e tests for *System preference* and *Explicit choice persists*
-- [ ] 4.2 Build the procedural 3D mascot in React Three Fiber from the approved sheet, and review it with the maintainer; if it does not reach the approved look, switch to a GLB model (record the decision in design.md); verify the maintainer's approval of the result
+- [x] 4.2 Build the procedural 3D mascot in React Three Fiber from the approved sheet, and review it with the maintainer; if it does not reach the approved look, switch to a GLB model (record the decision in design.md); verify the maintainer's approval of the result
 - [x] 4.3 Add lazy loading, WebGL detection with static-still fallback, an error boundary, reduced-motion static pose, DPR clamp, and off-screen pause; verify e2e tests for *Reduced motion requested* and *WebGL unavailable*
 - [x] 4.4 Build the landing page (value proposition, quick-start copy, links), the pre-release notice driven by the release manifest, and the footer with gopher attribution and non-affiliation; verify e2e tests for *First visit*, *Copy quick start*, *No release yet*, and *Footer credits*
 
