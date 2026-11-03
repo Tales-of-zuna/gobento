@@ -72,7 +72,7 @@ fixed functions:
 | Slot | Contract the filling component must provide |
 |---|---|
 | `models` (architecture) | `type Item struct{ID int64; Name string; CreatedAt time.Time}`, `type ItemStore interface{ List(ctx) ([]Item, error); Create(ctx, name string) (Item, error) }` |
-| `database` | `func Open(ctx context.Context, dsn string) (T, error)`, where `T` has `Close()` and is named by the `conn` trait |
+| `database` | `func Open(ctx context.Context, dsn string) (T, error)`, where `T` has `Close() error` and is named by the `conn` trait |
 | `store` | `func New(db T) models.ItemStore` |
 | `handlers` | `func NewRouter(items models.ItemStore) http.Handler` |
 
@@ -214,16 +214,20 @@ would touch many places.
    version. If the selected version is newer and `GOTOOLCHAIN=local`, fail.
    If it is newer otherwise, warn that Go will download it. Check the target
    directory (missing, or empty, is OK).
-3. **Write** the Plan into `.gobento-tmp-<random>` in the target's parent (same
-   filesystem). `go.mod` is rendered directly from data (module and `go`
+3. **Write** the Plan into `.gobento-tmp-<random>`: in the target's parent when
+   the target is missing, and inside the target when it exists and is empty.
+   Either way the final rename stays on one file system, and an existing target
+   needs no write access to its parent. Directories are created with mode
+   `0755` (before the umask), files with `0644`. `go.mod` is rendered directly from data (module and `go`
    directive), not created by `go mod init`. The `go` directive is written as a
    full release version (`1.27` → `go 1.27.0`, that is `NormalizeGo` without
    the `v`). Go orders `1.26` before `1.26.0`, so a short directive would be
    raised by dependencies that declare `go 1.26.0`, such as modernc.org/sqlite,
    and step 5 would reject it.
 4. **Resolve:** run one `go get mod1@v1 mod2@v2 ...`, then `go mod tidy`. All go
-   commands get a controlled environment: `GOWORK=off`, `GOFLAGS=-mod=mod`, and
-   the user's `GOPROXY`/`GONOSUMDB`/`GOPRIVATE` passed through unchanged.
+   commands get a controlled environment: `GOWORK=off`, and `-mod=mod` in
+   `GOFLAGS` (replacing only a user `-mod` flag). Everything else, such as
+   `GOPROXY`, `GOPRIVATE`, and other `GOFLAGS`, is passed through unchanged.
 5. **Re-check:** parse `go.mod` (`golang.org/x/mod/modfile`). The `go` directive
    and every direct requirement must equal the chosen values. A difference is
    reported as a missing rules constraint. A `toolchain` line added by the local
@@ -232,14 +236,19 @@ would touch many places.
 6. **Place:**
    - If the target is missing, rename the temp dir to the target.
    - If the target exists and is empty (including `.`), move each top-level
-     entry into it, then remove the temp dir.
-   - On Windows, a rename or move that fails with an access-denied error is
-     retried with short backoff, because antivirus and indexers briefly hold
-     new files.
+     entry up into it, then remove the temp dir. An entry that already exists
+     in the target (checked with `Lstat`) stops the move and triggers the
+     rollback.
+   - On Windows, a rename, move, or cleanup that fails with access denied or a
+     sharing violation is retried with short backoff, because antivirus and
+     indexers briefly hold new files. A rename across file systems (`EXDEV`)
+     is reported as such.
 7. **Cleanup and interrupts:** everything runs under `signal.NotifyContext`
-   (os.Interrupt), and go subprocesses use `exec.CommandContext`. On any error
-   or interrupt, the temp dir is removed, along with any entries already moved
-   into a pre-existing target. The target directory itself is never deleted.
+   (os.Interrupt and SIGTERM), and go subprocesses use `exec.CommandContext`.
+   On any error or interrupt, the temp dir is removed, along with any entries
+   already moved into a pre-existing target. The target directory itself is
+   never deleted. After an interrupt gobento prints that nothing was left
+   behind (or names what it could not remove) and exits with status 130.
 
 ### D6. sqlc output is pre-generated and shipped
 

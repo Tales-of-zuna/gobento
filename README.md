@@ -78,7 +78,16 @@ gobento new --help
 Generation runs `go get` and `go mod tidy`, so it needs access to the Go module
 proxy. gobento checks every input before writing anything, refuses non-empty
 directories, and removes everything it created if a step fails or you press
-Ctrl-C.
+Ctrl-C. After an interrupt it prints `interrupted; nothing was left behind`
+and exits with status 130.
+
+Project names start with a lowercase letter and use only lowercase letters,
+digits, `-`, and `_`. Names that Windows reserves for devices, such as `con`,
+`nul`, `com1`, or `lpt1`, are rejected.
+
+The generated project's README describes its API, including its error
+responses (`400` for invalid JSON, `413` for bodies over 1 MiB), and how its
+schema and sqlc code are maintained.
 
 The first supported stack generates a project like this, with a health
 endpoint and one example resource that builds and passes its own tests:

@@ -36,8 +36,13 @@ values, gobento SHALL exit non-zero naming the flag and listing the values.
 
 ### Requirement: Project name and module path rules
 The project name SHALL start with a lowercase letter and contain only lowercase
-letters, digits, `-`, and `_`. The module path SHALL be a valid Go import path,
+letters, digits, `-`, and `_`, and SHALL NOT be a device name that Windows
+reserves (`con`, `prn`, `aux`, `nul`, `com1`–`com9`, `lpt1`–`lpt9`). The module path SHALL be a valid Go import path,
 as accepted by `go mod init`.
+
+#### Scenario: Name reserved on Windows
+- **WHEN** the user runs `gobento new con`
+- **THEN** gobento exits non-zero explaining that the name is reserved on Windows, and writes nothing
 
 #### Scenario: Invalid project name
 - **WHEN** the user runs `gobento new "My App"`
@@ -123,4 +128,4 @@ it was, and SHALL report the cause.
 
 #### Scenario: User interrupts generation
 - **WHEN** the user presses Ctrl-C while dependencies are being fetched
-- **THEN** gobento stops, removes everything it created, and exits non-zero
+- **THEN** gobento stops, removes everything it created, reports that it was interrupted, and exits with status 130

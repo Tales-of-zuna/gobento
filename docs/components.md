@@ -106,7 +106,7 @@ the functions each slot must provide. For `mvc`:
 | Slot | Contract |
 |---|---|
 | `models` (architecture) | `type Item struct{ ID int64; Name string; CreatedAt time.Time }` and `type ItemStore interface{ List(ctx) ([]Item, error); Create(ctx, name string) (Item, error) }` |
-| `database` | `func Open(ctx context.Context, dsn string) (T, error)`, where `T` has a `Close` method |
+| `database` | `func Open(ctx context.Context, dsn string) (T, error)`, where `T` has a `Close() error` method |
 | `store` | `func New(db T) models.ItemStore` |
 | `handlers` | `func NewRouter(items models.ItemStore) http.Handler` |
 
@@ -176,7 +176,10 @@ Composition also:
 - formats every `.go` output with `go/format`, and reports a failure with the
   component and the file;
 - appends each component's rendered `notes.md.tmpl` to the root `README.md`,
-  in kind order;
+  in kind order. Use notes for what a project's maintainer needs to know about
+  your component: `nethttp` documents the API and its error responses,
+  `sqlite` explains how the schema is applied, and `sqlc` shows how to
+  regenerate its code;
 - reports every problem at once: unknown or unfilled slots, slots with two
   owners or an owner of the wrong kind, two slots in one directory, file
   conflicts, root files inside a slot directory, components that produce
