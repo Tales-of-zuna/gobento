@@ -27,24 +27,26 @@ rather than text:
 - **English only.** No Japanese characters in the interface. The wordmark is
   plain `gobento`.
 - **Light-first.** A warm "evening bento" dark theme is derived from the light
-  one.
+  one: cocoa-brown surfaces (page lightness about 0.28, not near-black), lightened
+  on the maintainer's request on 2026-11-03.
 
 ## Tokens
 
 Defined in [`app/tokens.css`](app/tokens.css), with the same names as the
 design files.
 
-| Group             | Tokens                                                                         | Use                                          |
-| ----------------- | ------------------------------------------------------------------------------ | -------------------------------------------- |
-| Surfaces          | `--wash`, `--paper`, `--tray`                                                  | page, raised surfaces, compartments          |
-| Text              | `--ink`, `--ink-2`, `--line`                                                   | text and outlines, secondary text, hairlines |
-| Strong accents    | `--shu`, `--matcha`, `--sora` (+ `--on-*`)                                     | buttons, selected states, display type       |
-| Text-safe accents | `--shu-text`, `--matcha-ink`, `--sora-ink`, `--tamago-ink`, `--danger-ink`     | links, labels, errors (at least 4.5:1)       |
-| Food pastels      | `--shu-soft`, `--tamago-soft`, `--matcha-soft`, `--sora-soft`, `--sakura-soft` | section bands, compartments                  |
-| Illustration      | `--tamago`, `--sakura`, `--nori`                                               | stickers and decoration only, never text     |
-| Shape             | `--r-sm/md/lg/xl`, `--stroke`, `--toy-1/2/3`                                   | radii, outline width, offset shadows         |
-| Kind identity     | `--kind-architecture/framework/database/data`                                  | the same color per component kind everywhere |
-| Patterns          | `--pat-seigaiha`, `--pat-ichimatsu`, `--pat-mizutama`, `--scallop`             | band backgrounds and scalloped edges         |
+| Group             | Tokens                                                                         | Use                                                                           |
+| ----------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| Surfaces          | `--wash`, `--paper`, `--tray`                                                  | page, raised surfaces, compartments                                           |
+| Text              | `--ink`, `--ink-2`, `--line`                                                   | text and outlines, secondary text, hairlines                                  |
+| Strong accents    | `--shu`, `--matcha`, `--sora` (+ `--on-*`)                                     | buttons, selected states, display type                                        |
+| Text-safe accents | `--shu-text`, `--matcha-ink`, `--sora-ink`, `--tamago-ink`, `--danger-ink`     | links, labels, errors (at least 4.5:1)                                        |
+| Food pastels      | `--shu-soft`, `--tamago-soft`, `--matcha-soft`, `--sora-soft`, `--sakura-soft` | section bands, compartments                                                   |
+| Illustration      | `--tamago`, `--sakura`, `--nori`                                               | stickers and decoration only, never text                                      |
+| Recessed          | `--well`                                                                       | command blocks, code snippets, tray frames (ink in light, deep cocoa in dark) |
+| Shape             | `--r-sm/md/lg/xl`, `--stroke`, `--toy-1/2/3`                                   | radii, outline width, offset shadows                                          |
+| Kind identity     | `--kind-architecture/framework/database/data`                                  | the same color per component kind everywhere                                  |
+| Patterns          | `--pat-seigaiha`, `--pat-ichimatsu`, `--pat-mizutama`, `--scallop`             | band backgrounds and scalloped edges                                          |
 
 Type: **Zen Maru Gothic** (display), **Figtree** (text), **JetBrains Mono**
 (code, ligatures off). All three are on Google Fonts, under the SIL Open Font

@@ -435,7 +435,7 @@
 }
 :global(.dark) .cmd {
   color: var(--ink);
-  background: oklch(0.14 0.02 45);
+  background: var(--well);
   border: var(--stroke) solid var(--line);
 }
 .cmd code {
@@ -857,7 +857,7 @@
 }
 :global(.dark) .code {
   color: var(--ink);
-  background: oklch(0.14 0.02 45);
+  background: var(--well);
   border: var(--stroke) solid var(--line);
 }
 .code .c {

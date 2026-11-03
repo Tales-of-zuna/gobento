@@ -505,7 +505,7 @@
 }
 
 :global(.dark) .tray {
-  background: oklch(0.14 0.02 45);
+  background: var(--well);
 }
 
 .cell {
@@ -669,7 +669,7 @@
 }
 
 :global(.dark) .cmd {
-  background: oklch(0.14 0.02 45);
+  background: var(--well);
   color: var(--ink);
   border: var(--stroke) solid var(--line);
 }
