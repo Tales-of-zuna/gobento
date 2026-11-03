@@ -1,0 +1,46 @@
+schema: spec-driven
+
+# Project context (optional)
+# Add only constraints that should guide OpenSpec artifacts and workflows.
+# Include constraints an agent cannot infer by reading the code.
+# Keep general project documentation and discoverable codebase facts out.
+# Example:
+#   context: |
+#     Designs and tasks must cover Windows, macOS, and Linux
+#     Write all artifacts in Spanish
+
+context: |
+  gobento is an open-source Go CLI that generates new Go projects (an actively
+  maintained alternative to melkeydev/go-blueprint). Users pick backend
+  framework, database, ORM, frontend, tool versions, and architecture.
+  - Generated projects are composed from parts: an architecture defines slots,
+    and framework/database/ORM fragments fill them. No per-combination templates.
+  - Tool version compatibility is data (a rules file of compatible ranges),
+    resolved at generation time, never hard-coded in templates.
+  - JS frontends (React/Vue/Svelte) come from official scaffolders; gobento owns
+    templates only where no scaffolder exists (e.g. htmx + templ).
+  - Every supported combination must be provably buildable in CI.
+  - Must work on Linux, macOS, and Windows.
+  - No AI attribution lines in commits, PRs, docs, or generated output.
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always state what is out of scope
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
