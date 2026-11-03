@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -44,8 +45,8 @@ type Request struct {
 	Modules []compat.ModuleVersion
 	// Target is the directory to create or fill.
 	Target string
-	// GoCommand is the go command to run. The default is "go", looked up
-	// on PATH.
+	// GoCommand is the go command to run: a name looked up on PATH, or a
+	// path to the binary. The default is "go".
 	GoCommand string
 	// Env is the environment for go commands. The default is the process
 	// environment. GOWORK and GOFLAGS are always overridden; everything
@@ -55,7 +56,8 @@ type Request struct {
 	Warn io.Writer
 }
 
-func (r Request) withDefaults() Request {
+// withDefaults fills in the defaults of r and makes Target absolute.
+func (r Request) withDefaults() (Request, error) {
 	if r.GoCommand == "" {
 		r.GoCommand = "go"
 	}
@@ -65,17 +67,19 @@ func (r Request) withDefaults() Request {
 	if r.Warn == nil {
 		r.Warn = io.Discard
 	}
-	if abs, err := filepath.Abs(r.Target); err == nil {
-		r.Target = abs
+	abs, err := filepath.Abs(r.Target)
+	if err != nil {
+		return r, fmt.Errorf("%w: %w", ErrTarget, err)
 	}
-	return r
+	r.Target = abs
+	return r, nil
 }
 
 // Generate creates the project described by req in req.Target:
 //
 //  1. Preflight checks the go command and the target.
-//  2. The plan and go.mod are written into a temporary directory next to
-//     the target.
+//  2. The plan and go.mod are written into a temporary directory: next to
+//     a missing target, or inside an existing empty one.
 //  3. go get fetches the chosen library versions, then go mod tidy runs.
 //  4. go.mod is checked: the go directive and every chosen version must be
 //     unchanged, and a toolchain line is removed.
@@ -84,7 +88,10 @@ func (r Request) withDefaults() Request {
 // If any step fails or ctx is cancelled, everything Generate created is
 // removed and a pre-existing target is left as it was.
 func Generate(ctx context.Context, req Request) (err error) {
-	req = req.withDefaults()
+	req, err = req.withDefaults()
+	if err != nil {
+		return err
+	}
 	tc, err := preflight(ctx, req)
 	if err != nil {
 		return err
@@ -93,10 +100,14 @@ func Generate(ctx context.Context, req Request) (err error) {
 	if err != nil {
 		return err
 	}
-
-	tmp, err := os.MkdirTemp(filepath.Dir(req.Target), tempPrefix+"*")
+	exists, err := targetExists(req.Target)
 	if err != nil {
-		return fmt.Errorf("create temporary directory: %w", err)
+		return err
+	}
+
+	tmp, err := workDir(req.Target, exists)
+	if err != nil {
+		return err
 	}
 	var moved []string
 	defer func() {
@@ -120,15 +131,19 @@ func Generate(ctx context.Context, req Request) (err error) {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	moved, err = place(tmp, req.Target)
+	moved, err = place(ctx, tmp, req.Target, exists)
 	return err
 }
 
 // writePlan writes every planned file and go.mod into dir.
 func writePlan(dir string, plan *compose.Plan, module, goDirective string) error {
 	for _, f := range plan.Files {
-		p := filepath.Join(dir, filepath.FromSlash(f.Path))
-		if err := os.MkdirAll(filepath.Dir(p), 0o750); err != nil {
+		rel := filepath.FromSlash(f.Path)
+		if !filepath.IsLocal(rel) {
+			return fmt.Errorf("write %s: the path leaves the project directory", f.Path)
+		}
+		p := filepath.Join(dir, rel)
+		if err := os.MkdirAll(filepath.Dir(p), dirMode); err != nil {
 			return fmt.Errorf("write %s: %w", f.Path, err)
 		}
 		if err := os.WriteFile(p, f.Content, f.Mode.Perm()); err != nil {
@@ -239,15 +254,37 @@ func runGo(ctx context.Context, goPath, dir string, env []string, args ...string
 	return nil
 }
 
-// goEnv returns env with the variables gobento controls overridden: no
-// workspace, and go commands may update go.mod.
+// goEnv returns env with the settings gobento controls: no workspace, and
+// go commands may update go.mod. The user's other GOFLAGS are kept; only a
+// -mod flag is replaced.
 func goEnv(env []string) []string {
 	out := make([]string, 0, len(env)+2)
+	var flags []string
 	for _, kv := range env {
-		if strings.HasPrefix(kv, "GOWORK=") || strings.HasPrefix(kv, "GOFLAGS=") {
+		key, value, _ := strings.Cut(kv, "=")
+		switch {
+		case envKeyIs(key, "GOWORK"):
+			continue
+		case envKeyIs(key, "GOFLAGS"):
+			flags = nil // the last setting wins, as in the go command
+			for _, f := range strings.Fields(value) {
+				if !strings.HasPrefix(f, "-mod=") && !strings.HasPrefix(f, "--mod=") {
+					flags = append(flags, f)
+				}
+			}
 			continue
 		}
 		out = append(out, kv)
 	}
-	return append(out, "GOWORK=off", "GOFLAGS=-mod=mod")
+	flags = append(flags, "-mod=mod")
+	return append(out, "GOWORK=off", "GOFLAGS="+strings.Join(flags, " "))
+}
+
+// envKeyIs reports whether the environment variable name key is name.
+// Windows treats names case-insensitively.
+func envKeyIs(key, name string) bool {
+	if runtime.GOOS == "windows" {
+		return strings.EqualFold(key, name)
+	}
+	return key == name
 }

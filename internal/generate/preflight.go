@@ -17,7 +17,7 @@ import (
 	"github.com/Tales-of-zuna/gobento/internal/compat"
 )
 
-// Errors returned by Preflight, wrapped with details. Test for them with
+// Errors returned by Generate before anything is written, wrapped with details. Test for them with
 // errors.Is.
 var (
 	// ErrNoGo reports that the go command was not found.
@@ -36,16 +36,11 @@ type toolchain struct {
 	goToolEnv string // GOTOOLCHAIN, for example auto or local
 }
 
-// Preflight checks, before anything is written, that the go command exists,
+// preflight checks, before anything is written, that the go command exists,
 // that it can provide the selected Go version, and that the target is a
 // missing or empty directory whose parent exists. Warnings, such as a Go
 // toolchain that will be downloaded, are written to req.Warn. All problems
 // are returned together.
-func Preflight(ctx context.Context, req Request) error {
-	_, err := preflight(ctx, req.withDefaults())
-	return err
-}
-
 func preflight(ctx context.Context, req Request) (toolchain, error) {
 	var errs []error
 	tc, err := findToolchain(ctx, req)
@@ -106,9 +101,10 @@ func checkGoVersion(tc toolchain, selected string, warn io.Writer) error {
 		return fmt.Errorf("%w: Go %s is selected, but the local toolchain is Go %s and GOTOOLCHAIN=%s prevents downloading a newer one; install Go %s or choose an older version with --go",
 			ErrToolchain, selected, localShown, tc.goToolEnv, selected)
 	}
-	_, err = fmt.Fprintf(warn, "warning: Go %s is selected and the local toolchain is Go %s; the go command will download Go %s\n",
+	// A warning that cannot be written is not a reason to stop.
+	_, _ = fmt.Fprintf(warn, "warning: Go %s is selected and the local toolchain is Go %s; the go command will download Go %s\n",
 		selected, localShown, selected)
-	return err
+	return nil
 }
 
 // releaseVersion extracts the release from a GOVERSION value such as
@@ -135,9 +131,10 @@ func downloadsDisabled(goToolchain string) bool {
 }
 
 // checkTarget accepts a missing directory whose parent exists, or an empty
-// directory.
+// directory. A symbolic link to an empty directory is accepted; a broken
+// link is not.
 func checkTarget(target string) error {
-	info, err := os.Stat(target)
+	linfo, err := os.Lstat(target)
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
 		parent := filepath.Dir(target)
@@ -147,7 +144,14 @@ func checkTarget(target string) error {
 		return nil
 	case err != nil:
 		return fmt.Errorf("%w: %w", ErrTarget, err)
-	case !info.IsDir():
+	}
+	info := linfo
+	if linfo.Mode()&fs.ModeSymlink != 0 {
+		if info, err = os.Stat(target); err != nil {
+			return fmt.Errorf("%w: %s is a symbolic link that cannot be followed: %w", ErrTarget, target, err)
+		}
+	}
+	if !info.IsDir() {
 		return fmt.Errorf("%w: %s exists and is not a directory", ErrTarget, target)
 	}
 	entries, err := os.ReadDir(target)

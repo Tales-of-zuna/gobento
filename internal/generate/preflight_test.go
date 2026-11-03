@@ -76,7 +76,7 @@ func TestPreflightToolchain(t *testing.T) {
 				goCommand = fakeGoPath
 			}
 			var warn bytes.Buffer
-			err := Preflight(context.Background(), Request{
+			err := runPreflight(context.Background(), Request{
 				GoVersion: tt.goVersion,
 				Target:    filepath.Join(t.TempDir(), "shop"),
 				GoCommand: goCommand,
@@ -153,7 +153,7 @@ func TestPreflightTarget(t *testing.T) {
 
 			target := tt.setup(t)
 			before := snapshot(t, filepath.Dir(target))
-			err := Preflight(context.Background(), Request{
+			err := runPreflight(context.Background(), Request{
 				GoVersion: "1.27",
 				Target:    target,
 				GoCommand: fakeGoPath,
@@ -194,6 +194,16 @@ func TestReleaseVersion(t *testing.T) {
 			t.Errorf("releaseVersion(%q) = %q, %v; want %q, %v", tt.in, got, ok, tt.want, tt.wantOK)
 		}
 	}
+}
+
+// runPreflight runs the preflight checks the way Generate does.
+func runPreflight(ctx context.Context, req Request) error {
+	req, err := req.withDefaults()
+	if err != nil {
+		return err
+	}
+	_, err = preflight(ctx, req)
+	return err
 }
 
 func writeFile(t *testing.T, path, content string) {

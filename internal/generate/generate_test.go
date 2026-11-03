@@ -252,7 +252,7 @@ func TestRetry(t *testing.T) {
 			t.Parallel()
 
 			calls := 0
-			err := retry(func() error {
+			err := retry(context.Background(), func() error {
 				err := tt.results[calls]
 				calls++
 				return err
