@@ -52,7 +52,7 @@
 
 ## 9. End-to-end check
 
-- [ ] 9.1 Build gobento, run `gobento new shop --module example.com/shop`, start the app, and verify `GET /health` returns 200 and that `POST /items` then `GET /items` round-trips through SQLite (spec *Example functionality is present*)
+- [x] 9.1 Build gobento, run `gobento new shop --module example.com/shop`, start the app, and verify `GET /health` returns 200 and that `POST /items` then `GET /items` round-trips through SQLite (spec *Example functionality is present*)
 
 ## Workflow follow-up
 
