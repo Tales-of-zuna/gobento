@@ -67,9 +67,29 @@ website/
 | 3D | three + @react-three/fiber + @react-three/drei | Declarative scenes as React components. The pmndrs ecosystem behind the zustand demo site's style. |
 | Animation | Motion | Spring-based UI animation with built-in reduced-motion support |
 
-Exact versions are pinned during apply from the version research (see task
-1.1). One shared set of CSS variables (design tokens, D6) themes shadcn and
-Fumadocs together, so docs and marketing pages look like one product.
+Versions verified on 2026-11-03 and pinned exactly:
+- Next.js 16.4.4.
+- React and React DOM **19.3.1, pinned exactly**, because React Three Fiber
+  9.8.2 only supports React below 19.4.
+- Fumadocs core/ui 16.17.10 (the Base UI build, `@fumadocs/base-ui`) and
+  fumadocs-mdx 15.4.10.
+- Tailwind CSS 4.3.4.
+- shadcn CLI 4.23.0, initialized with `--base base`, so shadcn and Fumadocs
+  share Base UI instead of shipping both Base UI and Radix.
+- TypeScript ^5.9. TypeScript 7 support in Next.js is unverified.
+- three 0.187, @react-three/fiber 9.8.2, @react-three/drei 10.7.9, and
+  motion 14.9.
+- pnpm 12.16.1, pinned in `packageManager`. Corepack is not relied on: it is
+  no longer bundled from Node 25.
+
+The baseline is Fumadocs' official "Next.js Static" template. One shared set of
+CSS variables (design tokens, D6) themes shadcn and Fumadocs through
+`fumadocs-ui/css/shadcn.css`, so docs and marketing pages look like one
+product.
+
+**Gotcha:** Fumadocs' static search ignores Next.js `basePath`. The client must
+call `useStaticSearch({ from: "/gobento/api/search" })`, derived from the same
+base-path constant as `next.config.ts`.
 
 ### D3. Catalog bridge: Go owns the logic, the site reads JSON
 
@@ -80,16 +100,26 @@ Fumadocs together, so docs and marketing pages look like one product.
   - the Go version range and default;
   - modules per component, with role, range, default, and constraints already
     normalized (each constraint as `{ when, requires: { module|go, range } }`);
-  - the CLI's name and module-path rules as regular expressions.
+  - the selections the CLI supports (`compose.Supported`), one component
+    name per kind;
+  - the CLI's name and module-path rules as regular expressions, exported
+    from `internal/generate`: the project-name pattern with the reserved
+    Windows device names, and a module-path pattern that approximates
+    `module.CheckImportPath` (it accepts every valid path, but does not
+    reject Windows-reserved path elements such as `con` or `abc~1`, which
+    `gobento new` still reports; a Go fuzz test holds it to that).
 - **Producer:** a small Go program `internal/tools/catalogexport`, which uses
-  the real `internal/catalog` and `internal/compat` packages, writes
-  `website/src/generated/catalog.json`. The file is committed, so website
-  contributors do not need Go. A CI job re-runs the exporter and fails if the
-  file changes, the same freshness pattern as sqlc in
-  `add-generator-foundation` (D6).
-- **Before the generator lands:** `catalog.json` is a hand-written fixture
-  describing the first slice (mvc, nethttp, sqlite, sqlc), validated by the same
-  zod schema. Task group 7 switches to the exporter.
+  the real `internal/catalog`, `internal/compat`, and `internal/compose`
+  packages, writes `website/src/generated/catalog.json` (`make catalog`). The
+  file is committed, so website contributors do not need Go. The Go test
+  `TestCommittedCatalogIsCurrent` (run by `go test` in CI) and
+  `make catalog-check` re-run the exporter and fail if the file differs, the
+  same freshness pattern as sqlc in `add-generator-foundation` (D6). Kind
+  titles and descriptions, which the catalog has no text for, live in the
+  exporter.
+- **Before the generator landed,** `catalog.json` was a hand-written fixture
+  of the first slice, validated by the same zod schema; task group 7 replaced
+  it with the exporter's output.
 - **In the browser:** `lib/catalog` evaluates ranges and constraints with a
   small semver comparison. The logic is deliberately tiny, because the rules
   arrive pre-normalized. The cross-check test (D4) guards against any
@@ -117,25 +147,31 @@ Fumadocs together, so docs and marketing pages look like one product.
   values. It is unit-tested with table tests.
 - Incompatible options are rendered disabled, with a tooltip and an
   `aria-describedby` explanation built from the failed trait or constraint.
-- **Cross-check test** (spec: *Generated commands are accepted by the CLI*): a
-  Vitest suite enumerates every supported selection from the real
-  `catalog.json`, builds each command, and runs
-  `go run ./cmd/gobento new … --dry-run` in a CI job that has Go. It runs only
-  when the real exporter output is present (task group 7).
+- **Cross-check test** (spec: *Generated commands are accepted by the CLI*),
+  split so that neither toolchain needs the other and the command builder is
+  never duplicated: a Vitest suite (`lib/command/cli-commands.test.ts`)
+  enumerates every supported selection from the real `catalog.json`, builds
+  each command with `lib/command/build.ts` (with the defaults, and with every
+  flag explicit at the range floors), and keeps them in the committed file
+  `lib/command/supported-commands.txt` as a file snapshot, so a stale file
+  fails the suite. The Go test `TestWebsiteCommands` (`internal/cli`) runs
+  each command with `--dry-run` and checks that together they cover every
+  supported selection. Driving `build.ts` from Go through Node was rejected:
+  it would make `go test` depend on Node and `node_modules`.
 
 ### D5. Documentation
 
 - Fumadocs serves `content/docs`. Sections follow the spec: Getting started,
-  Concepts, CLI reference, Components, and Contributing a component.
-- The Components section is a server component that renders from
-  `catalog.json` at build time, so no MDX contains a version number.
+  Concepts, CLI reference, Component reference, and Contributing.
+- The Component reference is a server component that renders from
+  `catalog.json` at build time, so it contains no hand-written version numbers (a test enforces this). Other pages may show clearly labelled illustrative versions.
 - Search is Fumadocs' static index, built at export time and queried in the
   browser.
 - "Edit this page" links to
   `https://github.com/Tales-of-zuna/gobento/edit/main/website/content/docs/<path>`.
 - The existing `docs/components.md` from the generator change moves into
-  `content/docs/contributing/components.mdx` when both changes have landed. A
-  stub at the old path keeps links working.
+  `content/docs/contributing/adding-a-component.mdx` when both changes have
+  landed. A stub at the old path keeps links working.
 
 ### D6. Visual design in Claude Design, approved before code
 
@@ -153,7 +189,7 @@ Design tools and shared with the maintainer. It contains:
 2. **Mascot sheet:** an original gopher-inspired character in or as a bento
    box, shown in front, three-quarter, and side views, with expressions and a
    static hero pose. This sheet is the reference for the 3D build and the
-   source of the SVG fallback and favicon.
+   source of the static stills and favicon (see D7).
 3. **Pages:** home, configurator, and a docs page, at desktop and mobile
    sizes, in light and dark themes.
 
@@ -163,17 +199,33 @@ Tailwind, shadcn, and Fumadocs.
 
 ### D7. Mascot implementation
 
-- **3D:** built in code from primitives in React Three Fiber (rounded boxes for
-  the bento, capsules and spheres for the gopher), with toon shading and
-  outlines matching the approved 2D sheet. This keeps the mascot reviewable as
-  code, animatable (idle bob, blink, lid opening on hover), and small, with no
-  binary model pipeline.
-  *Alternative:* a GLB modelled in Blender. Kept as the fallback if the
+- **3D-first (maintainer's choice):**
+  - The mascot is designed directly as a 3D model in code, from primitives
+    (rounded boxes for the bento; capsules and spheres for the gopher), with
+    toon shading and inverted-hull outlines in direction A's palette.
+  - Concepts are prototyped in plain three.js and compared as renders. The
+    winner is ported to React Three Fiber.
+  - Claude Design is not used to draw the mascot, because its guidelines
+    reserve complex illustration for real assets. Page designs show a
+    labelled placeholder.
+  - This keeps the mascot reviewable as code, animatable (idle bob, blink, lid
+    opening on hover), and small, with no binary model pipeline.
+  *Alternative:* a GLB modelled in Blender, kept as the fallback if the
   procedural version cannot reach the approved look. That decision is made at
   task 4.2, with the maintainer.
-- **Static fallback:** an SVG exported from the approved sheet. It is used for
-  reduced motion, without WebGL, while loading, in the favicon, and in social
-  images.
+- **Chosen concept:** the maintainer picked concept 1, "In the box" (the
+  gopher sunk into the big compartment of an open bento, paws over the rim,
+  the lid leaning behind as a backrest, four food compartments beside it), in
+  sora blue `#A9C6E6`. Its framing is landscape, 3:2.
+- **Static fallback:** rendered stills of the approved 3D model (WebP/PNG at
+  1× and 2×, 720×480 and 1440×960), plus a head-only render (the round head
+  with ears and sprout, slight three-quarter) at 64, 128, and 256 px. The
+  hero stills are used for reduced motion, without WebGL, and while loading;
+  the head renders are the favicon (64), the apple-touch icon (128), and the
+  avatar or social image (256).
+  `pnpm mascot:stills` renders them from the R3F scene itself (Vite plus
+  headless Chromium, transparent background) into `public/mascot/`, so the
+  stills cannot drift from the 3D model.
 - **Attribution:** the footer credits Renée French (CC BY 4.0) for the original
   Go gopher design and states non-affiliation with the Go project. The mascot
   is our own drawing. The Go logo is not used.
@@ -181,14 +233,44 @@ Tailwind, shadcn, and Fumadocs.
 ### D8. 3D loading and runtime
 
 - The scene is a client component loaded with `next/dynamic` (`ssr: false`).
-  The static SVG renders first, so the scene never blocks content or LCP.
-- WebGL support is detected before mounting. On failure, or on an error
-  boundary catch, the SVG stays.
-- `prefers-reduced-motion`: the scene renders a single static pose
-  (`frameloop="demand"`) and Motion's reduced-motion setting disables
-  decorative transitions.
+  The static still (D7) is in the HTML first, sized to avoid layout shift, so
+  the scene never blocks content or LCP; the canvas cross-fades in after its
+  first frame.
+- The scene waits for the visitor's first interaction with the page (pointer
+  move or press, key, touch, wheel, or scroll). Until then, three.js is not
+  downloaded or compiled, so it never competes with the page's own loading
+  (it once cost the configurator about 10 s of main-thread time under
+  Lighthouse's mobile throttling). A visitor who never interacts keeps the
+  still, which shows the same pose.
+- WebGL support is detected before mounting. On failure, on an error
+  boundary catch, or on a lost WebGL context, the still stays.
+- `prefers-reduced-motion`: when it is set on load, the still is shown and
+  the 3D code is never downloaded (the still is a render of the same static
+  pose). If it is turned on while the scene runs, the scene switches to a
+  single static pose (`frameloop="demand"`). Motion's reduced-motion setting
+  disables decorative transitions.
 - Device pixel ratio is clamped to [1, 2]. Rendering pauses when the canvas is
   off-screen or the tab is hidden.
+- **3D and motion across the site:** the maintainer wants clean but impressive
+  animation used often. This is the motion language:
+  - Home: the mascot hero, plus subtle ambient particles.
+  - **Configurator:** a 3D bento box that *packs itself*. Each chosen
+    component drops into its compartment with a spring, which shows the slot
+    model.
+  - UI-wide: staggered reveals, spring presses, crossfades on command
+    changes, and copy feedback, implemented with Motion.
+  - Docs stay calm: an active-indicator slide, TOC highlight, and a search
+    dialog scale-in.
+- Every 3D scene is its own lazily loaded client chunk, shares one small
+  material and asset module, and obeys the same rules as above: SSR off,
+  static still first, loaded on the first interaction, WebGL fallback, and
+  reduced motion means a static frame. The configurator's stage uses the same
+  still and loader as the home hero, so its tray never moves when the scene
+  arrives.
+- Motion is loaded the same way: components use its lightweight `m`
+  elements inside `LazyMotion`, whose animation features arrive in their own
+  chunk after the first render. The Lighthouse budget (spec *Performance*) is the guardrail that keeps
+  "often" from becoming "heavy".
 
 ### D9. Build, CI, and deployment
 
@@ -201,8 +283,8 @@ Tailwind, shadcn, and Fumadocs.
   - lint, type-check, Vitest, `next build`;
   - Playwright e2e with axe in both themes;
   - Lighthouse CI against the export with the budget from the spec.
-  - Once the exporter exists, also the catalog freshness check and the CLI
-    cross-check.
+  - The catalog freshness check and the Go half of the CLI cross-check run
+    with the Go tests in `ci.yml`; Vitest checks the commands file.
 - `.github/workflows/pages.yml` runs on pushes to `main` touching the same
   paths. It builds and deploys with `actions/configure-pages`,
   `actions/upload-pages-artifact`, and `actions/deploy-pages`, with permissions
@@ -223,8 +305,10 @@ Tailwind, shadcn, and Fumadocs.
   and color doing most of the work.
 - [The procedural 3D mascot looks worse than a modelled one] → A decision
   point at task 4.2, with GLB as the fallback.
-- [three.js bundle size (~150 kB gzipped)] → Loaded lazily after content, and
-  only on the home page, guarded by the Lighthouse budget.
+- [three.js bundle size (~150 kB gzipped), now used on several pages] → Each
+  scene is a lazy client chunk, loaded after content and only on pages that use
+  it. They share one three.js chunk, so it is cached across pages. Guarded by
+  the Lighthouse budget on every page.
 - [Catalog logic diverges between Go and TypeScript] → Pre-normalized JSON, a
   freshness check, and the CLI cross-check over every supported selection.
 - [GitHub Pages `basePath` bugs (broken assets or links)] → Playwright runs

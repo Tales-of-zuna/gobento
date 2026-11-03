@@ -1,0 +1,69 @@
+---
+title: Components
+description: The four kinds of components gobento composes into a project, and how a selection is made.
+---
+
+A **component** is one piece of a generated project: an architecture, an HTTP
+framework, a database, or a data-access library. Components are data (a
+`component.yaml` manifest plus `.tmpl` template files), not Go code inside
+gobento.
+
+## The four kinds
+
+| Kind           | Flag          | What it contributes                                                                                                       | First-slice option |
+| -------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| Architecture   | `--arch`      | The project layout (its [slots](/docs/concepts/slots-and-contracts)), the entry point, and the Go contracts between slots | `mvc`              |
+| HTTP framework | `--framework` | The router and HTTP handlers                                                                                              | `nethttp`          |
+| Database       | `--db`        | Opening the database connection and applying the schema                                                                   | `sqlite`           |
+| Data access    | `--data`      | The store that implements the data contract on top of the database                                                        | `sqlc`             |
+
+## A selection
+
+A **selection** is one component of each kind. It always contains exactly one
+architecture, one framework, one database, and one data-access component.
+
+You choose with the flags above. If you omit a flag:
+
+- and the kind has exactly one supported option, gobento selects it for you;
+- and the kind has several options, gobento stops, names the flag, and lists
+  the supported values.
+
+With one option per kind in the first slice, the project name is enough:
+
+```sh
+gobento new shop
+```
+
+## Supported selections
+
+Not every selection can be built. A selection is **supported** exactly when:
+
+1. it has one component of each kind,
+2. every trait a component requires is provided (see [Traits](/docs/concepts/traits)), and
+3. it passes composition (see [Slots and contracts](/docs/concepts/slots-and-contracts)).
+
+The list of supported selections is derived from the component catalog alone.
+CI generates, builds, and tests every one of them on Linux, macOS, and
+Windows. The website's configurator reads the same list from the exported
+catalog, and a test runs the command it builds for each one through
+`gobento new --dry-run`.
+
+## Where components live
+
+Each component is a directory in the repository under
+`components/<kind>/<name>/`. Its `component.yaml` has these keys, and unknown
+keys are rejected:
+
+| Key           | Kinds             | Meaning                                                          |
+| ------------- | ----------------- | ---------------------------------------------------------------- |
+| `name`        | all               | Equal to the directory name; matches `^[a-z][a-z0-9-]*$`         |
+| `title`       | all               | Required display name, such as `SQLite`                          |
+| `description` | all               | Optional one-sentence summary                                    |
+| `slots`       | architecture only | The [slots](/docs/concepts/slots-and-contracts) it declares      |
+| `provides`    | all               | [Traits](/docs/concepts/traits) it provides: trait → value       |
+| `requires`    | all               | Traits it needs from the others: trait → list of accepted values |
+
+To see every component with its traits and
+versions, open the [Components reference](/docs/components), which is
+generated from the catalog. To write one, see
+[Adding a component](/docs/contributing/adding-a-component).

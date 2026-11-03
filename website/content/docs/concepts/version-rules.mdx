@@ -1,0 +1,152 @@
+---
+title: Version rules
+description: How gobento describes supported Go and module versions as data, lets you choose within them, and guarantees what your go.mod gets.
+---
+
+All version data lives in one rules file, `components/versions.yaml`. Templates
+never contain version numbers, so a version bump is a one-line, reviewable
+change.
+
+## The rules file
+
+```yaml title="components/versions.yaml"
+go:
+  range: '>=1.26 <1.28'
+  default: '1.27'
+modules:
+  modernc.org/sqlite:
+    components: [database/sqlite]
+    role: library
+    range: '>=v1.61.0 <v2.0.0'
+    default: v1.61.1
+    constraints:
+      - when: '>=v1.61.0'
+        require: { go: '>=1.26' }
+  github.com/sqlc-dev/sqlc:
+    components: [data/sqlc]
+    role: tool # not in go.mod; fixed per gobento release
+    range: '=v1.31.1'
+    default: v1.31.1
+```
+
+<Callout type="info">
+  This is the rules file at the time of writing. The [Components reference](/docs/components) is
+  generated from the real file, so it always shows the current ranges and defaults.
+</Callout>
+
+| Field                    | Meaning                                                                                                       |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `go.range`, `go.default` | The Go versions a generated project may use, and the one used by default                                      |
+| `modules.<path>`         | One entry per Go module, keyed by module path                                                                 |
+| `components`             | The components that use the module, as `<kind>/<name>`                                                        |
+| `role`                   | `library` (required in the generated `go.mod`) or `tool` (used but not in `go.mod`)                           |
+| `range`                  | The supported versions                                                                                        |
+| `default`                | The version used when you do not choose one; it must lie inside `range`                                       |
+| `constraints`            | Conditions on other versions; each applies `when` the module's version matches, and states what it `require`s |
+
+## Ranges
+
+A range is a space-separated list of comparators, all ANDed together:
+
+| Comparator  | Meaning      |
+| ----------- | ------------ |
+| `>=v1.61.0` | at least     |
+| `>v1.61.0`  | greater than |
+| `<=v1.61.0` | at most      |
+| `<v2.0.0`   | less than    |
+| `=v1.31.1`  | exactly      |
+
+So `">=v1.61.0 <v2.0.0"` means "v1.61.0 or newer, but older than v2.0.0".
+Versions are compared as semantic versions (with `golang.org/x/mod/semver`).
+Go versions are written without a `v` and normalized internally: `1.27` is
+compared as `v1.27.0`.
+
+## Defaults and overrides
+
+gobento resolves versions in this order:
+
+1. Start from the defaults: the default Go version and the default of every
+   library module the selection uses.
+2. Apply your overrides: `--go` for the Go version, and `--pin module=version`
+   for library modules.
+3. Check every version against its range.
+4. Evaluate every constraint whose `when` matches.
+
+Every problem from steps 3 and 4 is collected and reported together.
+
+```sh
+gobento new shop --go 1.26 --pin modernc.org/sqlite=v1.61.0
+```
+
+`--pin` is rejected when:
+
+- the version is outside the module's range (the error shows the range);
+- no selected component uses the module (the error names it);
+- the module is a tool (the error shows the version this release uses).
+
+See [Errors](/docs/cli/new#errors) for the exact messages.
+
+## Tool versions are fixed
+
+Tool modules, such as sqlc, have an exact range. Their version is fixed per
+gobento release and cannot be changed with `--pin`.
+
+sqlc's output is generated ahead of time and shipped with the component, so
+generating a project does not compile or run sqlc. The generated README shows
+how to regenerate the code with the pinned version:
+
+```sh
+go run github.com/sqlc-dev/sqlc/cmd/sqlc@<version> generate
+```
+
+## Constraint errors
+
+A constraint ties one version to another. In the example above, sqlite
+`>=v1.61.0` requires Go `>=1.26`. If you choose a module version that needs a
+newer Go than the one selected, gobento exits with status `1` and writes
+nothing. The error names the module, its version, the required range, and the
+selected version; if the rules allowed Go 1.25, choosing it would report:
+
+```text
+incompatible versions: modernc.org/sqlite v1.61.0 requires go >=1.26, but go 1.25 is selected
+```
+
+A constraint can also require another module (`require: { example.com/b: ">=v0.2.0" }`);
+it applies only when that module is part of the selection.
+
+## The rules file is checked
+
+Loading fails, with an error naming the module, if the rules file:
+
+- has an unknown field (a typo fails instead of being ignored),
+- declares a default outside its own range,
+- gives a tool a range other than one exact version, such as `=v1.31.1`,
+- references an unknown component or constraint target,
+- contains a malformed range or version.
+
+gobento's test suite checks the shipped rules file, and CI generates every
+supported selection twice: once with the defaults and once with the range
+floors. So every version a range claims to support is tested.
+
+## Exact pinning
+
+The generated `go.mod` contains exactly the chosen Go version and library
+versions. Every direct dependency is an exact version, and `go mod verify`
+succeeds.
+
+## The MVS re-check
+
+Go's dependency resolution (minimal version selection, MVS) can raise a
+version on its own, for example when another dependency needs something newer.
+gobento never accepts that silently:
+
+1. It runs `go get` with every chosen version, then `go mod tidy`.
+2. It parses the resulting `go.mod`. The `go` directive and every direct
+   requirement must equal the chosen values.
+3. If anything was raised, gobento exits with status `1` naming the module,
+   the chosen version, and the raised version, and leaves no files behind. A raise
+   means the rules file is missing a constraint, so please
+   [open an issue](https://github.com/Tales-of-zuna/gobento/issues).
+
+If your local toolchain adds a `toolchain` line to `go.mod`, gobento removes
+it, so the project does not depend on the machine that generated it.

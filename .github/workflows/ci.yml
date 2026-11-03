@@ -133,6 +133,6 @@ jobs:
           $regenerate
           if [ -n "$(git status --porcelain)" ]; then
             git diff
-            echo "::error::the shipped sqlc output is stale; regenerate it as described in docs/components.md"
+            echo "::error::the shipped sqlc output is stale; regenerate it as described in website/content/docs/contributing/adding-a-component.mdx"
             exit 1
           fi

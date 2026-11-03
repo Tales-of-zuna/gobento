@@ -1,0 +1,120 @@
+---
+title: Slots and contracts
+description: How an architecture's slots and Go contracts let components fit together without a template per combination.
+---
+
+## Slots are Go packages
+
+An architecture declares named **slots**. Each slot is one directory, which
+means one Go package. For each slot, the architecture states which component
+kind fills it and whether it is required.
+
+This is the `mvc` architecture's manifest:
+
+```yaml title="components/architecture/mvc/component.yaml"
+name: mvc
+title: Model-View-Controller
+description: Models, controllers, and a data store in separate packages, wired together in cmd/<name>.
+slots:
+  entry: { dir: 'cmd/{{.Project.Name}}', package: main, filled_by: architecture }
+  models: { dir: internal/models, filled_by: architecture }
+  handlers: { dir: internal/controllers, filled_by: framework, required: true }
+  database: { dir: internal/database, filled_by: database, required: true }
+  store: { dir: internal/store, filled_by: data, required: true }
+```
+
+Each slot has these keys:
+
+| Key         | Meaning                                                                                                                   |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `dir`       | Required. The directory, relative to the project root. It is a template over `.Project`, such as `cmd/{{.Project.Name}}`. |
+| `package`   | Optional. The Go package name; by default the last element of the rendered `dir`. The entry point sets `package: main`.   |
+| `filled_by` | Required. The kind that fills the slot: `architecture`, `framework`, `database`, or `data`.                               |
+| `required`  | Optional, default `false`. Whether a selection must fill the slot.                                                        |
+
+Slot names match `^[a-z][a-z0-9_]*$`, because templates use them as field
+names (`.Slots.handlers`), and `root` is reserved for files at the project
+root. A component does not list the slots it fills: a template under
+`files/<slot>/` fills `<slot>`.
+
+Components refer to slots by name (`handlers`), never by directory. If another
+architecture maps `handlers` to a different directory, the same framework
+files land there, with the matching package name and import paths.
+
+## One owner per slot
+
+Each slot is filled by exactly one component. No two components ever write
+into the same Go package or the same file.
+
+The owner may add its own subpackages below the slot directory. sqlc's
+generated code, for example, lives in `internal/store/sqlcgen`, a subpackage
+of the `store` slot. Other slots never import such subpackages.
+
+Components may also add files at the project root, such as `sqlc.yaml`. Those
+paths are checked for conflicts like any other file.
+
+## Architecture-owned contracts
+
+The architecture owns the entry point and the **contract** between slots: the
+shared types and function signatures. Every other component implements its
+slot's part of that contract, and imports other slots only through it.
+
+The `mvc` architecture's `main.go` calls these fixed functions:
+
+| Slot                    | Contract the filling component must provide                                                                                                                     |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `models` (architecture) | `type Item struct{ID int64; Name string; CreatedAt time.Time}`, `type ItemStore interface{ List(ctx) ([]Item, error); Create(ctx, name string) (Item, error) }` |
+| `database`              | `func Open(ctx context.Context, dsn string) (T, error)`, where `T` has `Close() error` and is named by the `conn` trait (`*sql.DB` for `database/sql`)          |
+| `store`                 | `func New(db T) models.ItemStore`                                                                                                                               |
+| `handlers`              | `func NewRouter(items models.ItemStore) http.Handler`                                                                                                           |
+
+`main.go` uses `db, err := database.Open(...)`, so it never names the
+connection type `T`. That type is described by the database's
+[`conn` trait](/docs/concepts/traits).
+
+Because the contract is plain Go, **the compiler checks it** in every
+generated project. Each component also has its own package, so identifier
+clashes are impossible: sqlc's generated `sqlcgen.Item` and `models.Item`
+coexist, and the store converts one into the other.
+
+CI also checks the dependency direction: the handlers package does not import
+the database or store packages, directly or transitively.
+
+<Callout type="info">
+  This contract belongs to `mvc` and its example `Item` resource. Another architecture may define a
+  different contract.
+</Callout>
+
+## Why there are no per-combination templates
+
+Many generators keep a template for each combination of options, so every new
+option multiplies the templates to maintain. gobento has none, because each
+component depends only on its slot's contract and on
+[traits](/docs/concepts/traits), never on which other component is selected.
+
+You can see this in a test gobento runs: when only the data-access component
+changes, the framework's files are generated **byte-for-byte identically**.
+
+An earlier design spliced code hooks from each component into a shared
+`main.go`. It was rejected: the hooks would have had to agree on local
+variable names and imports that nothing checks.
+
+## When composition fails
+
+gobento composes the whole project in memory before writing anything. It
+collects every problem and reports them together:
+
+| Problem                                                                 | The error names                            |
+| ----------------------------------------------------------------------- | ------------------------------------------ |
+| A component has templates for a slot the architecture does not declare  | the component and the slot                 |
+| A required slot receives no component                                   | the slot and the kind that must fill it    |
+| Two components fill the same slot, or a component of the wrong kind     | the components and the slot                |
+| Two slots render to the same directory                                  | the architecture and both slots            |
+| Two components produce the same file                                    | both components and the path               |
+| A root file lies inside a slot directory                                | the component, the path, and the slot      |
+| A component produces `go.mod` or `go.sum`, which gobento writes         | the component and the file                 |
+| A required trait is not met, or two components provide different values | the components and the trait               |
+| A generated `.go` file does not format with `go/format`                 | the component and the template             |
+| A template fails to render                                              | the component, the template, and the error |
+
+In every case gobento exits with status `1` and writes nothing.

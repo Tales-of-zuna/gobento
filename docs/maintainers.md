@@ -18,7 +18,8 @@ and search engines see. Keep it accurate as the project grows:
   the first release.
 - **Topics:** `go`, `golang`, `cli`, `project-generator`, `scaffolding`,
   `code-generator`, `boilerplate`, `templates`.
-- **Website:** leave empty until there is a documentation site.
+- **Website:** `https://tales-of-zuna.github.io/gobento/` once the first
+  Pages deployment has run (see [GitHub Pages](#github-pages)).
 
 The same values can be set from a terminal:
 
@@ -34,7 +35,7 @@ protection rule**), targeting `main`:
 | Setting | Value | Why |
 |---|---|---|
 | Require a pull request before merging | On (required approvals: 0 while there is a single maintainer; raise to 1 when a second maintainer joins) | Every change goes through a pull request and passes CI before it reaches `main`. GitHub does not let you approve your own pull request, so requiring an approval with one maintainer would block every merge. |
-| Require status checks to pass | On, with the checks `lint`, `test`, `vuln`, `actions`, and `pr-title` | These are the CI job names. `test` runs as a matrix, so select each `test (...)` entry GitHub lists after the first CI run. `pr-title` enforces the Conventional Commits title that becomes the squash commit. |
+| Require status checks to pass | On, with the checks `lint`, `test`, `vuln`, `actions`, `pr-title`, and `website-ok` | These are the CI job names. `test` runs as a matrix, so select each `test (...)` entry GitHub lists after the first CI run. `pr-title` enforces the Conventional Commits title that becomes the squash commit. `website-ok` sums up the website checks (see [Website checks](#website-checks)). |
 | Require branches to be up to date before merging | On | Checks run against the code that will actually land. |
 | Require linear history | On | Keeps `main` a simple list of squash commits, which release-please reads to build the changelog. |
 | Block force pushes and deletions | On | `main` history is never rewritten. |
@@ -84,6 +85,57 @@ Leave the default workflow permissions on read-only. Each workflow requests
 the extra permissions it needs.
 
 See [Managing GitHub Actions settings for a repository](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository).
+
+### GitHub Pages
+
+The website in `website/` is published by `.github/workflows/pages.yml` to
+<https://tales-of-zuna.github.io/gobento/>.
+
+**Settings → Pages → Build and deployment**:
+
+| Setting | Value | Why |
+|---|---|---|
+| Source | **GitHub Actions** | The workflow builds the static export and deploys it with `actions/deploy-pages`; there is no `gh-pages` branch. |
+
+The first deployment creates the `github-pages` environment. Leave its
+deployment branch rule at the default (`main` only, from the protected
+branch), so only `main` can publish. The workflow runs on every push to `main`
+that touches `website/`, `components/`, or `internal/tools/catalogexport/`,
+and can be started by hand from **Actions → Pages → Run workflow**.
+
+See [Configuring a publishing source](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site#publishing-with-a-custom-github-actions-workflow).
+
+### Website checks
+
+`.github/workflows/website.yml` runs on every pull request and every push to
+`main`. Its first job, `changes`, looks at the changed files; when none is in
+`website/`, `components/`, `internal/tools/catalogexport/`, or the workflow
+itself, the other jobs are skipped. A workflow-level path filter was not used
+on purpose: a filtered workflow does not report at all on unrelated pull
+requests, so a required check from it would block them forever.
+
+| Job | What it checks |
+|---|---|
+| `website` | `pnpm install --frozen-lockfile`, that `go list ./...` sees nothing under `website/`, lint, type-check, Prettier, Vitest, and the static build |
+| `website-e2e` | Playwright end-to-end tests with axe accessibility audits against the static export under `/gobento/` |
+| `lighthouse` | The Lighthouse budget (below); the reports are attached to the run as the `lighthouse-reports` artifact |
+| `website-ok` | Always runs, and fails if any job above failed or was cancelled (skipped counts as passing) |
+
+After the first run, add **only `website-ok`** to the required status checks
+of the `main` ruleset. It covers the other three jobs, and unlike them it also
+reports on pull requests that do not touch the site.
+
+**Lighthouse budget.** The `project-website` spec requires the home page, the
+configurator, and a docs page to score at least 90 (0.9) for both performance
+and accessibility in a mobile Lighthouse audit. `website/lighthouserc.cjs`
+holds the URLs and the assertions; each page is audited three times and the
+median run counts, which smooths out runner noise. Lighthouse simulates a
+mid-range phone on a slow 4G connection, so a failure usually means the page
+ships too much JavaScript, CSS, or fonts, or renders its main text late. Open
+the HTML report from the artifact to see which metric dropped. Fix the page
+rather than lowering the budget; changing the budget means changing the spec.
+The Lighthouse CI version is pinned in the workflow (`LHCI_VERSION`) and in
+CONTRIBUTING.md; bump both together.
 
 ### Labels
 

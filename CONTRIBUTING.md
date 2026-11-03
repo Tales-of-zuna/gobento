@@ -53,6 +53,8 @@ commands, so you can always run them directly.
 | `fmt` | Formats the code | `golangci-lint fmt` |
 | `tidy` | Cleans up `go.mod` and `go.sum` | `go mod tidy` |
 | `cover` | Prints test coverage per function | `go test -short -coverprofile=coverage.out ./...` then `go tool cover -func=coverage.out` |
+| `catalog` | Regenerates the website's `website/src/generated/catalog.json` from the component catalog, then (if `website/node_modules` exists) the website's CLI cross-check commands | `go run ./internal/tools/catalogexport -o website/src/generated/catalog.json`, then in `website/`: `pnpm exec vitest run lib/command/cli-commands.test.ts --update` |
+| `catalog-check` | Fails if `catalog.json` is stale or a command the website offers is rejected by `gobento new --dry-run` | `go test -run 'TestCommittedCatalogIsCurrent\|TestWebsiteCommands' ./internal/tools/catalogexport ./internal/cli` |
 | `clean` | Removes build and coverage output | Delete `bin/` and `coverage.out` |
 
 ### Notes for Windows
@@ -64,6 +66,56 @@ commands, so you can always run them directly.
   and macOS, so races are still caught.
 - The repository uses LF line endings everywhere (see `.gitattributes`). Git
   handles this for you; please do not commit CRLF line endings.
+
+## Working on the website
+
+The project website (<https://tales-of-zuna.github.io/gobento/>) lives in
+[`website/`](website): a Next.js static export with Fumadocs for the
+documentation. It is independent of the Go module; `go` commands never look
+inside it. You only need this setup to change the site.
+
+Prerequisites:
+
+- [Node.js](https://nodejs.org/) 24 (the version in `website/.nvmrc`; with
+  nvm, run `nvm use` inside `website/`)
+- [pnpm](https://pnpm.io/), at the exact version in the `packageManager` field
+  of `website/package.json`. The simplest way is Corepack, which ships with
+  Node and picks up that field: `corepack enable pnpm`.
+
+Install the dependencies and the Playwright browser once:
+
+```sh
+cd website
+pnpm install --frozen-lockfile
+pnpm exec playwright install --with-deps chromium   # browser for the e2e tests
+```
+
+Then use the `web-*` targets from the repository root, or the plain pnpm
+commands inside `website/`:
+
+| Target | What it does | Plain command (in `website/`) |
+|---|---|---|
+| `web-dev` | Starts the dev server at <http://localhost:3000/gobento/> | `pnpm dev` |
+| `web-check` | Lint, type-check, format check, unit tests | `pnpm lint && pnpm typecheck && pnpm format:check && pnpm test` |
+| `web-build` | Builds the static export into `website/out/` | `pnpm build` |
+| `web-e2e` | Builds the export, serves it under `/gobento/`, and runs the Playwright and axe tests | `pnpm e2e` |
+
+`pnpm format` rewrites files with Prettier when `format:check` complains.
+The e2e tests serve the export on port 4173. If that port is busy (for
+example, a second checkout runs its suite at the same time), choose another
+one with `E2E_PORT`, for example `E2E_PORT=4400 make web-e2e`.
+
+CI also enforces a Lighthouse budget (mobile performance and accessibility of
+at least 90 on the home, configurator, and a docs page). To run it locally
+after `pnpm build`, without adding a dependency:
+
+```sh
+# Keep the version in sync with LHCI_VERSION in .github/workflows/website.yml.
+npx --yes @lhci/cli@0.15.1 autorun
+```
+
+It needs Chrome or Chromium; point `CHROME_PATH` at it if it is not found, and
+set `LHCI_PORT` if port 4174 is busy. Reports land in `website/.lighthouseci/`.
 
 ## How changes are planned: OpenSpec
 
@@ -130,7 +182,8 @@ description. Releases and the changelog are generated from these titles.
 
 ### Before you open a pull request
 
-- Run `make lint test` (or the plain commands) and make sure both pass.
+- Run `make lint test` (or the plain commands) and make sure both pass. For
+  website changes, run `make web-check web-e2e` as well.
 - Add or update tests for the behavior you changed.
 - Update documentation that your change affects.
 - Link the OpenSpec change, or state "no behavior change".
@@ -159,7 +212,11 @@ you get stuck, ask in the issue; there are no silly questions.
 Components (frameworks, databases, data access libraries, architectures,
 frontends) are the heart of gobento. To suggest one, open a
 [component request](https://github.com/Tales-of-zuna/gobento/issues/new?template=component_request.yml).
-For how to build one, see [docs/components.md](docs/components.md).
+For how to build one, see
+[Adding a component](https://tales-of-zuna.github.io/gobento/docs/contributing/adding-a-component/)
+(source: [website/content/docs/contributing/adding-a-component.mdx](website/content/docs/contributing/adding-a-component.mdx)).
+After changing a component or `components/versions.yaml`, run `make catalog`
+so the website shows the change; `go test ./...` fails until you do.
 
 ## License
 

@@ -1,0 +1,59 @@
+---
+title: Installation
+description: What you need to run gobento, and how to install it.
+---
+
+<Callout type="info" title="Not released yet">
+  There is no tagged release yet. Until the first one, `go install ...@latest` builds the newest
+  commit of the main branch.
+</Callout>
+
+## Requirements
+
+- **Go 1.26 or newer.** gobento is a Go program, and it uses your local Go
+  toolchain to fetch the exact dependency versions of the project it
+  generates. The `go` command must be on your `PATH`.
+- **Network access to the Go module proxy.** Generation downloads the selected
+  module versions. Your `GOPROXY`, `GONOSUMDB`, and `GOPRIVATE` settings are
+  respected.
+- **No C compiler.** gobento and the first supported stack (including SQLite)
+  are pure Go, so cgo is not needed on Linux, macOS, or Windows.
+
+## Install the CLI
+
+```sh
+go install github.com/Tales-of-zuna/gobento/cmd/gobento@latest
+```
+
+Check that it is on your `PATH`:
+
+```sh
+gobento --help
+```
+
+To build from a clone instead, run `make build` (or
+`go build -o bin/gobento ./cmd/gobento`), which writes `bin/gobento`.
+
+Prebuilt binaries are on the roadmap. Until then, `go install` and building
+from source are the install methods.
+
+## Go version of generated projects
+
+The Go version of the tool you install and the Go version of the projects you
+generate are separate. Each generated project gets its `go` directive from the
+[version rules](/docs/concepts/version-rules), and you can choose another
+supported one with `--go`.
+
+Before writing anything, gobento compares the selected Go version with your
+local toolchain:
+
+- If the selected version is newer and `GOTOOLCHAIN` forbids downloads
+  (`local`, `path`, or a value ending in `+path`), gobento stops with an error
+  naming both versions.
+- If the selected version is newer otherwise, gobento warns that Go will
+  download the newer toolchain.
+- If no `go` command is found, gobento stops with instructions to install Go.
+
+## Next step
+
+Generate your first project in the [Quick start](/docs/getting-started/quick-start).

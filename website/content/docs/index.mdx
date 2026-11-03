@@ -1,0 +1,89 @@
+---
+title: Introduction
+description: gobento composes a ready-to-build Go project from the stack you choose, with versions checked against compatibility rules.
+---
+
+<Callout type="warn" title="Early development">
+  gobento is in early development and has no tagged release yet. `gobento new` works as these docs
+  describe when you build it from the main branch (see
+  [Installation](/docs/getting-started/installation)). To follow what is being built, see the
+  proposals in
+  [`openspec/changes/`](https://github.com/Tales-of-zuna/gobento/tree/main/openspec/changes).
+</Callout>
+
+## What gobento is
+
+gobento is a command-line tool that generates a new Go project from the stack
+you pick: an architecture, an HTTP framework, a database, and a data-access
+library.
+
+```sh
+gobento new shop --module example.com/shop
+```
+
+The generated project builds, passes `go vet` and `gofmt`, and passes its own
+tests without any edits from you.
+
+## Why it exists
+
+Project generators often hard-code tool versions in their templates and grow
+one template per combination of options. They fall behind upstream releases,
+and every new option multiplies the work.
+
+gobento avoids both problems:
+
+- **Your stack, your choice.** You select one component of each kind. Flags
+  are only required when a kind has more than one option.
+- **Versions as data.** All supported Go and module versions live in one rules
+  file. You can choose versions inside the supported ranges, and gobento
+  rejects combinations that do not work instead of silently changing them.
+- **Composed, not copy-pasted.** An architecture defines slots with Go
+  contracts between them, and components fill the slots. There is no template
+  per combination.
+- **Safe to run anywhere.** Every input problem is reported at once, before
+  anything is written. gobento only fills a new or empty directory, and on any
+  failure or Ctrl-C it leaves nothing behind.
+- **Proven builds.** Every supported combination is generated, built, and
+  tested in CI on Linux, macOS, and Windows.
+
+gobento is inspired by [go-blueprint](https://github.com/melkeydev/go-blueprint),
+which showed how much a good project generator helps Go developers get
+started.
+
+## The first slice
+
+The first supported stack is:
+
+| Kind           | Component                                     |
+| -------------- | --------------------------------------------- |
+| Architecture   | `mvc` (Model-View-Controller)                 |
+| HTTP framework | `nethttp` (the standard library's `net/http`) |
+| Database       | `sqlite` (pure Go, no cgo)                    |
+| Data access    | `sqlc`                                        |
+
+It generates a project with a health endpoint and one example resource,
+`/items`, stored in SQLite. More
+frameworks, databases, and architectures are on the roadmap; the
+[Components](/docs/components) reference always lists exactly what the
+catalog supports.
+
+## Where to go next
+
+<Cards>
+  <Card
+    title="Installation"
+    href="/docs/getting-started/installation"
+    description="What you need, and how to install gobento."
+  />
+  <Card
+    title="Quick start"
+    href="/docs/getting-started/quick-start"
+    description="Generate, test, and run your first project."
+  />
+  <Card
+    title="Concepts"
+    href="/docs/concepts/components"
+    description="Components, slots, contracts, traits, and version rules."
+  />
+  <Card title="CLI reference" href="/docs/cli/new" description="Every flag of gobento new." />
+</Cards>

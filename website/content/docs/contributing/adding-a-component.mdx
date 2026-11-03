@@ -1,0 +1,429 @@
+---
+title: Adding a component
+description: How a gobento component is laid out, what its templates can use, and how it is tested.
+---
+
+import { Files, Folder, File } from 'fumadocs-ui/components/files';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+
+A component is data: a manifest and a set of templates under
+[`components/`](https://github.com/Tales-of-zuna/gobento/tree/main/components).
+Adding one never requires a change to gobento's engine. Before you read this
+page, skim [Slots and contracts](/docs/concepts/slots-and-contracts) and
+[Traits](/docs/concepts/traits).
+
+<Callout type="info" title="Start with a proposal">
+  A new component adds options to `gobento new`, so it is a behavior change. Open a [component
+  request](https://github.com/Tales-of-zuna/gobento/issues/new?template=component_request.yml) to
+  discuss it, then follow the OpenSpec workflow in
+  [CONTRIBUTING.md](https://github.com/Tales-of-zuna/gobento/blob/main/CONTRIBUTING.md).
+</Callout>
+
+gobento builds a project from four components, one of each kind:
+
+| Kind           | Fills                                                 | First option |
+| -------------- | ----------------------------------------------------- | ------------ |
+| `architecture` | the entry point, the shared types, and the layout     | `mvc`        |
+| `framework`    | the HTTP handlers                                     | `nethttp`    |
+| `database`     | the database connection and schema                    | `sqlite`     |
+| `data`         | the data access that implements the shared interfaces | `sqlc`       |
+
+There is no template per combination. An architecture declares _slots_, each
+of the other components fills a slot, and _traits_ say which components fit
+together.
+
+## Directory layout
+
+Each component lives in `components/<kind>/<name>/`. The directory holds data
+only:
+
+<Files>
+  <Folder name="components" defaultOpen>
+    <File name="versions.yaml" />
+    <File name="embed.go" />
+    <Folder name="<kind>" defaultOpen>
+      <Folder name="<name>" defaultOpen>
+        <File name="component.yaml" />
+        <File name="notes.md.tmpl" />
+        <Folder name="files" defaultOpen>
+          <Folder name="<slot>" defaultOpen>
+            <File name="<file>.tmpl" />
+          </Folder>
+          <Folder name="root" defaultOpen>
+            <File name="<file>.tmpl" />
+          </Folder>
+        </Folder>
+      </Folder>
+    </Folder>
+  </Folder>
+</Files>
+
+| Path                       | Purpose                                                                                                              |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `versions.yaml`            | The [version rules](#versions) for every generated project.                                                          |
+| `embed.go`                 | Embeds the catalog into the gobento binary. The only Go file under `components/`.                                    |
+| `component.yaml`           | The [manifest](#the-manifest). The loader validates it.                                                              |
+| `files/<slot>/<file>.tmpl` | Rendered into that slot's directory, for example `files/store/` for the store slot.                                  |
+| `files/root/<file>.tmpl`   | Rendered into the project root, for example `sqlc.yaml`. Root paths are checked for conflicts with other components. |
+| `notes.md.tmpl`            | Optional notes appended to the generated README.                                                                     |
+
+For example, `components/framework/nethttp/files/handlers/router.go.tmpl`
+becomes `internal/controllers/router.go`, because `mvc` puts the `handlers`
+slot in `internal/controllers`.
+
+### The `.tmpl` rule
+
+Every file under `components/` must end in `.tmpl`, except `component.yaml`,
+`versions.yaml`, and `embed.go`. The suffix is removed in the output. As a
+result, no template is ever compiled, vetted, or linted as part of gobento
+itself.
+
+### Dotfiles
+
+No file or directory name under `components/` starts with `.`. Write `dot-`
+instead: a leading `dot-` in any path element becomes `.`, so
+`files/root/dot-gitignore.tmpl` renders as `.gitignore` and
+`files/root/dot-github/workflows/ci.yml.tmpl` renders as
+`.github/workflows/ci.yml`.
+
+Templates are read with `\r\n` normalized to `\n`, and the repository's
+`.gitattributes` forces LF line endings anyway.
+
+The catalog loader enforces these rules, and its tests load the shipped
+catalog, so a mistake fails `make test`.
+
+## The manifest
+
+`component.yaml` has exactly these keys. Unknown keys are rejected, so a typo
+fails loading instead of being ignored.
+
+| Key           | Kinds             | Meaning                                                                        |
+| ------------- | ----------------- | ------------------------------------------------------------------------------ |
+| `name`        | all               | Must equal the directory name and match `^[a-z][a-z0-9-]*$`.                   |
+| `title`       | all               | Required. A short display name, such as `SQLite`.                              |
+| `description` | all               | Optional. One sentence, shown in the [Components reference](/docs/components). |
+| `slots`       | architecture only | The slots the architecture declares (at least one).                            |
+| `provides`    | all               | Traits this component provides: trait → value.                                 |
+| `requires`    | all               | Traits this component needs: trait → list of accepted values.                  |
+
+Each slot has these keys:
+
+| Key         | Meaning                                                                                                                                                                           |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dir`       | Required. The slot's directory, relative to the project root. It is a template over `.Project`, for example `cmd/{{.Project.Name}}`.                                              |
+| `package`   | Optional. The Go package name. It defaults to the last element of the rendered `dir`; set it when that is not a valid package name, as the entry point does with `package: main`. |
+| `filled_by` | Required. The kind that fills the slot: `architecture`, `framework`, `database`, or `data`.                                                                                       |
+| `required`  | Optional, default `false`. The selection must fill the slot.                                                                                                                      |
+
+Slot names match `^[a-z][a-z0-9_]*$`, because templates use them as field
+names (`.Slots.handlers`), and `root` is reserved.
+
+This is a complete architecture manifest. gobento's documentation test loads
+it with the catalog loader, so it stays correct:
+
+{/* example-manifest */}
+
+```yaml title="components/architecture/mvc/component.yaml"
+name: mvc
+title: Model-View-Controller
+description: Models, controllers, and a data store in separate packages, wired together in cmd/<name>.
+slots:
+  entry: { dir: 'cmd/{{.Project.Name}}', package: main, filled_by: architecture }
+  models: { dir: internal/models, filled_by: architecture }
+  handlers: { dir: internal/controllers, filled_by: framework, required: true }
+  database: { dir: internal/database, filled_by: database, required: true }
+  store: { dir: internal/store, filled_by: data, required: true }
+```
+
+A component does not list the slots it fills. They follow from its layout: a
+template under `files/<slot>/` fills `<slot>`.
+
+The manifests of other kinds declare the traits they provide or require. This
+is `sqlite`'s:
+
+```yaml title="components/database/sqlite/component.yaml"
+name: sqlite
+title: SQLite
+description: SQLite through modernc.org/sqlite, a pure-Go driver that needs no cgo.
+provides:
+  sql-dialect: sqlite
+  conn: database/sql
+  sql-schema: schema.sql
+```
+
+and `sqlc` accepts it with:
+
+```yaml title="components/data/sqlc/component.yaml"
+requires:
+  sql-dialect: [sqlite]
+  conn: [database/sql]
+  sql-schema: [schema.sql]
+```
+
+A selection is refused if a required trait is missing or has a value the
+component does not accept, or if two components provide different values for
+the same trait. Traits also carry the few facts one component needs about
+another's files: `sqlc.yaml` finds the schema at
+`{{.Slots.database.Dir}}/{{index .Traits "sql-schema"}}`. See
+[Traits](/docs/concepts/traits).
+
+## Slots and contracts
+
+Each slot is one directory, which means one Go package, and it has exactly one
+owner. Two components can therefore never write into the same package or the
+same file, and their identifiers cannot clash. The owner may put its own
+subpackages below the slot directory; sqlc's generated code lives in
+`internal/store/sqlcgen`, for example. Other slots never import them.
+
+The architecture owns the entry point and the contract: the shared types and
+the functions each slot must provide. For `mvc`, see the
+[contract table](/docs/concepts/slots-and-contracts#architecture-owned-contracts).
+The Go compiler checks the contract in every generated project, and gobento's
+integration test checks that the handlers package does not depend on the
+database or store packages.
+
+## Templates
+
+Templates use Go's [`text/template`](https://pkg.go.dev/text/template). Every
+template, including slot directories and notes, receives the same data:
+
+| Field                   | Example                                    | Meaning                                      |
+| ----------------------- | ------------------------------------------ | -------------------------------------------- |
+| `.Project.Name`         | `shop`                                     | The project name                             |
+| `.Project.Module`       | `example.com/shop`                         | The module path                              |
+| `.Project.GoVersion`    | `1.27.0`                                   | The `go` directive of the generated `go.mod` |
+| `.Slots.<name>.Dir`     | `internal/controllers`                     | The slot's directory                         |
+| `.Slots.<name>.Package` | `controllers`                              | The slot's package name                      |
+| `.Slots.<name>.Import`  | `example.com/shop/internal/controllers`    | The slot's import path                       |
+| `.Traits`               | `{{index .Traits "sql-dialect"}}`          | The traits of the selection                  |
+| `.Versions`             | `{{index .Versions "modernc.org/sqlite"}}` | The chosen version of each module            |
+
+This data shape is the contributor API, and the golden test covers it. Use
+`index` for keys that contain `-`, `.`, or `/`. A missing key is an error, not
+an empty string, so `.Slots.handler` (a typo) fails composition.
+
+A handler template therefore starts like this:
+
+```go title="files/handlers/router.go.tmpl"
+package {{.Slots.handlers.Package}}
+
+import "{{.Slots.models.Import}}"
+
+func NewRouter(items {{.Slots.models.Package}}.ItemStore) http.Handler {
+```
+
+Module paths contain dots, so read `.Versions` with `index`:
+
+```text title="notes.md.tmpl"
+go run github.com/sqlc-dev/sqlc/cmd/sqlc@{{index .Versions "github.com/sqlc-dev/sqlc"}} generate
+```
+
+### Rules for templates
+
+- **No version numbers.** Versions come from `.Versions` and the rules file,
+  never from a template.
+- **Implement your slot's contract.** Provide exactly the functions and types
+  the architecture expects for your slot (see the
+  [contract table](/docs/concepts/slots-and-contracts#architecture-owned-contracts)).
+- **Import other slots only through the contract.** For example, handlers must
+  not import the database or store packages, directly or transitively.
+- **Use slot data, not directories.** Write `.Slots.store.Import`, never a
+  hard-coded path, so your component works with any architecture.
+- **Produce valid, formatted Go.** Every `.go` output is run through
+  `go/format`. A failure is reported as a composition error naming your
+  component and the file. Generated files must also have no unused imports.
+- **Leave `go.mod` and `go.sum` alone.** gobento writes them during
+  generation; a component that produces either is rejected.
+
+### README notes
+
+If users need to know something about your component, add `notes.md.tmpl`.
+Every component's rendered notes are appended to the root `README.md`, in kind
+order. `nethttp` documents the API and its error responses, `sqlite` explains
+how the schema is applied, and `sqlc` shows how to regenerate its code.
+
+### Composition errors
+
+Composition reports every problem at once: unknown or unfilled slots, slots
+with two owners or an owner of the wrong kind, two slots in one directory,
+file conflicts, root files inside a slot directory, components that produce
+`go.mod` or `go.sum`, unmet traits, and templates that fail to render. See
+[When composition fails](/docs/concepts/slots-and-contracts#when-composition-fails).
+
+## Versions
+
+Every module your component uses needs an entry in
+[`components/versions.yaml`](https://github.com/Tales-of-zuna/gobento/blob/main/components/versions.yaml):
+
+```yaml title="components/versions.yaml"
+go:
+  range: '>=1.26 <1.28'
+  default: '1.27'
+modules:
+  modernc.org/sqlite:
+    components: [database/sqlite]
+    role: library
+    range: '>=v1.61.0 <v2.0.0'
+    default: v1.61.1
+    constraints:
+      - when: '>=v1.61.0'
+        require: { go: '>=1.26' }
+```
+
+These are the values at the time of writing; the current ranges and defaults
+are in the [Components reference](/docs/components).
+
+- **`components`** lists every component that uses the module, as
+  `<kind>/<name>`.
+- **`role`** is `library` for modules required in the generated `go.mod`;
+  users may choose any version inside the range with `--pin`. It is `tool`
+  for tools, such as sqlc, that are run with `go run` and never added to
+  `go.mod`. A tool gets a single exact version, such as `=v1.31.1`, because
+  tool versions are fixed per gobento release.
+- **`range`** is a space-separated list of comparators (`>=`, `>`, `<=`, `<`,
+  `=`) that must all hold. CI generates the project with both the default and
+  the range floor, so the floor must really work.
+- **`constraints`** apply when the module's chosen version is inside `when`,
+  and then require `go` or another module to be inside a range, such as a
+  minimum Go version.
+
+gobento rejects the generation if `go mod tidy` would raise any chosen version
+or the `go` directive, and reports the missing constraint. See
+[Version rules](/docs/concepts/version-rules) for the full format.
+
+### Bumping a version
+
+1. Change `default` (and `range`, if needed) in `versions.yaml`.
+2. Run `make catalog` so the website shows the new values (`go test` fails
+   until you do), then `make test` and
+   `go test ./internal/generate -run TestIntegration` (it needs network
+   access). The integration test generates every supported selection with the
+   defaults and with the range floors.
+3. If a template's output changes, update the golden files with
+   `go test ./internal/compose -run TestGolden -update` and review the diff.
+
+## Steps to add a component
+
+<Steps>
+<Step>
+
+### Propose it
+
+Open a [component request](https://github.com/Tales-of-zuna/gobento/issues/new?template=component_request.yml)
+and, for a new kind of behavior, an OpenSpec change (see
+[CONTRIBUTING.md](https://github.com/Tales-of-zuna/gobento/blob/main/CONTRIBUTING.md)).
+
+</Step>
+<Step>
+
+### Write the manifest
+
+Create `components/<kind>/<name>/component.yaml` with the traits it provides
+and requires.
+
+</Step>
+<Step>
+
+### Add the templates
+
+Add templates under `files/<slot>/` for the slot its kind fills, and under
+`files/root/` for project-root files. Implement the slot's contract and import
+other slots only through the `models` contract.
+
+</Step>
+<Step>
+
+### Add tests to the templates
+
+Add `*_test.go.tmpl` files; they run in every generated project. Tests that
+use files close them in `t.Cleanup`, because Windows cannot remove open files.
+
+</Step>
+<Step>
+
+### Add its versions
+
+Add the modules it uses to `versions.yaml`, with `components` naming it.
+
+</Step>
+<Step>
+
+### Regenerate the website catalog and test
+
+Run `make catalog`, then `make lint test` and the integration test. Every
+supported selection containing the new component is generated, built,
+vetted, and tested.
+
+</Step>
+</Steps>
+
+## Tests
+
+<Steps>
+<Step>
+
+### Unit tests
+
+The unit tests load the shipped catalog and rules file, enforce the `.tmpl`
+rule, and check the list of supported selections. They catch an invalid
+manifest, a default outside its range, or an unknown reference. They also
+fail when the website's `catalog.json` is out of date (fix it with
+`make catalog`), and they run every command the website's configurator offers
+through `gobento new --dry-run`.
+
+```sh
+make test
+```
+
+</Step>
+<Step>
+
+### Golden test
+
+The golden test composes the reference selection and compares the result
+with `internal/compose/testdata/golden/`. If you changed the reference
+selection's output on purpose, regenerate the golden files and review the
+diff:
+
+```sh
+go test ./internal/compose -run TestGolden -update
+```
+
+</Step>
+<Step>
+
+### Integration test
+
+The integration test in `internal/generate` generates every supported
+selection twice, once with the default versions and once with the range
+floors. For each project it runs `go build`, `go vet`, `go test`, `gofmt -l`,
+and `go mod verify`, checks the `go.mod` pins, and checks with `go list -deps`
+that the handlers package does not import the database or store packages.
+
+It needs network access and is skipped with `-short`. Run it with:
+
+```sh
+make test-all
+```
+
+CI runs it on Linux, macOS, and Windows.
+
+</Step>
+</Steps>
+
+### Generated code: sqlc
+
+The `sqlc` component ships sqlc's generated code instead of running sqlc
+during generation. After changing `queries.sql` or the schema, regenerate it
+in a generated project with the pinned sqlc version (the command is in the
+generated README), copy the files in `internal/store/sqlcgen/` back to
+`components/data/sqlc/files/store/sqlcgen/` with the `.tmpl` suffix, and
+update the golden files. CI regenerates the code with the pinned sqlc inside a
+reference project and fails if any file changes.
+
+## Documentation
+
+You do not need to edit the docs to list your component. The
+[Components reference](/docs/components) is generated from the catalog when
+the site is built, including traits, versions, and defaults, once you have run
+`make catalog`.

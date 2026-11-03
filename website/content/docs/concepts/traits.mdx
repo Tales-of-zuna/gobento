@@ -1,0 +1,71 @@
+---
+title: Traits
+description: How components declare what they provide and require, so compatibility is decided by data instead of code.
+---
+
+A **trait** is a plain key/value fact about a component. Components never
+depend on which other component is selected, only on the traits other
+components provide.
+
+## Provided and required traits
+
+A component can **provide** traits, and it can **require** a trait to have one
+of a list of values.
+
+Both are keys of `component.yaml`. In the current catalog:
+
+| Component            | `provides`                                                            | `requires`                                                                  |
+| -------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `sqlite` (database)  | `sql-dialect: sqlite`, `conn: database/sql`, `sql-schema: schema.sql` | none                                                                        |
+| `sqlc` (data access) | none                                                                  | `sql-dialect: [sqlite]`, `conn: [database/sql]`, `sql-schema: [schema.sql]` |
+
+Trait names match `^[a-z][a-z0-9-]*$`. A provided value must not be empty,
+and a requirement lists at least one accepted value.
+
+## The traits in use
+
+- **`sql-dialect`**: the SQL dialect the database speaks. A data-access
+  library that generates or runs SQL requires a dialect it supports.
+- **`conn`**: the Go type of the connection the database's `Open` returns,
+  such as `database/sql`. The store's `New(db T)` must accept that type, so the
+  data-access component requires a matching `conn`. See the
+  [contract table](/docs/concepts/slots-and-contracts#architecture-owned-contracts).
+- **`sql-schema`**: the file name of the schema inside the database slot,
+  such as `schema.sql`. sqlc reads it to generate its code, so its
+  `sqlc.yaml` template finds the schema at
+  `{{.Slots.database.Dir}}/{{index .Traits "sql-schema"}}`. Traits carry the
+  few facts one component needs about another's files, without naming the
+  other component.
+
+Future components declare their own values. For example, a pgx or GORM
+component would declare its own `conn` value, so an incompatible pair is
+rejected by data, without any code in gobento.
+
+## When a trait is not met
+
+If a selected component requires a trait that no selected component provides,
+or a value it does not accept, gobento reports the trait and the components
+involved, exits with status `1`, and writes nothing. Two components that
+provide different values for the same trait are rejected the same way.
+
+## Supported combinations
+
+Traits decide which selections are **supported**. A selection is supported
+exactly when it has one component per kind, every required trait is met, and
+it [composes](/docs/concepts/slots-and-contracts#when-composition-fails)
+without errors.
+
+The set of supported selections is computed from the catalog alone. If the
+catalog contained a data-access component whose required dialect no database
+provides, no selection containing it would be listed as supported. The
+website's configurator uses the same rules to disable incompatible options
+and explain why.
+
+Today the catalog has one supported selection:
+
+```text
+mvc + nethttp + sqlite + sqlc
+```
+
+The [Components reference](/docs/components) lists the traits of every
+component in the current catalog.

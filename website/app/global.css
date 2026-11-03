@@ -1,0 +1,146 @@
+/*
+ * One theme for both kits: the gobento tokens (tokens.css) feed shadcn's
+ * variables below, and fumadocs-ui/css/shadcn.css maps --color-fd-* onto
+ * those, so docs, shadcn components and the home page share one palette.
+ */
+@import 'tailwindcss';
+@import './tokens.css';
+@import 'fumadocs-ui/css/shadcn.css';
+@import 'fumadocs-ui/css/preset.css';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+html {
+  scrollbar-gutter: stable;
+}
+
+html > body[data-scroll-locked] {
+  margin-right: 0px !important;
+  --removed-body-scroll-bar-size: 0px !important;
+}
+
+@theme inline {
+  --font-heading: var(--font-display), ui-rounded, sans-serif;
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root,
+.dark {
+  /* type: next/font sets --font-display/--font-body/--font-mono on <html> */
+  --f-display: var(--font-display), ui-rounded, sans-serif;
+  --f-body: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --f-mono: var(--font-mono), ui-monospace, monospace;
+  --t-xs: 13px;
+  --t-sm: 15px;
+  --t-md: 17px;
+  --t-lg: 19px;
+  --t-h4: 24px;
+  --t-h3: 32px;
+  --t-h2: 44px;
+  --t-h1: 64px;
+
+  /* height of the site's top bar on the configurator and docs (components/site) */
+  --site-bar-height: 72px;
+
+  /*
+   * shadcn variables, mapped onto the gobento tokens (tokens.css). The tokens
+   * switch with .dark on <html>, so these follow without a second block.
+   */
+  --background: var(--wash);
+  --foreground: var(--ink);
+  --card: var(--paper);
+  --card-foreground: var(--ink);
+  --popover: var(--paper);
+  --popover-foreground: var(--ink);
+  /* Fumadocs also sets --primary as text on tinted surfaces, so use the text-safe shu. */
+  --primary: var(--shu-text);
+  --primary-foreground: var(--on-shu);
+  --secondary: var(--matcha-soft);
+  --secondary-foreground: var(--ink);
+  --muted: var(--tray);
+  --muted-foreground: var(--ink-2);
+  --accent: var(--matcha-soft);
+  --accent-foreground: var(--ink);
+  --destructive: var(--danger-ink);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--focus);
+  --chart-1: var(--shu);
+  --chart-2: var(--matcha);
+  --chart-3: var(--sora);
+  --chart-4: var(--tamago);
+  --chart-5: var(--sakura);
+  --radius: var(--r-sm);
+  --sidebar: var(--paper);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--shu-text);
+  --sidebar-primary-foreground: var(--on-shu);
+  --sidebar-accent: var(--matcha-soft);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--line);
+  --sidebar-ring: var(--focus);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  code,
+  kbd,
+  pre,
+  samp {
+    font-family: var(--f-mono);
+    font-variant-ligatures: none;
+  }
+  /* A visible 3px focus ring everywhere (WCAG 2.2 AA). */
+  :focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+}

@@ -1,0 +1,198 @@
+/*
+ * gobento design tokens: Catppuccin (https://catppuccin.com, MIT) mapped onto
+ * the bento roles. Light theme = Latte, dark theme = Frappé.
+ * A few Latte accents are darkened ("text-safe") where Catppuccin's own value
+ * is below WCAG AA 4.5:1 as text; everything else is a stock Catppuccin color.
+ * Approved direction "Playful ekiben" (structure, motion) is unchanged.
+ * Source of truth: website/DESIGN.md and the Claude Design project
+ * "gobento website" (tokens.css). Names match the design files 1:1.
+ * Light theme on :root, warm "evening bento" dark theme on .dark.
+ */
+
+:root {
+  /* Catppuccin Latte */
+  --ctp-rosewater: #dc8a78;
+  --ctp-flamingo: #dd7878;
+  --ctp-pink: #ea76cb;
+  --ctp-mauve: #8839ef;
+  --ctp-red: #d20f39;
+  --ctp-maroon: #e64553;
+  --ctp-peach: #fe640b;
+  --ctp-yellow: #df8e1d;
+  --ctp-green: #40a02b;
+  --ctp-teal: #179299;
+  --ctp-sky: #04a5e5;
+  --ctp-sapphire: #209fb5;
+  --ctp-blue: #1e66f5;
+  --ctp-lavender: #7287fd;
+  --ctp-text: #4c4f69;
+  --ctp-subtext1: #5c5f77;
+  --ctp-subtext0: #6c6f85;
+  --ctp-overlay2: #7c7f93;
+  --ctp-overlay1: #8c8fa1;
+  --ctp-overlay0: #9ca0b0;
+  --ctp-surface2: #acb0be;
+  --ctp-surface1: #bcc0cc;
+  --ctp-surface0: #ccd0da;
+  --ctp-base: #eff1f5;
+  --ctp-mantle: #e6e9ef;
+  --ctp-crust: #dce0e8;
+
+  /* surfaces */
+  --wash: var(--ctp-mantle);
+  --paper: var(--ctp-base);
+  --tray: var(--ctp-crust);
+  /* text */
+  --ink: var(--ctp-text);
+  --ink-2: var(--ctp-subtext1);
+  --line: var(--ctp-surface1);
+  /* strong accents: fills, buttons, display type */
+  --shu: var(--ctp-peach);
+  --on-shu: #232634; /* Frappé crust: dark text on bright Latte peach (5:1) */
+  --matcha: var(--ctp-green);
+  --on-matcha: #232634;
+  --sora: var(--ctp-blue);
+  --on-sora: var(--ctp-base);
+  /* text-safe accents (>= 4.5:1 on wash and paper) */
+  --shu-text: #a03c08; /* darkened Latte peach (>= 5:1 on mantle) */
+  --matcha-ink: #276a17; /* darkened Latte green */
+  --sora-ink: #1a56cf; /* darkened Latte blue */
+  --tamago-ink: #855209; /* darkened Latte yellow */
+  --danger-ink: #b00c30; /* darkened Latte red */
+  /* soft pastels: section bands, compartments, selected states */
+  --shu-soft: color-mix(in oklab, var(--ctp-peach) 14%, var(--ctp-base));
+  --tamago-soft: color-mix(in oklab, var(--ctp-yellow) 18%, var(--ctp-base));
+  --matcha-soft: color-mix(in oklab, var(--ctp-green) 14%, var(--ctp-base));
+  --sora-soft: color-mix(in oklab, var(--ctp-blue) 12%, var(--ctp-base));
+  --sakura-soft: color-mix(in oklab, var(--ctp-pink) 14%, var(--ctp-base));
+  /* illustration only (never text) */
+  --tamago: var(--ctp-yellow);
+  --sakura: var(--ctp-pink);
+  --nori: var(--ctp-text);
+  /* contrast bands (the conveyor "lacquer" band) */
+  --band: #4c4f69;
+  --band-2: #5c5f77;
+  --on-band: var(--ctp-base);
+  --band-accent: #a6d189; /* Frappé green reads on both bands */
+  /* recessed surfaces: command blocks, code, tray frames */
+  --well: var(--ctp-text);
+  /* syntax-highlighted code blocks (Shiki catppuccin themes are tuned for these) */
+  --code-bg: var(--ctp-base);
+  /* toy shadow and focus */
+  --shadow-c: var(--ctp-text);
+  --focus: var(--ctp-mauve);
+  /* shape */
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --r-xl: 32px;
+  --stroke: 2.5px;
+  --toy-1: 3px 3px 0 var(--shadow-c);
+  --toy-2: 4px 4px 0 var(--shadow-c);
+  --toy-3: 8px 8px 0 var(--shadow-c);
+  /* component-kind identity (used across home, configurator and docs) */
+  --kind-architecture: var(--sora-soft);
+  --kind-framework: var(--shu-soft);
+  --kind-database: var(--tamago-soft);
+  --kind-data: var(--matcha-soft);
+  /* patterns: background-image values for wide bands; keep body text on solid panels */
+  --pat-color: color-mix(in oklab, var(--ctp-text) 8%, transparent);
+  --pat-seigaiha:
+    radial-gradient(
+        circle at 50% 100%,
+        transparent 18px,
+        var(--pat-color) 18px 20px,
+        transparent 20px 26px,
+        var(--pat-color) 26px 28px,
+        transparent 28px 34px,
+        var(--pat-color) 34px 36px,
+        transparent 36px
+      )
+      0 0 / 72px 36px,
+    radial-gradient(
+        circle at 50% 100%,
+        transparent 18px,
+        var(--pat-color) 18px 20px,
+        transparent 20px 26px,
+        var(--pat-color) 26px 28px,
+        transparent 28px 34px,
+        var(--pat-color) 34px 36px,
+        transparent 36px
+      )
+      36px 18px / 72px 36px;
+  --pat-ichimatsu: conic-gradient(
+      var(--pat-color) 25%,
+      transparent 0 50%,
+      var(--pat-color) 0 75%,
+      transparent 0
+    )
+    0 0 / 28px 28px;
+  --pat-mizutama: radial-gradient(circle, var(--pat-color) 3px, transparent 3.5px) 0 0 / 22px 22px;
+  --scallop: radial-gradient(circle at 18px 0, transparent 17px, #000 18px) 0 0 / 36px 100%;
+}
+
+.dark {
+  /* Catppuccin Frappé */
+  --ctp-rosewater: #f2d5cf;
+  --ctp-flamingo: #eebebe;
+  --ctp-pink: #f4b8e4;
+  --ctp-mauve: #ca9ee6;
+  --ctp-red: #e78284;
+  --ctp-maroon: #ea999c;
+  --ctp-peach: #ef9f76;
+  --ctp-yellow: #e5c890;
+  --ctp-green: #a6d189;
+  --ctp-teal: #81c8be;
+  --ctp-sky: #99d1db;
+  --ctp-sapphire: #85c1dc;
+  --ctp-blue: #8caaee;
+  --ctp-lavender: #babbf1;
+  --ctp-text: #c6d0f5;
+  --ctp-subtext1: #b5bfe2;
+  --ctp-subtext0: #a5adce;
+  --ctp-overlay2: #949cbb;
+  --ctp-overlay1: #838ba7;
+  --ctp-overlay0: #737994;
+  --ctp-surface2: #626880;
+  --ctp-surface1: #51576d;
+  --ctp-surface0: #414559;
+  --ctp-base: #303446;
+  --ctp-mantle: #292c3c;
+  --ctp-crust: #232634;
+
+  --wash: var(--ctp-base);
+  --paper: var(--ctp-surface0);
+  --tray: var(--ctp-mantle); /* recessed compartments; subtext1 on surface1 is only 3.9:1 */
+  --ink: var(--ctp-text);
+  --ink-2: var(--ctp-subtext1);
+  --line: var(--ctp-surface2);
+  --shu: var(--ctp-peach);
+  --on-shu: var(--ctp-crust);
+  --matcha: var(--ctp-green);
+  --on-matcha: var(--ctp-crust);
+  --sora: var(--ctp-blue);
+  --on-sora: var(--ctp-crust);
+  /* Frappé accents already pass 4.5:1 on base and surface0 */
+  --shu-text: var(--ctp-peach);
+  --matcha-ink: var(--ctp-green);
+  --sora-ink: var(--ctp-blue);
+  --tamago-ink: var(--ctp-yellow);
+  --danger-ink: var(--ctp-red);
+  --shu-soft: color-mix(in oklab, var(--ctp-peach) 15%, var(--ctp-base));
+  --tamago-soft: color-mix(in oklab, var(--ctp-yellow) 14%, var(--ctp-base));
+  --matcha-soft: color-mix(in oklab, var(--ctp-green) 14%, var(--ctp-base));
+  --sora-soft: color-mix(in oklab, var(--ctp-blue) 15%, var(--ctp-base));
+  --sakura-soft: color-mix(in oklab, var(--ctp-pink) 14%, var(--ctp-base));
+  --tamago: var(--ctp-yellow);
+  --sakura: var(--ctp-pink);
+  --nori: var(--ctp-crust);
+  --band: var(--ctp-crust);
+  --band-2: var(--ctp-mantle);
+  --on-band: var(--ctp-text);
+  --band-accent: var(--ctp-green);
+  --well: var(--ctp-mantle);
+  --code-bg: var(--ctp-mantle);
+  --shadow-c: var(--ctp-crust);
+  --focus: var(--ctp-mauve);
+  --pat-color: color-mix(in oklab, var(--ctp-text) 7%, transparent);
+}
