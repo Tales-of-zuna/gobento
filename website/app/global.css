@@ -3,6 +3,7 @@
  * source of truth, and fumadocs-ui/css/shadcn.css maps --color-fd-* onto them.
  */
 @import 'tailwindcss';
+@import './tokens.css';
 @import 'fumadocs-ui/css/shadcn.css';
 @import 'fumadocs-ui/css/preset.css';
 @import 'tw-animate-css';

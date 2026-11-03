@@ -1,0 +1,122 @@
+/*
+ * gobento design tokens (approved direction "Playful ekiben", v2).
+ * Source of truth: website/DESIGN.md and the Claude Design project
+ * "gobento website" (tokens.css). Names match the design files 1:1.
+ * Light theme on :root, warm "evening bento" dark theme on .dark.
+ */
+
+:root {
+  /* surfaces */
+  --wash: oklch(0.975 0.012 85);
+  --paper: oklch(0.99 0.006 85);
+  --tray: oklch(0.935 0.025 75);
+  /* text */
+  --ink: oklch(0.26 0.03 45);
+  --ink-2: oklch(0.43 0.03 50);
+  --line: oklch(0.86 0.02 70);
+  /* strong accents: fills, buttons, display type (same L and C, different hue) */
+  --shu: oklch(0.56 0.15 35);
+  --on-shu: oklch(0.985 0.01 85);
+  --matcha: oklch(0.56 0.15 140);
+  --on-matcha: oklch(0.985 0.01 85);
+  --sora: oklch(0.56 0.15 245);
+  --on-sora: oklch(0.985 0.01 85);
+  /* text-safe accents: at least 4.5:1 on wash and paper */
+  --shu-text: oklch(0.5 0.15 35);
+  --matcha-ink: oklch(0.4 0.1 140);
+  --sora-ink: oklch(0.45 0.13 245);
+  --tamago-ink: oklch(0.45 0.1 85);
+  --danger-ink: oklch(0.47 0.15 30);
+  /* bento food pastels: section bands, compartments, selected states */
+  --shu-soft: oklch(0.93 0.045 35);
+  --tamago-soft: oklch(0.93 0.045 90);
+  --matcha-soft: oklch(0.93 0.045 140);
+  --sora-soft: oklch(0.93 0.045 245);
+  --sakura-soft: oklch(0.93 0.045 355);
+  /* bright food accents for stickers and illustration only (never text) */
+  --tamago: oklch(0.86 0.15 90);
+  --sakura: oklch(0.8 0.1 355);
+  --nori: oklch(0.3 0.03 160);
+  /* toy shadow and focus */
+  --shadow-c: var(--ink);
+  --focus: oklch(0.56 0.15 35);
+  /* shape */
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --r-xl: 32px;
+  --stroke: 2.5px;
+  --toy-1: 3px 3px 0 var(--shadow-c);
+  --toy-2: 4px 4px 0 var(--shadow-c);
+  --toy-3: 8px 8px 0 var(--shadow-c);
+  /* component-kind identity (used across home, configurator and docs) */
+  --kind-architecture: var(--sora-soft);
+  --kind-framework: var(--shu-soft);
+  --kind-database: var(--tamago-soft);
+  --kind-data: var(--matcha-soft);
+  /* patterns: background-image values for wide bands; keep body text on solid panels */
+  --pat-color: oklch(0.26 0.03 45 / 0.07);
+  --pat-seigaiha:
+    radial-gradient(
+        circle at 50% 100%,
+        transparent 18px,
+        var(--pat-color) 18px 20px,
+        transparent 20px 26px,
+        var(--pat-color) 26px 28px,
+        transparent 28px 34px,
+        var(--pat-color) 34px 36px,
+        transparent 36px
+      )
+      0 0 / 72px 36px,
+    radial-gradient(
+        circle at 50% 100%,
+        transparent 18px,
+        var(--pat-color) 18px 20px,
+        transparent 20px 26px,
+        var(--pat-color) 26px 28px,
+        transparent 28px 34px,
+        var(--pat-color) 34px 36px,
+        transparent 36px
+      )
+      36px 18px / 72px 36px;
+  --pat-ichimatsu: conic-gradient(
+      var(--pat-color) 25%,
+      transparent 0 50%,
+      var(--pat-color) 0 75%,
+      transparent 0
+    )
+    0 0 / 28px 28px;
+  --pat-mizutama: radial-gradient(circle, var(--pat-color) 3px, transparent 3.5px) 0 0 / 22px 22px;
+  --scallop: radial-gradient(circle at 18px 0, transparent 17px, #000 18px) 0 0 / 36px 100%;
+}
+
+.dark {
+  --wash: oklch(0.205 0.02 45);
+  --paper: oklch(0.245 0.022 45);
+  --tray: oklch(0.285 0.025 45);
+  --ink: oklch(0.95 0.015 85);
+  --ink-2: oklch(0.8 0.02 75);
+  --line: oklch(0.38 0.025 50);
+  --shu: oklch(0.7 0.14 38);
+  --on-shu: oklch(0.2 0.02 45);
+  --matcha: oklch(0.74 0.14 140);
+  --on-matcha: oklch(0.2 0.02 45);
+  --sora: oklch(0.76 0.11 245);
+  --on-sora: oklch(0.2 0.02 45);
+  --shu-text: oklch(0.76 0.13 38);
+  --matcha-ink: oklch(0.84 0.1 140);
+  --sora-ink: oklch(0.82 0.09 245);
+  --tamago-ink: oklch(0.86 0.1 90);
+  --danger-ink: oklch(0.78 0.12 35);
+  --shu-soft: oklch(0.32 0.05 35);
+  --tamago-soft: oklch(0.33 0.05 90);
+  --matcha-soft: oklch(0.32 0.05 140);
+  --sora-soft: oklch(0.32 0.05 245);
+  --sakura-soft: oklch(0.32 0.05 355);
+  --tamago: oklch(0.82 0.14 90);
+  --sakura: oklch(0.78 0.09 355);
+  --nori: oklch(0.22 0.02 160);
+  --shadow-c: oklch(0.12 0.02 45);
+  --focus: oklch(0.74 0.14 140);
+  --pat-color: oklch(0.95 0.015 85 / 0.06);
+}

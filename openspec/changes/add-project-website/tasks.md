@@ -13,10 +13,10 @@ to be applied.
 
 ## 2. Visual design in Claude Design
 
-- [ ] 2.1 Create the Claude Design project "gobento website" and produce the design direction: palette (light and dark), typography with licensed fonts, spacing, radius and shadow tokens, motifs; verify the maintainer can open it
-- [ ] 2.2 Prototype the mascot 3D-first: at least three original gopher-and-bento concepts in three.js (toon shading, direction A palette), rendered as front and three-quarter views on one contact sheet; the maintainer picks one; verify it contains no copied artwork and record the attribution text
-- [ ] 2.3 Design the home, configurator, and docs pages at desktop and mobile sizes in light and dark themes; verify every state named in the specs (disabled option with reason, invalid field, copied confirmation, pre-release notice, WebGL fallback) is drawn
-- [ ] 2.4 Review with the maintainer and record the approved direction, with the token values, in `website/DESIGN.md`; verify the maintainer's explicit approval before group 4 starts
+- [x] 2.1 Create the Claude Design project "gobento website" and produce the design direction: palette (light and dark), typography with licensed fonts, spacing, radius and shadow tokens, motifs; verify the maintainer can open it
+- [x] 2.2 Prototype the mascot 3D-first: at least three original gopher-and-bento concepts in three.js (toon shading, direction A palette), rendered as front and three-quarter views on one contact sheet; the maintainer picks one; verify it contains no copied artwork and record the attribution text
+- [x] 2.3 Design the home, configurator, and docs pages at desktop and mobile sizes in light and dark themes; verify every state named in the specs (disabled option with reason, invalid field, copied confirmation, pre-release notice, WebGL fallback) is drawn
+- [x] 2.4 Review with the maintainer and record the approved direction, with the token values, in `website/DESIGN.md`; verify the maintainer's explicit approval before group 4 starts
 
 ## 3. Catalog and command logic (`website/lib`)
 
