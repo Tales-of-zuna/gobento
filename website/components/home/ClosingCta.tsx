@@ -1,4 +1,4 @@
-import { stillUrl } from '@/components/mascot/stills';
+import { HERO_SIZE, HERO_STILLS, stillUrl } from '@/components/mascot/stills';
 import { configuratorRoute, githubUrl } from './links';
 import { Item, PressAnchor, PressLink, Stagger } from './motion';
 import s from './home.module.css';
@@ -34,9 +34,9 @@ export function ClosingCta() {
               {/* eslint-disable-next-line @next/next/no-img-element -- static export, pre-sized still */}
               <img
                 className={s.peek}
-                src={stillUrl(480, 'webp')}
-                width={480}
-                height={480}
+                src={stillUrl(HERO_STILLS[0], 'webp')}
+                width={HERO_SIZE.width}
+                height={HERO_SIZE.height}
                 alt=""
                 loading="lazy"
                 decoding="async"

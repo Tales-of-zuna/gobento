@@ -136,3 +136,22 @@ export function createSproutGeometry(height = 0.42): ExtrudeGeometry {
   geometry.translate(0, 0, -0.0175);
   return geometry;
 }
+
+/** A baran grass divider: a thin zigzag sheet `width` wide, standing on y = 0. */
+export function createBaranGeometry(width = 0.42, height = 0.34): ExtrudeGeometry {
+  const teeth = 5;
+  const points = [new Vector2(-width / 2, 0)];
+  for (let i = 0; i <= teeth; i++) {
+    points.push(new Vector2(-width / 2 + (i / teeth) * width, height * (i % 2 ? 0.7 : 1)));
+  }
+  points.push(new Vector2(width / 2, 0));
+  const shape = new Shape(points);
+  shape.closePath();
+  return new ExtrudeGeometry(shape, {
+    depth: 0.02,
+    bevelEnabled: true,
+    bevelThickness: 0.01,
+    bevelSize: 0.01,
+    bevelSegments: 1,
+  });
+}

@@ -25,12 +25,28 @@ async function expectStillOnly(page: Page) {
   await expect(page.locator('canvas')).toHaveCount(0);
 }
 
+test('uses the mascot head as favicon and apple-touch-icon', async ({ page, request }) => {
+  await page.goto('./');
+  const icon = page.locator('link[rel="icon"][type="image/png"]');
+  const apple = page.locator('link[rel="apple-touch-icon"]');
+  await expect(icon).toHaveAttribute('href', '/gobento/mascot/gobento-head-64.png');
+  await expect(apple).toHaveAttribute('href', '/gobento/mascot/gobento-head-128.png');
+  for (const link of [icon, apple]) {
+    const response = await request.get(
+      new URL((await link.getAttribute('href')) ?? '', page.url()).href,
+    );
+    expect(response.status()).toBe(200);
+    expect(response.headers()['content-type']).toBe('image/png');
+  }
+});
+
 test.describe('mascot', () => {
   test('swaps the still for the live 3D scene without console errors', async ({ page }) => {
     const errors = collectErrors(page);
     await page.goto('./');
     // The still is in the server-rendered HTML, sized up front.
-    await expect(still(page)).toHaveAttribute('width', '480');
+    await expect(still(page)).toHaveAttribute('width', '720');
+    await expect(still(page)).toHaveAttribute('height', '480');
     await expect(mascot(page)).toHaveAttribute('data-mascot', 'scene', { timeout: 30_000 });
     const canvas = page.locator('[data-mascot] canvas');
     await expect(canvas).toBeVisible();

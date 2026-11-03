@@ -1,7 +1,8 @@
 'use client';
 /**
- * The gopher's head and face features. Every feature is modelled facing +Z
- * and placed on the head with {@link ellipsoidPose}.
+ * The gopher's face features, and a round head for the small icon. Every
+ * feature is modelled facing +Z and placed by a {@link Surface} function, so
+ * the same face fits the daifuku body and the round head.
  */
 import type { ThreeElements } from '@react-three/fiber';
 import { SphereGeometry, type Group } from 'three';
@@ -9,7 +10,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import type { Ref } from 'react';
 import { createSproutGeometry } from '../geometry';
 import { ToonMesh, useGeometry, useToonKit } from '../kit';
-import { ellipsoidPose, type Vec3 } from '../math';
+import { ellipsoidPose, type SurfacePose, type Vec3 } from '../math';
 import { PALETTE } from '../toon';
 
 type GroupProps = Omit<ThreeElements['group'], 'children'>;
@@ -18,19 +19,22 @@ type GroupProps = Omit<ThreeElements['group'], 'children'>;
 const HEAD_RADIUS = 0.98;
 const HEAD_SCALE: Vec3 = [1.08, 0.94, 1];
 /** Radii of the head ellipsoid, used to stick features onto its surface. */
-export const HEAD_RADII: Vec3 = [
+const HEAD_RADII: Vec3 = [
   HEAD_RADIUS * HEAD_SCALE[0],
   HEAD_RADIUS * HEAD_SCALE[1],
   HEAD_RADIUS * HEAD_SCALE[2],
 ];
 
-/** Group props that put a feature on the head along `direction`. */
-function onHead(direction: Vec3, push: number): Pick<GroupProps, 'position' | 'quaternion'> {
-  const { position, quaternion } = ellipsoidPose(HEAD_RADII, direction, push);
-  return { position: [...position], quaternion: [...quaternion] };
-}
+/**
+ * Where a feature lands on the surface it sits on: the point reached from the
+ * face centre along `direction`, moved `push` outward.
+ */
+export type Surface = (direction: Vec3, push: number) => SurfacePose;
 
-/** The round, slightly squashed head. */
+/** Surface of the round head, centred on the origin. */
+const headSurface: Surface = (direction, push) => ellipsoidPose(HEAD_RADII, direction, push);
+
+/** The round, slightly squashed head of the icon. */
 export function Head({ color }: { color: string }) {
   const kit = useToonKit();
   const geometry = useGeometry(() => new SphereGeometry(HEAD_RADIUS, 64, 48));
@@ -43,19 +47,17 @@ export function Head({ color }: { color: string }) {
   );
 }
 
-const EYE_SIZE = 0.17;
-
 /**
  * A glossy sumi eye with two highlights. The group's Y scale is the blink:
  * the mascot squashes it towards zero to close the eye.
  */
-export function Eye({ ref, ...props }: GroupProps & { ref?: Ref<Group> }) {
+export function Eye({ ref, size, ...props }: GroupProps & { ref?: Ref<Group>; size: number }) {
   const kit = useToonKit();
-  const ball = useGeometry(() => new SphereGeometry(EYE_SIZE, 32, 24));
-  const glint = useGeometry(() => new SphereGeometry(EYE_SIZE * 0.34, 20, 16));
-  const sparkle = useGeometry(() => new SphereGeometry(EYE_SIZE * 0.15, 16, 12));
+  const ball = useGeometry(() => new SphereGeometry(size, 32, 24));
+  const glint = useGeometry(() => new SphereGeometry(size * 0.34, 20, 16));
+  const sparkle = useGeometry(() => new SphereGeometry(size * 0.15, 16, 12));
   const white = kit.flat('#ffffff');
-  const z = EYE_SIZE * 0.36;
+  const z = size * 0.36;
   return (
     <group ref={ref} {...props}>
       <ToonMesh
@@ -67,13 +69,13 @@ export function Eye({ ref, ...props }: GroupProps & { ref?: Ref<Group> }) {
       <mesh
         geometry={glint}
         material={white}
-        position={[-EYE_SIZE * 0.28, EYE_SIZE * 0.42, z]}
+        position={[-size * 0.28, size * 0.42, z]}
         scale={[1, 1, 0.4]}
       />
       <mesh
         geometry={sparkle}
         material={white}
-        position={[EYE_SIZE * 0.25, -EYE_SIZE * 0.38, z]}
+        position={[size * 0.25, -size * 0.38, z]}
         scale={[1, 1, 0.4]}
       />
     </group>
@@ -171,15 +173,35 @@ export function Sprout(props: GroupProps) {
   );
 }
 
-/** Where the face features sit on the head (directions from its centre). */
-const FACE = {
-  eye: { direction: [0.36, 0.08, 1] as Vec3, push: -0.01 },
-  blush: { direction: [0.62, -0.16, 1] as Vec3, push: -0.004 },
-  ear: { direction: [0.72, 0.66, 0.15] as Vec3, push: -0.06 },
-  muzzle: { direction: [0, -0.26, 1] as Vec3, push: -0.03 },
-} as const;
+/** Where the features sit: directions from the face centre, and eye size. */
+export interface FaceLayout {
+  readonly eyeSize: number;
+  readonly eye: Vec3;
+  readonly blush: Vec3;
+  readonly ear: Vec3;
+  readonly muzzle: Vec3;
+}
 
-const SPROUT_ROOT = ellipsoidPose(HEAD_RADII, [0.05, 1, 0.05]).position;
+/** Layout of the approved mascot's face on its daifuku body. */
+export const BODY_FACE: FaceLayout = {
+  eyeSize: 0.18,
+  eye: [0.36, 0.12, 1],
+  blush: [0.62, -0.12, 1],
+  ear: [0.72, 0.62, 0.15],
+  muzzle: [0, -0.2, 1],
+};
+
+/** Layout on the round icon head. */
+const HEAD_FACE: FaceLayout = {
+  eyeSize: 0.17,
+  eye: [0.36, 0.08, 1],
+  blush: [0.62, -0.16, 1],
+  ear: [0.72, 0.66, 0.15],
+  muzzle: [0, -0.26, 1],
+};
+
+/** How far each feature sinks into (negative) or floats off the surface. */
+const PUSH = { eye: -0.01, blush: -0.004, ear: -0.06, muzzle: -0.03 } as const;
 
 /** Refs the mascot animates inside the face. */
 export interface FaceRefs {
@@ -187,25 +209,50 @@ export interface FaceRefs {
   readonly rightEye?: Ref<Group>;
 }
 
-/** Head plus all face features, centred on the head. */
-export function GopherHead({ color, leftEye, rightEye }: { color: string } & FaceRefs) {
-  const mirrored = (side: -1 | 1, [x, y, z]: Vec3): Vec3 => [side * x, y, z];
+/** Props of {@link Face}. */
+export type FaceProps = FaceRefs & {
+  readonly color: string;
+  readonly surface: Surface;
+  readonly layout: FaceLayout;
+};
+
+const mirrored = (side: -1 | 1, [x, y, z]: Vec3): Vec3 => [side * x, y, z];
+
+/** Group props for a feature placed on `surface`. */
+function placed(surface: Surface, direction: Vec3, push: number) {
+  const { position, quaternion } = surface(direction, push);
+  return { position: [...position] as Vec3, quaternion: [...quaternion] as const };
+}
+
+/** Eyes, cheeks, ears, muzzle, and the sprout on top, placed on `surface`. */
+export function Face({ color, surface, layout, leftEye, rightEye }: FaceProps) {
+  const sprout = surface([0.05, 1, 0.05], 0).position;
+  return (
+    <group>
+      <Eye
+        ref={leftEye}
+        size={layout.eyeSize}
+        {...placed(surface, mirrored(-1, layout.eye), PUSH.eye)}
+      />
+      <Eye ref={rightEye} size={layout.eyeSize} {...placed(surface, layout.eye, PUSH.eye)} />
+      {([-1, 1] as const).map((side) => (
+        <group key={side}>
+          <Blush {...placed(surface, mirrored(side, layout.blush), PUSH.blush)} />
+          <Ear color={color} {...placed(surface, mirrored(side, layout.ear), PUSH.ear)} />
+        </group>
+      ))}
+      <Muzzle {...placed(surface, layout.muzzle, PUSH.muzzle)} />
+      <Sprout position={[sprout[0], sprout[1] - 0.06, sprout[2]]} rotation={[0, 0.5, -0.25]} />
+    </group>
+  );
+}
+
+/** The round head with its face: the small icon and favicon subject. */
+export function GopherHead({ color }: { color: string }) {
   return (
     <group>
       <Head color={color} />
-      <Eye ref={leftEye} {...onHead(mirrored(-1, FACE.eye.direction), FACE.eye.push)} />
-      <Eye ref={rightEye} {...onHead(FACE.eye.direction, FACE.eye.push)} />
-      {([-1, 1] as const).map((side) => (
-        <group key={side}>
-          <Blush {...onHead(mirrored(side, FACE.blush.direction), FACE.blush.push)} />
-          <Ear color={color} {...onHead(mirrored(side, FACE.ear.direction), FACE.ear.push)} />
-        </group>
-      ))}
-      <Muzzle {...onHead(FACE.muzzle.direction, FACE.muzzle.push)} />
-      <Sprout
-        position={[SPROUT_ROOT[0], SPROUT_ROOT[1] - 0.06, SPROUT_ROOT[2]]}
-        rotation={[0, 0.5, -0.25]}
-      />
+      <Face color={color} surface={headSurface} layout={HEAD_FACE} />
     </group>
   );
 }

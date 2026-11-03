@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { stillUrl } from '@/components/mascot/stills';
+import { headStill, stillUrl } from '@/components/mascot/stills';
 import { docsRoute } from '@/lib/shared';
 import { configuratorRoute, githubUrl, repoFile } from './links';
 import s from './home.module.css';
@@ -12,7 +12,13 @@ export function SiteFooter() {
         <div className={s.frow}>
           <div className={s.fmark}>
             {/* eslint-disable-next-line @next/next/no-img-element -- static export, pre-sized still */}
-            <img src={stillUrl(64, 'webp')} width={64} height={64} alt="" decoding="async" />
+            <img
+              src={stillUrl(headStill(64), 'webp')}
+              width={64}
+              height={64}
+              alt=""
+              decoding="async"
+            />
             <Link className={s.mark} href="/">
               gobento
             </Link>

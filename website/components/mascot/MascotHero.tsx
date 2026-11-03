@@ -10,7 +10,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useReducedMotion, useWebGLSupport } from './hooks';
 import { MascotErrorBoundary } from './MascotErrorBoundary';
-import { HERO_STILL_SIZE, heroSrcSet, MASCOT_DESCRIPTION, stillUrl } from './stills';
+import { HERO_SIZE, HERO_STILLS, heroSrcSet, MASCOT_DESCRIPTION, stillUrl } from './stills';
 import { shouldMountScene } from './support';
 
 const MascotScene = dynamic(() => import('./MascotScene'), { ssr: false });
@@ -31,17 +31,17 @@ export function MascotHero({ className }: MascotHeroProps) {
 
   return (
     <div
-      className={cn('relative aspect-square w-full', className)}
+      className={cn('relative aspect-[3/2] w-full', className)}
       data-mascot={showScene ? 'scene' : 'still'}
     >
       <span className="sr-only">{MASCOT_DESCRIPTION}</span>
       <picture>
         <source type="image/webp" srcSet={heroSrcSet('webp')} />
         <img
-          src={stillUrl(HERO_STILL_SIZE, 'png')}
+          src={stillUrl(HERO_STILLS[0], 'png')}
           srcSet={heroSrcSet('png')}
-          width={HERO_STILL_SIZE}
-          height={HERO_STILL_SIZE}
+          width={HERO_SIZE.width}
+          height={HERO_SIZE.height}
           alt=""
           decoding="async"
           data-mascot-still

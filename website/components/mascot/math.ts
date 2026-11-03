@@ -48,6 +48,92 @@ export function ellipsoidPose(radii: Vec3, direction: Vec3, push = 0): SurfacePo
   };
 }
 
+/** A lathe profile: radius at each height, heights increasing. */
+export interface LatheProfile {
+  readonly radius: readonly number[];
+  readonly height: readonly number[];
+}
+
+/**
+ * Profile of the gopher's daifuku body: an egg that is wider and softer at
+ * the bottom, with the base flattened so it sits like a vinyl figure, and
+ * shifted so the base is at y = 0.
+ */
+export function daifukuProfile(
+  height: number,
+  width: number,
+  bulge = 0.13,
+  steps = 64,
+): LatheProfile {
+  const half = height / 2;
+  const floor = -half * 0.86;
+  const radius: number[] = [];
+  const heights: number[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * Math.PI;
+    let y = -half * Math.cos(t);
+    if (y < floor) y = floor + (y - floor) * 0.35;
+    radius.push(Math.max(width * Math.sin(t) * (1 + bulge * Math.cos(t)), 0.0001));
+    heights.push(y);
+  }
+  const base = heights[0] ?? 0;
+  return { radius, height: heights.map((y) => y - base) };
+}
+
+/** Radius of a lathe profile at height `y`, 0 above or below it. */
+export function latheRadiusAt({ radius, height }: LatheProfile, y: number): number {
+  const last = height.length - 1;
+  if (last < 1 || y < (height[0] ?? 0) || y > (height[last] ?? 0)) return 0;
+  let i = 1;
+  while (i < last && (height[i] ?? 0) < y) i++;
+  const y0 = height[i - 1] ?? 0;
+  const y1 = height[i] ?? 0;
+  const k = y1 === y0 ? 0 : (y - y0) / (y1 - y0);
+  return (radius[i - 1] ?? 0) * (1 - k) + (radius[i] ?? 0) * k;
+}
+
+/**
+ * Pose for a feature on a lathe surface (revolved around the Y axis): cast
+ * from `center` along `direction` to the surface, then move `push` along the
+ * true surface normal, with local +Z facing along that normal.
+ */
+export function lathePose(
+  profile: LatheProfile,
+  center: Vec3,
+  direction: Vec3,
+  push = 0,
+): SurfacePose {
+  const d = normalize(direction);
+  const at = (s: number): Vec3 => [
+    center[0] + d[0] * s,
+    center[1] + d[1] * s,
+    center[2] + d[2] * s,
+  ];
+  const outside = (s: number) => {
+    const [x, y, z] = at(s);
+    return Math.hypot(x, z) > latheRadiusAt(profile, y);
+  };
+  let inside = 0;
+  let out = 0.01;
+  while (!outside(out) && out < 10) {
+    inside = out;
+    out += 0.01;
+  }
+  for (let i = 0; i < 40; i++) {
+    const mid = (inside + out) / 2;
+    if (outside(mid)) out = mid;
+    else inside = mid;
+  }
+  const [x, y, z] = at(out);
+  const rho = Math.hypot(x, z) || 1;
+  const slope = (latheRadiusAt(profile, y + 1e-3) - latheRadiusAt(profile, y - 1e-3)) / 2e-3;
+  const normal = normalize([x / rho, -slope, z / rho]);
+  return {
+    position: [x + normal[0] * push, y + normal[1] * push, z + normal[2] * push],
+    quaternion: quaternionFromZ(normal),
+  };
+}
+
 /** Deterministic PRNG (mulberry32), so scattered food looks the same on every render. */
 export function mulberry32(seed: number): () => number {
   let a = seed | 0;
