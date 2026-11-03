@@ -9,6 +9,7 @@ import { editUrl } from '@/lib/shared';
 import { sectionClass, sectionOfSlug } from '@/lib/docs-sections';
 import { DocsPageHeader } from '@/components/docs/page-header';
 import { DocsPageFooter } from '@/components/docs/page-footer';
+import { releaseStatus } from '@/lib/release.server';
 
 export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
   const params = await props.params;
@@ -36,6 +37,7 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
         description={page.data.description}
         section={section}
         isSectionPage={params.slug?.length === 1}
+        released={releaseStatus().released}
       />
       <DocsBody className="docs-body">
         <MDX

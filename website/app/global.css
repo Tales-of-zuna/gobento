@@ -79,6 +79,9 @@ html > body[data-scroll-locked] {
   --t-h2: 44px;
   --t-h1: 64px;
 
+  /* height of the site's top bar on the configurator and docs (components/site) */
+  --site-bar-height: 72px;
+
   /*
    * shadcn variables, mapped onto the gobento tokens (tokens.css). The tokens
    * switch with .dark on <html>, so these follow without a second block.

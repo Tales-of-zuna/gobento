@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { DocsDescription, DocsTitle } from 'fumadocs-ui/layouts/docs/page';
+import { PrereleaseNotice } from '@/components/site/PrereleaseNotice';
 import { sectionClass, type DocsSection } from '@/lib/docs-sections';
 
 /**
@@ -13,12 +14,15 @@ export function DocsPageHeader({
   description,
   section,
   isSectionPage,
+  released,
 }: {
   title: ReactNode;
   description?: ReactNode;
   section: DocsSection | undefined;
   /** True when the page is the section itself (no separate section crumb). */
   isSectionPage: boolean;
+  /** Whether gobento has a release (lib/release.server); otherwise the pre-release pill shows. */
+  released: boolean;
 }) {
   return (
     <header className={`docs-band ${sectionClass(section)}`} data-section={section?.id ?? 'intro'}>
@@ -30,6 +34,7 @@ export function DocsPageHeader({
         <i />
       </div>
       <div className="docs-band-in">
+        <PrereleaseNotice released={released} className="docs-prerelease" />
         <nav aria-label="Breadcrumb" className="docs-crumbs">
           <ol>
             <li>

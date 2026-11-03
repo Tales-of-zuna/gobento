@@ -1,7 +1,13 @@
-import { HomeLayout } from 'fumadocs-ui/layouts/home';
-import { baseOptions } from '@/lib/layout.shared';
+import { SiteFooter } from '@/components/site/SiteFooter';
+import { SiteNav } from '@/components/site/SiteNav';
 
-/** The configurator uses the site's shared navigation, like the home page. */
+/** The configurator uses the site's shared bar and footer, like every page. */
 export default function Layout({ children }: LayoutProps<'/configurator'>) {
-  return <HomeLayout {...baseOptions()}>{children}</HomeLayout>;
+  return (
+    <>
+      <SiteNav active="configurator" />
+      <main className="flex flex-1 flex-col">{children}</main>
+      <SiteFooter />
+    </>
+  );
 }

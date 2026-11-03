@@ -71,4 +71,12 @@ describe('Configurator', () => {
     expect(go126).toHaveAccessibleDescription(/needs Go >=1\.27, but Go 1\.26 is selected/);
     expect(command()).toHaveTextContent(/--pin modernc\.org\/sqlite=v1\.62\.0/);
   });
+
+  it('shows the pre-release notice from the release status it is given', () => {
+    const { unmount } = render(<Configurator catalog={catalogWith()} released={false} />);
+    expect(screen.getByText('Early development · not released yet')).toBeInTheDocument();
+    unmount();
+    render(<Configurator catalog={catalogWith()} released />);
+    expect(screen.queryByText('Early development · not released yet')).toBeNull();
+  });
 });
