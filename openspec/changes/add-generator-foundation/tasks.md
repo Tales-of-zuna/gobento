@@ -19,10 +19,10 @@
 
 ## 4. Composition (`internal/compose`)
 
-- [ ] 4.1 Implement slot resolution and template data (`.Project`, `.Slots`, `.Traits`, `.Versions`), with CRLF normalization; verify with a two-architecture fixture that one framework file lands in different directories with the correct package and imports
-- [ ] 4.2 Implement Plan building with all composition errors collected (unknown slot, unfilled required slot, two owners, root-path conflict, unmet trait); verify one test per scenario in spec *One owner per slot*, *Traits connect compatible components*, and *Reject selections that cannot be composed*
-- [ ] 4.3 Run `.go` outputs through `go/format`, reporting component and file on failure, and append component `notes.md.tmpl` into the README; verify with a broken fixture template and a notes fixture
-- [ ] 4.4 Add a second fixture data component and verify that the framework's planned files are byte-identical across both (spec *Swapping one component leaves others untouched*)
+- [x] 4.1 Implement slot resolution and template data (`.Project`, `.Slots`, `.Traits`, `.Versions`), with CRLF normalization; verify with a two-architecture fixture that one framework file lands in different directories with the correct package and imports
+- [x] 4.2 Implement Plan building with all composition errors collected (unknown slot, unfilled required slot, two owners, root-path conflict, unmet trait); verify one test per scenario in spec *One owner per slot*, *Traits connect compatible components*, and *Reject selections that cannot be composed*
+- [x] 4.3 Run `.go` outputs through `go/format`, reporting component and file on failure, and append component `notes.md.tmpl` into the README; verify with a broken fixture template and a notes fixture
+- [x] 4.4 Add a second fixture data component and verify that the framework's planned files are byte-identical across both (spec *Swapping one component leaves others untouched*)
 
 ## 5. First slice components
 
