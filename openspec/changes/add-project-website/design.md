@@ -173,7 +173,7 @@ Design tools and shared with the maintainer. It contains:
 2. **Mascot sheet:** an original gopher-inspired character in or as a bento
    box, shown in front, three-quarter, and side views, with expressions and a
    static hero pose. This sheet is the reference for the 3D build and the
-   source of the SVG fallback and favicon.
+   source of the static stills and favicon (see D7).
 3. **Pages:** home, configurator, and a docs page, at desktop and mobile
    sizes, in light and dark themes.
 
@@ -200,6 +200,9 @@ Tailwind, shadcn, and Fumadocs.
 - **Static fallback:** rendered stills of the approved 3D model (WebP/PNG at
   1× and 2×, plus a small favicon render). They are used for reduced motion,
   without WebGL, while loading, in the favicon, and in social images.
+  `pnpm mascot:stills` renders them from the R3F scene itself (Vite plus
+  headless Chromium, transparent background) into `public/mascot/`, so the
+  stills cannot drift from the 3D model.
 - **Attribution:** the footer credits Renée French (CC BY 4.0) for the original
   Go gopher design and states non-affiliation with the Go project. The mascot
   is our own drawing. The Go logo is not used.
@@ -207,12 +210,16 @@ Tailwind, shadcn, and Fumadocs.
 ### D8. 3D loading and runtime
 
 - The scene is a client component loaded with `next/dynamic` (`ssr: false`).
-  The static SVG renders first, so the scene never blocks content or LCP.
-- WebGL support is detected before mounting. On failure, or on an error
-  boundary catch, the SVG stays.
-- `prefers-reduced-motion`: the scene renders a single static pose
-  (`frameloop="demand"`) and Motion's reduced-motion setting disables
-  decorative transitions.
+  The static still (D7) is in the HTML first, sized to avoid layout shift, so
+  the scene never blocks content or LCP; the canvas cross-fades in after its
+  first frame.
+- WebGL support is detected before mounting. On failure, on an error
+  boundary catch, or on a lost WebGL context, the still stays.
+- `prefers-reduced-motion`: when it is set on load, the still is shown and
+  the 3D code is never downloaded (the still is a render of the same static
+  pose). If it is turned on while the scene runs, the scene switches to a
+  single static pose (`frameloop="demand"`). Motion's reduced-motion setting
+  disables decorative transitions.
 - Device pixel ratio is clamped to [1, 2]. Rendering pauses when the canvas is
   off-screen or the tab is hidden.
 - **3D and motion across the site:** the maintainer wants clean but impressive
