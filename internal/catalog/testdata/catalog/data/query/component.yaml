@@ -1,0 +1,5 @@
+name: query
+title: Query
+requires:
+  sql-dialect: [sqlite, postgres]
+  conn: [database/sql]

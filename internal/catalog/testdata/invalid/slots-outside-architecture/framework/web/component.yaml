@@ -1,0 +1,4 @@
+name: web
+title: Web
+slots:
+  handlers: { dir: internal/handlers, filled_by: framework }

@@ -1,0 +1,9 @@
+go:
+  range: ">=1.26 <1.28"
+  default: "1.27"
+modules:
+  example.com/sqlitedriver:
+    components: [database/lite]
+    role: library
+    range: ">=v1.0.0 <v2.0.0"
+    default: v1.2.0

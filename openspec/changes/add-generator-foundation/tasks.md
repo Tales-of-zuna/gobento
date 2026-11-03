@@ -13,9 +13,9 @@
 
 ## 3. Component catalog (`internal/catalog`, `components/`)
 
-- [ ] 3.1 Define manifest types (slots with `filled_by`/`required`, provided and required traits) and a loader over `fs.FS` that validates manifests and enforces the `.tmpl`-only file rule and the `dot-` mapping; verify with invalid fixtures in `testdata/`
-- [ ] 3.2 Implement listing of supported selections (cross product filtered by traits); verify with a fixture catalog containing a trait mismatch (spec *Trait mismatch is not supported*)
-- [ ] 3.3 Create `components/embed.go` and `components/versions.yaml` with the researched versions and confirmed range floors; verify a test loads the embedded catalog and rules and that every rules entry references an existing component
+- [x] 3.1 Define manifest types (slots with `filled_by`/`required`, provided and required traits) and a loader over `fs.FS` that validates manifests and enforces the `.tmpl`-only file rule and the `dot-` mapping; verify with invalid fixtures in `testdata/`
+- [x] 3.2 Implement listing of supported selections (cross product filtered by traits); verify with a fixture catalog containing a trait mismatch (spec *Trait mismatch is not supported*)
+- [x] 3.3 Create `components/embed.go` and `components/versions.yaml` with the researched versions and confirmed range floors; verify a test loads the embedded catalog and rules and that every rules entry references an existing component
 
 ## 4. Composition (`internal/compose`)
 

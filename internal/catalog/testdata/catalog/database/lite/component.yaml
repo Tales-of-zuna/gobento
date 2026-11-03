@@ -1,0 +1,5 @@
+name: lite
+title: Lite
+provides:
+  sql-dialect: sqlite
+  conn: database/sql
