@@ -2,14 +2,14 @@
 
 ## 1. Module setup
 
-- [ ] 1.1 Add `cmd/gobento/main.go` (with the `version` variable GoReleaser sets) and the package directories from design D1, on top of the `go.mod` from `establish-repo-standards`; verify `go build ./...` and `make lint` succeed
-- [ ] 1.2 Add cobra v1.10.2, `golang.org/x/mod` v0.42.0, and `go.yaml.in/yaml/v3` v3.0.6 (or newer patch releases, re-checked on the proxy); verify `go mod tidy` leaves no diff and `go mod verify` succeeds
+- [x] 1.1 Add `cmd/gobento/main.go` (with the `version` variable GoReleaser sets) and the package directories from design D1, on top of the `go.mod` from `establish-repo-standards`; verify `go build ./...` and `make lint` succeed
+- [x] 1.2 Add cobra v1.10.2, `golang.org/x/mod` v0.42.0, and `go.yaml.in/yaml/v3` v3.0.6 (or newer patch releases, re-checked on the proxy); verify `go mod tidy` leaves no diff and `go mod verify` succeeds
 
 ## 2. Version compatibility (`internal/compat`)
 
-- [ ] 2.1 Implement range parsing (ANDed comparators) and Go-version normalization on `x/mod/semver`; verify table tests for each comparator, malformed ranges, and `1.27` → `v1.27.0`
-- [ ] 2.2 Implement the rules model and loader (go range, modules with components list, role, range, default, constraints) with consistency checks; verify one test per error in spec *Rules file is checked for consistency*
-- [ ] 2.3 Implement resolution (defaults → `--go`/`--pin` → ranges → constraints, collecting all errors; tools are not pinnable); verify tests for every scenario in *Default versions*, *User version overrides*, and *Reject incompatible combinations*
+- [x] 2.1 Implement range parsing (ANDed comparators) and Go-version normalization on `x/mod/semver`; verify table tests for each comparator, malformed ranges, and `1.27` → `v1.27.0`
+- [x] 2.2 Implement the rules model and loader (go range, modules with components list, role, range, default, constraints) with consistency checks; verify one test per error in spec *Rules file is checked for consistency*
+- [x] 2.3 Implement resolution (defaults → `--go`/`--pin` → ranges → constraints, collecting all errors; tools are not pinnable); verify tests for every scenario in *Default versions*, *User version overrides*, and *Reject incompatible combinations*
 
 ## 3. Component catalog (`internal/catalog`, `components/`)
 
