@@ -49,6 +49,7 @@ check: vet lint test ## Run the checks CI runs: vet, lint, and test
 .PHONY: generate
 generate: ## Regenerate generated code
 	$(GO) run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
+	$(GO) generate ./internal/adapters/web
 
 docker-build: ## Build the container image
 	docker build --tag $(IMAGE) .

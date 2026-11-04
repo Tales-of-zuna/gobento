@@ -108,6 +108,41 @@ func checkTooling(t *testing.T, dir string, tools lintTools) {
 	runIn(t, dir, tools.make, "lint", "GOLANGCI_LINT="+filepath.ToSlash(tools.golangciLint))
 }
 
+// checkTemplFresh covers the spec scenarios "Regenerate the pages with make"
+// and "Fresh templ code passes CI": it runs the command of the CI workflow's
+// templ step, go generate in the web package, which runs the pinned templ,
+// and checks that every planned file is unchanged, and, where make is
+// installed, that make generate runs the same command.
+func checkTemplFresh(t *testing.T, dir string, p *Prepared, webDir string, tools lintTools) {
+	t.Helper()
+	runIn(t, dir, "go", "generate", "./"+webDir)
+	for _, f := range p.Plan.Files {
+		got, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(f.Path))) //nolint:gosec // G304: a planned path in the generated project
+		if err != nil {
+			t.Errorf("after go generate: %v", err)
+			continue
+		}
+		if string(got) != string(f.Content) {
+			t.Errorf("go generate ./%s changed %s: the shipped templ output is stale", webDir, f.Path)
+		}
+	}
+	entries, err := os.ReadDir(filepath.Join(dir, filepath.FromSlash(webDir)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if _, ok := p.Plan.File(webDir + "/" + e.Name()); !ok && !e.IsDir() {
+			t.Errorf("go generate ./%s created %s", webDir, e.Name())
+		}
+	}
+	if tools.make == "" {
+		return
+	}
+	if out := runIn(t, dir, tools.make, "--dry-run", "generate"); !strings.Contains(out, "go generate ./"+webDir) {
+		t.Errorf("make generate does not run go generate ./%s:\n%s", webDir, out)
+	}
+}
+
 func skipIntegration(t *testing.T) {
 	t.Helper()
 	if testing.Short() {
@@ -159,6 +194,9 @@ func checkSelection(t *testing.T, cat *catalog.Catalog, sel catalog.Selection, t
 			checkLayers(t, dir, p)
 			if variant == "defaults" {
 				checkTooling(t, dir, tools)
+				if web := p.Plan.Slots["web"]; web.Filled {
+					checkTemplFresh(t, dir, p, web.Dir, tools)
+				}
 			}
 		})
 	}

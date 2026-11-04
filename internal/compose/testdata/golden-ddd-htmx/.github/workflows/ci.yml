@@ -28,6 +28,15 @@ jobs:
           go-version-file: go.mod
       - name: Check that the sqlc code is current
         run: go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 diff
+      - name: Check that the templ code is current
+        run: |
+          go generate ./internal/adapters/web
+          if [ -n "$(git status --porcelain -- internal/adapters/web)" ]; then
+            git status --short -- internal/adapters/web
+            git diff -- internal/adapters/web
+            echo "::error::the templ code in internal/adapters/web is stale; run make generate and commit the result"
+            exit 1
+          fi
       - name: Check that go.mod and go.sum are tidy
         run: go mod tidy -diff
       - name: Build

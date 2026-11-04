@@ -375,12 +375,16 @@ The project gains one package, `internal/views` (`internal/web` with
 
 `cmd/shop/main.go` mounts the API router under `/api/` and the pages at `/`.
 `go.mod` adds `github.com/a-h/templ`, the templ runtime. After you edit
-`pages.templ`, regenerate `pages_templ.go` with the pinned templ version; the
-`//go:generate` line in `handler.go` holds the exact command:
+`pages.templ`, regenerate `pages_templ.go` with the pinned templ version:
+run `make generate`, or without make the `//go:generate` line in
+`handler.go`, which holds the exact command:
 
 ```sh
-go generate ./...
+go generate ./internal/views
 ```
+
+The CI workflow runs the same command and fails when the committed
+`pages_templ.go` is stale.
 
 A blank name is answered with `422` and a message next to the field, and form
 posts from other sites are rejected with `403`.

@@ -112,14 +112,17 @@ under `/api/`.
 The components live in `internal/views/pages.templ`. The Go code templ
 generates from it, `pages_templ.go`, is committed, so the project builds
 without the templ command. After editing `pages.templ`, regenerate it with
-templ v0.3.1100, the version in `go.mod`:
+templ v0.3.1100, the version in `go.mod`, using
+`make generate`, or without make:
 
 ```sh
-go generate ./...
+go generate ./internal/views
 ```
 
 The `//go:generate` line in `internal/views/handler.go` runs
 `go run github.com/a-h/templ/cmd/templ@v0.3.1100 generate`.
+The CI workflow runs it too and fails when the committed `pages_templ.go` is
+not what templ generates from `pages.templ`.
 
 htmx 2.0.11 is in `internal/views/static/htmx.min.js`, and the
 styles are plain CSS in `internal/views/static/styles.css`. To update htmx,
@@ -169,6 +172,9 @@ docker run --rm --publish 8080:8080 --volume shop-data:/data shop
 
 To use a directory of the host instead (`--volume "$PWD/data:/data"`), make
 it writable for the user 65532, for example with `--user "$(id -u)"`.
+The pages and their static files are compiled into the binary, so the image
+needs nothing else to serve them: the pages are at `/`, and the JSON API, its
+health check included, is under `/api/` (`/api/health`).
 
 ### Continuous integration
 

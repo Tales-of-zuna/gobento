@@ -11,3 +11,6 @@
 
 # Test output
 coverage.out
+
+# Written by templ generate --watch for live reload
+*_templ.txt

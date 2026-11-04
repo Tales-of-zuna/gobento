@@ -11,3 +11,4 @@ Dockerfile
 /shop.exe
 *.db
 *.db-*
+*_templ.txt

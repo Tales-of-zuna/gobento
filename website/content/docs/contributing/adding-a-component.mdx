@@ -539,9 +539,11 @@ the database or store packages, and that the web package imports no
 framework module. With the default versions it also checks the tooling: it
 runs actionlint on `.github/workflows/ci.yml` and golangci-lint with the
 generated `.golangci.yml`, and, where `make` is installed, `make`,
-`make build`, and `make lint`. `TestIntegrationDocker` builds the images of
-one SQLite and one PostgreSQL project and runs the SQLite one; it is skipped
-without a Docker daemon that runs Linux containers.
+`make build`, and `make lint`; with a frontend, it also runs `go generate`
+in the web package and checks that the shipped templ code is unchanged.
+`TestIntegrationDocker` builds the images of one SQLite and one PostgreSQL
+project and of a SQLite project with htmx, and runs the SQLite ones; it is
+skipped without a Docker daemon that runs Linux containers.
 
 It needs network access and is skipped with `-short`. Run it with:
 

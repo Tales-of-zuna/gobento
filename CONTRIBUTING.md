@@ -82,10 +82,13 @@ it installs actionlint and the golangci-lint version of
 `components/versions.yaml` into a temporary directory (so the first run needs
 a few minutes more), runs actionlint on the generated workflow and
 golangci-lint on the code, and, where `make` is installed, runs `make`,
-`make build`, and `make lint`. `TestIntegrationDocker` (matched by the same
-`-run TestIntegration`) builds the images of one SQLite and one PostgreSQL
-project with the generated `Dockerfile` and runs the SQLite one; it is skipped
-when no Docker daemon runs Linux containers, so in CI it runs on Linux only.
+`make build`, and `make lint`; with a frontend, it also runs
+`go generate` in the web package and checks that the shipped templ code is
+unchanged. `TestIntegrationDocker` (matched by the same `-run
+TestIntegration`) builds the images of one SQLite and one PostgreSQL project
+and of a SQLite project with htmx with the generated `Dockerfile`, and runs
+the SQLite ones; it is skipped when no Docker daemon runs Linux containers, so
+in CI it runs on Linux only.
 
 ### Notes for Windows
 

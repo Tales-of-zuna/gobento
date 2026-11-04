@@ -159,8 +159,9 @@ tasks; the README gives the plain `go` command for each, for Windows), a
 multi-stage `Dockerfile` that builds a static binary into a distroless,
 non-root image, a GitHub Actions workflow that checks, lints, and tests every
 pull request (with a PostgreSQL service when you choose PostgreSQL), and
-Dependabot and golangci-lint configuration. Image versions and action SHAs
-come from gobento's rules file, like every other version.
+Dependabot and golangci-lint configuration. With htmx, `make generate`
+regenerates the templ code and CI fails when it is stale. Image versions and
+action SHAs come from gobento's rules file, like every other version.
 
 The reference stack (`mvc`, `nethttp`, `sqlite`, `sqlc`) generates a project
 like this, with a health endpoint and one example resource that builds and

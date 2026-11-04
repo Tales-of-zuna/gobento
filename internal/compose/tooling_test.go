@@ -188,3 +188,42 @@ func TestShippedTemplatesHaveNoImageVersions(t *testing.T) {
 		}
 	}
 }
+
+// TestShippedToolingFollowsFrontend covers the spec scenarios "Regenerate the
+// pages with make", "Stale templ code fails CI", and "Watch-mode files stay
+// out of the image": with htmx, the tooling regenerates and checks the templ
+// code in the web slot of each architecture; without a frontend, it does not
+// mention templ.
+func TestShippedToolingFollowsFrontend(t *testing.T) {
+	t.Parallel()
+
+	for _, arch := range []string{"mvc", "vertical-slice", "ddd"} {
+		plan := referencePlanWith(t, [4]string{arch, "nethttp", "sqlite", "sqlc"}, "htmx")
+		web := plan.Slots["web"].Dir
+		for path, wants := range map[string][]string{
+			"Makefile":                 {"generate: ##", "\t$(GO) generate ./" + web + "\n"},
+			".github/workflows/ci.yml": {"Check that the templ code is current", "go generate ./" + web + "\n", `git status --porcelain -- ` + web},
+			".dockerignore":            {"\n*_templ.txt\n"},
+			".gitignore":               {"\n*_templ.txt\n"},
+			"README.md":                {"`make generate`", "go generate ./" + web + "\n", "`/api/health`"},
+		} {
+			f, ok := plan.File(path)
+			if !ok {
+				t.Fatalf("%s with htmx: %s is not planned", arch, path)
+			}
+			for _, want := range wants {
+				if !strings.Contains(string(f.Content), want) {
+					t.Errorf("%s with htmx: %s does not contain %q", arch, path, want)
+				}
+			}
+		}
+
+		plain := referencePlan(t, [4]string{arch, "nethttp", "sqlite", "gorm"})
+		for _, path := range []string{"Makefile", ".github/workflows/ci.yml", ".dockerignore", ".gitignore"} {
+			f, _ := plain.File(path)
+			if strings.Contains(string(f.Content), "templ") || strings.Contains(string(f.Content), "generate") {
+				t.Errorf("%s without a frontend: %s mentions templ or code generation:\n%s", arch, path, f.Content)
+			}
+		}
+	}
+}

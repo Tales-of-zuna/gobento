@@ -1,0 +1,9 @@
+- name: Check that the templ code is current
+  run: |
+    go generate ./internal/views
+    if [ -n "$(git status --porcelain -- internal/views)" ]; then
+      git status --short -- internal/views
+      git diff -- internal/views
+      echo "::error::the templ code in internal/views is stale; run make generate and commit the result"
+      exit 1
+    fi

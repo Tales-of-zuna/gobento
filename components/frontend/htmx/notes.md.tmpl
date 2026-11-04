@@ -21,14 +21,17 @@ under `{{.APIPrefix}}/`.
 The components live in `{{.Slots.web.Dir}}/pages.templ`. The Go code templ
 generates from it, `pages_templ.go`, is committed, so the project builds
 without the templ command. After editing `pages.templ`, regenerate it with
-templ {{index .Versions "github.com/a-h/templ"}}, the version in `go.mod`:
+templ {{index .Versions "github.com/a-h/templ"}}, the version in `go.mod`, using
+`make generate`, or without make:
 
 ```sh
-go generate ./...
+go generate ./{{.Slots.web.Dir}}
 ```
 
 The `//go:generate` line in `{{.Slots.web.Dir}}/handler.go` runs
 `go run github.com/a-h/templ/cmd/templ@{{index .Versions "github.com/a-h/templ"}} generate`.
+The CI workflow runs it too and fails when the committed `pages_templ.go` is
+not what templ generates from `pages.templ`.
 
 htmx {{index .Assets "htmx.org"}} is in `{{.Slots.web.Dir}}/static/htmx.min.js`, and the
 styles are plain CSS in `{{.Slots.web.Dir}}/static/styles.css`. To update htmx,
