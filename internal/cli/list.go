@@ -33,11 +33,12 @@ type selectionsJSON struct {
 	Supported []map[string]string `json:"supported"`
 }
 
-// versionsJSON is the JSON of `gobento list versions`: the go and modules
-// fields of the catalog document.
+// versionsJSON is the JSON of `gobento list versions`: the go, modules, and
+// assets fields of the catalog document.
 type versionsJSON struct {
 	Go      catalogjson.GoRule   `json:"go"`
 	Modules []catalogjson.Module `json:"modules"`
+	Assets  []catalogjson.Asset  `json:"assets"`
 }
 
 // newListCommand returns the `gobento list` command and its subcommands.
@@ -53,7 +54,7 @@ version rules. Without a subcommand, all three are listed.
 With --json, the output is one JSON document instead of text. For gobento list
 it is the catalog document the gobento website is built from; each subcommand
 prints only the fields it lists ("kinds" and "components", "supported", or
-"go" and "modules"), in the same format.
+"go", "modules", and "assets"), in the same format.
 
 gobento list never asks a question, writes a file, or uses the network.`,
 		Example: `  # Everything gobento supports
@@ -95,7 +96,8 @@ func newListComponentsCommand(a *app, asJSON *bool) *cobra.Command {
 		Short: "List the components of each kind",
 		Long: `List each component kind with the gobento new flag that selects it, and each
 component with its name, title, description, and the traits it provides and
-requires. --kind lists one kind only.`,
+requires. An optional kind, such as the frontend, also lists none, which
+selects no component of the kind. --kind lists one kind only.`,
 		Example: `  gobento list components
   gobento list components --kind database --json`,
 		Args: cobra.NoArgs,
@@ -123,11 +125,14 @@ func newListSelectionsCommand(a *app, asJSON *bool) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "selections",
 		Short: "List the supported selections",
-		Long: `List every supported selection: one component of each kind that gobento new
-accepts together. The component flags of gobento new narrow the list to the
-selections that contain the named component.`,
+		Long: `List every supported selection: the components that gobento new accepts
+together, one of each kind and at most one frontend. A selection without a
+frontend shows none in its frontend column. The component flags of gobento
+new narrow the list to the selections that contain the named component;
+--frontend none keeps the selections without a frontend.`,
 		Example: `  gobento list selections
-  gobento list selections --arch mvc --db postgres`,
+  gobento list selections --arch mvc --db postgres
+  gobento list selections --frontend htmx`,
 		Args: cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			d, err := a.document()
@@ -139,6 +144,7 @@ selections that contain the named component.`,
 				catalog.KindFramework:    f.framework,
 				catalog.KindDatabase:     f.db,
 				catalog.KindData:         f.data,
+				catalog.KindFrontend:     f.frontend,
 			}
 			v, err := selectionsOf(d, chosen)
 			if err != nil {
@@ -147,7 +153,7 @@ selections that contain the named component.`,
 			if *asJSON {
 				return catalogjson.Encode(a.stdout, v)
 			}
-			filtered := f.arch != "" || f.framework != "" || f.db != "" || f.data != ""
+			filtered := f.arch != "" || f.framework != "" || f.db != "" || f.data != "" || f.frontend != ""
 			return writeSelections(a.stdout, d, v, filtered)
 		},
 	}
@@ -156,6 +162,7 @@ selections that contain the named component.`,
 	fl.StringVar(&f.framework, "framework", "", "only selections with this HTTP framework")
 	fl.StringVar(&f.db, "db", "", "only selections with this database")
 	fl.StringVar(&f.data, "data", "", "only selections with this data-access library")
+	fl.StringVar(&f.frontend, "frontend", "", "only selections with this frontend, or none for those without one")
 	return cmd
 }
 
@@ -165,8 +172,10 @@ func newListVersionsCommand(a *app, asJSON *bool) *cobra.Command {
 		Short: "List the supported Go and module versions",
 		Long: `List the supported Go range and the default Go version, and each module of
 the version rules with its role, range, default, the components that use it,
-the trait values it is limited to, and its constraints on other versions.
-Choose versions inside these ranges with gobento new --go and --pin.`,
+the trait values it is limited to, and its constraints on other versions,
+followed by the files components vendor from an upstream release (such as
+htmx), whose versions are fixed per gobento release. Choose versions inside
+the module ranges with gobento new --go and --pin.`,
 		Example: `  gobento list versions`,
 		Args:    cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
@@ -175,7 +184,7 @@ Choose versions inside these ranges with gobento new --go and --pin.`,
 				return err
 			}
 			if *asJSON {
-				return catalogjson.Encode(a.stdout, versionsJSON{Go: d.Go, Modules: d.Modules})
+				return catalogjson.Encode(a.stdout, versionsJSON{Go: d.Go, Modules: d.Modules, Assets: d.Assets})
 			}
 			return writeVersions(a.stdout, d)
 		},
@@ -225,8 +234,9 @@ func componentsOf(d *catalogjson.Document, kind string) (componentsJSON, error) 
 }
 
 // selectionsOf returns the supported selections of d that contain the
-// component chosen for each kind; kinds without a name match any component.
-// A name that is not a component of its kind is an error.
+// component chosen for each kind; kinds without a name match any component,
+// and catalog.None matches the selections without a component of an
+// optional kind. A name that is not a component of its kind is an error.
 func selectionsOf(d *catalogjson.Document, chosen map[catalog.Kind]string) (selectionsJSON, error) {
 	v := selectionsJSON{Supported: []map[string]string{}}
 	var errs []error
@@ -241,8 +251,14 @@ func selectionsOf(d *catalogjson.Document, chosen map[catalog.Kind]string) (sele
 				names = append(names, c.Name)
 			}
 		}
+		if k.Optional() && name == catalog.None {
+			continue
+		}
 		if !slices.Contains(names, name) {
 			slices.Sort(names)
+			if k.Optional() {
+				names = append([]string{catalog.None}, names...)
+			}
 			errs = append(errs, &generate.SelectionError{Kind: k, Value: name, Supported: names})
 		}
 	}
@@ -259,7 +275,7 @@ func selectionsOf(d *catalogjson.Document, chosen map[catalog.Kind]string) (sele
 	for _, s := range d.Supported {
 		match := true
 		for k, name := range chosen {
-			if name != "" && s[string(k)] != name {
+			if name != "" && selected(s, k) != name {
 				match = false
 			}
 		}
@@ -268,6 +284,15 @@ func selectionsOf(d *catalogjson.Document, chosen map[catalog.Kind]string) (sele
 		}
 	}
 	return v, nil
+}
+
+// selected returns the name of the component of kind k in the supported
+// selection s, or catalog.None when s has no component of k.
+func selected(s map[string]string, k catalog.Kind) string {
+	if name, ok := s[string(k)]; ok {
+		return name
+	}
+	return catalog.None
 }
 
 // writeTable writes rows with their cells aligned in columns, two spaces
@@ -325,10 +350,17 @@ func writeComponents(w io.Writer, v componentsJSON) error {
 				return err
 			}
 		}
-		if _, err := fmt.Fprintf(w, "%s (%s)\n%s\n\n", k.Title, kindFlag(catalog.Kind(k.ID)), k.Description); err != nil {
+		flag := kindFlag(catalog.Kind(k.ID))
+		if k.Optional {
+			flag += ", optional"
+		}
+		if _, err := fmt.Fprintf(w, "%s (%s)\n%s\n\n", k.Title, flag, k.Description); err != nil {
 			return err
 		}
 		var rows [][]string
+		if k.Optional {
+			rows = append(rows, []string{"  " + catalog.None, "No " + strings.ToLower(k.Title) + " (the default)"})
+		}
 		for _, c := range v.Components {
 			if c.Kind != k.ID {
 				continue
@@ -401,7 +433,7 @@ func writeSelections(w io.Writer, d *catalogjson.Document, v selectionsJSON, fil
 	for _, s := range v.Supported {
 		var row []string
 		for _, k := range d.Kinds {
-			row = append(row, s[k.ID])
+			row = append(row, selected(s, catalog.Kind(k.ID)))
 		}
 		rows = append(rows, row)
 	}
@@ -444,10 +476,20 @@ func writeVersions(w io.Writer, d *catalogjson.Document) error {
 			lines = append(lines, fmt.Sprintf("  %s %s needs %s %s", m.Path, c.When, c.Requires.Target, c.Requires.Range))
 		}
 	}
-	if len(lines) == 0 {
+	if len(lines) > 0 {
+		if _, err := fmt.Fprintf(w, "\nConstraints:\n%s\n", strings.Join(lines, "\n")); err != nil {
+			return err
+		}
+	}
+	if len(d.Assets) == 0 {
 		return nil
 	}
-	_, err := fmt.Fprintf(w, "\nConstraints:\n%s\n",
-		strings.Join(lines, "\n"))
-	return err
+	if _, err := fmt.Fprint(w, "\nVendored assets (fixed per gobento release):\n\n"); err != nil {
+		return err
+	}
+	rows = [][]string{{"ASSET", "VERSION", "USED BY", "SOURCE"}}
+	for _, a := range d.Assets {
+		rows = append(rows, []string{a.Name, a.Version, strings.Join(a.Components, ", "), a.Source})
+	}
+	return writeTable(w, rows)
 }

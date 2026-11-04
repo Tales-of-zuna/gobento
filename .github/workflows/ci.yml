@@ -87,8 +87,10 @@ jobs:
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
 
   integration:
-    # Generates every supported selection with default and floor versions
-    # and builds, vets, and tests each project (internal/generate).
+    # Generates the selections compose.Coverage returns (every supported
+    # selection without a frontend, and a pairwise covering set of those with
+    # one) with default and floor versions, and builds, vets, and tests each
+    # project (internal/generate).
     name: integration (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
@@ -158,5 +160,34 @@ jobs:
           if [ -n "$(git status --porcelain)" ]; then
             git diff
             echo "::error::the shipped sqlc output is stale; regenerate it as described in website/content/docs/contributing/adding-a-component.mdx"
+            exit 1
+          fi
+
+  templ-fresh:
+    # The htmx frontend ships the Go code templ generates from pages.templ.
+    # Regenerate it with the pinned templ in a generated project and fail if
+    # anything changes.
+    name: templ output is current
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27" # newest Go in versions.yaml: the reference project defaults to it
+      - name: Generate the reference project
+        run: go run ./cmd/gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx --dir "$RUNNER_TEMP/shop"
+      - name: Regenerate with the pinned templ and compare
+        working-directory: ${{ runner.temp }}/shop
+        run: |
+          git init --quiet
+          git add --all
+          git -c user.name=ci -c user.email=ci@example.invalid commit --quiet --message generated
+          # The //go:generate line in the web package runs the pinned templ.
+          go generate ./...
+          if [ -n "$(git status --porcelain)" ]; then
+            git diff
+            echo "::error::the shipped templ output is stale; regenerate it as described in website/content/docs/contributing/adding-a-component.mdx"
             exit 1
           fi

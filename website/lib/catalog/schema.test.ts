@@ -13,7 +13,27 @@ describe('catalog schema', () => {
       'database/sqlite',
       'data/gorm',
       'data/sqlc',
+      'frontend/htmx',
     ]);
+    expect(result.data?.kinds.filter((k) => k.optional).map((k) => k.id)).toEqual(['frontend']);
+    expect(result.data?.assets.map((a) => [a.name, a.version])).toEqual([['htmx.org', '2.0.11']]);
+  });
+
+  it('accepts supported selections with and without an optional kind', () => {
+    const result = catalogSchema.safeParse(fixtureData());
+    const frontends = result.data?.supported.map((s) => s.frontend ?? 'none');
+    expect(frontends?.filter((f) => f === 'none')).toHaveLength(4);
+    expect(frontends?.filter((f) => f === 'htmx')).toHaveLength(4);
+  });
+
+  it('defaults a kind to required and the assets to none when they are left out', () => {
+    const data = fixtureData();
+    for (const kind of data.kinds) if (!kind.optional) delete kind.optional;
+    delete data.assets;
+    const result = catalogSchema.safeParse(data);
+    expect(result.error?.issues).toBeUndefined();
+    expect(result.data?.kinds.filter((k) => !k.optional)).toHaveLength(4);
+    expect(result.data?.assets).toEqual([]);
   });
 
   const sqlite = (data: CatalogData) => data.modules.find((m) => m.path === 'modernc.org/sqlite')!;
@@ -120,9 +140,46 @@ describe('catalog schema', () => {
       expected: 'supported selection names unknown component "database/postgres"',
     },
     {
-      name: 'supported selection without every kind',
-      edit: (d) => delete (d.supported[0] as Partial<CatalogData['supported'][number]>).data,
-      expected: 'Invalid input',
+      name: 'supported selection without a required kind',
+      edit: (d) => delete d.supported[0]!.data,
+      expected: 'supported selection lacks a data',
+    },
+    {
+      name: 'supported selection without a kind that is no longer optional',
+      edit: (d) => {
+        d.kinds.find((k) => k.id === 'frontend')!.optional = false;
+      },
+      expected: 'supported selection lacks a frontend',
+    },
+    {
+      name: 'supported selection naming an unknown optional component',
+      edit: (d) => (d.supported[0]!.frontend = 'react'),
+      expected: 'supported selection names unknown component "frontend/react"',
+    },
+    {
+      name: 'asset of an unknown component',
+      edit: (d) => (d.assets![0]!.components = ['frontend/react']),
+      expected: 'htmx.org: unknown component "frontend/react"',
+    },
+    {
+      name: 'asset without a version',
+      edit: (d) => (d.assets![0]!.version = ''),
+      expected: 'Too small',
+    },
+    {
+      name: 'asset without a source',
+      edit: (d) => (d.assets![0]!.source = ''),
+      expected: 'Too small',
+    },
+    {
+      name: 'asset without components',
+      edit: (d) => (d.assets![0]!.components = []),
+      expected: 'Too small',
+    },
+    {
+      name: 'duplicate asset',
+      edit: (d) => d.assets!.push({ ...d.assets![0]! }),
+      expected: 'duplicate asset name',
     },
     {
       name: 'no supported selection',

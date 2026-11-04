@@ -159,6 +159,16 @@ test('the Components reference is generated from the catalog', async ({ page }) 
   await expect(page.getByRole('table', { name: 'Modules of sqlite' })).toContainText(
     'modernc.org/sqlite',
   );
+  // Spec "Vendored asset": htmx.org is listed under the htmx frontend, marked as vendored.
+  await expect(page.getByRole('heading', { level: 2, name: /^Frontend/ })).toContainText(
+    'optional',
+  );
+  const assets = page.getByRole('table', { name: 'Vendored assets of htmx' });
+  await expect(assets).toContainText('htmx.org');
+  await expect(assets).toContainText('vendored');
+  await expect(page.getByRole('table', { name: 'Modules of htmx' })).toContainText(
+    'github.com/a-h/templ',
+  );
 });
 
 test('the accessibility audit covers every docs page', () => {

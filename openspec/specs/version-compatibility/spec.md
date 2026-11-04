@@ -11,12 +11,18 @@ and rejecting combinations known not to work.
 gobento SHALL read supported versions from a rules file that lists the project's
 Go version range and, for each module, the components using it, optionally the
 trait values a selection must provide for the module to be used, its role
-(library or tool), supported range, default, and constraints on other versions.
-Templates SHALL NOT contain version numbers.
+(library or tool), supported range, default, and constraints on other versions,
+and every vendored asset (a file shipped unmodified from an upstream release)
+with its components, version, source, and checksum. Templates SHALL NOT
+contain version numbers.
 
 #### Scenario: Updating a supported version
 - **WHEN** a maintainer raises a library module's default version in the rules file
 - **THEN** newly generated projects use that version without any template change
+
+#### Scenario: Asset version visible to templates
+- **WHEN** a component's README notes refer to the version of an asset it vendors
+- **THEN** the notes take the version from the rules file, and a generated project's README names the recorded version
 
 ### Requirement: Rules file is checked for consistency
 gobento SHALL reject a rules file in which a default lies outside its own range,
@@ -38,7 +44,8 @@ for the Go version and for every library module the selection uses.
 ### Requirement: User version overrides
 gobento SHALL let the user choose the Go version (`--go`) and library module
 versions (`--pin module=version`), accepting only versions inside the supported
-range. Tool module versions SHALL be fixed and not overridable.
+range. Tool module versions and vendored asset versions SHALL be fixed and not
+overridable.
 
 #### Scenario: Override within range
 - **WHEN** the user passes `--go 1.26` and `--pin modernc.org/sqlite=<a version inside its range>`
@@ -55,6 +62,10 @@ range. Tool module versions SHALL be fixed and not overridable.
 #### Scenario: Override of a tool version
 - **WHEN** the user pins a tool module such as sqlc
 - **THEN** gobento exits non-zero explaining that tool versions are fixed per gobento release
+
+#### Scenario: Override of a vendored asset
+- **WHEN** the user passes `--pin htmx.org=<any version>` with the htmx frontend selected
+- **THEN** gobento exits non-zero explaining that vendored asset versions are fixed per gobento release and naming the version this release ships
 
 ### Requirement: Reject incompatible combinations
 gobento SHALL evaluate every constraint across the final set of chosen versions
@@ -98,3 +109,19 @@ catalog's components provide.
 #### Scenario: Unknown trait in a condition
 - **WHEN** the rules file conditions a module on a trait that no component in the catalog provides
 - **THEN** loading the catalog fails with an error naming the module and the trait
+
+### Requirement: Vendored assets match their record
+gobento's test suite SHALL check that every asset in the rules file is
+shipped, byte-for-byte with the recorded checksum, by a component listed for
+it, and, with network access, that the recorded upstream source holds exactly
+that file. Loading the rules SHALL reject an asset without components,
+version, source, or a well-formed checksum, and an asset that names an
+unknown component.
+
+#### Scenario: Vendored file edited
+- **WHEN** the vendored htmx file differs from the checksum recorded in the rules file
+- **THEN** gobento's tests fail naming the asset and the component
+
+#### Scenario: Malformed checksum
+- **WHEN** an asset's checksum is not 64 hexadecimal digits
+- **THEN** loading the rules fails with an error naming the asset

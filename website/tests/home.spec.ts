@@ -123,12 +123,18 @@ test.describe('home page', () => {
       'PostgreSQL',
       'GORM',
       'sqlc',
+      'htmx + templ',
     ]) {
       await expect(belt.getByText(name, { exact: true }).first()).toBeAttached();
     }
     await expect(
       page.getByText('modernc.org/sqlite v1.61.1 needs Go 1.26 or newer'),
     ).toBeAttached();
+    // The optional frontend kind has its own compartment, with the roadmap.
+    const frontend = page.getByRole('list', { name: 'Frontend roadmap' });
+    for (const name of ['React', 'Vue', 'Svelte', 'Tailwind CSS']) {
+      await expect(frontend.getByText(name, { exact: true })).toBeAttached();
+    }
   });
 
   test.describe('mobile', () => {

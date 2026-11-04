@@ -35,10 +35,11 @@ packages form no import cycle.
 
 ### Requirement: Generated README explains the layout
 The README of a project generated with an architecture SHALL describe the
-directories of that architecture and what each one contains. For
-`vertical-slice` it SHALL also explain how to add another feature. For `ddd`
-it SHALL also explain the direction of dependencies between the layers and how
-to add another aggregate.
+directories of that architecture and what each one contains, including the
+`web` directory when a frontend is selected, and SHALL show the requests to
+try at the API's base path. For `vertical-slice` it SHALL also explain how to
+add another feature. For `ddd` it SHALL also explain the direction of
+dependencies between the layers and how to add another aggregate.
 
 #### Scenario: Vertical slice README
 - **WHEN** a project is generated with `--arch vertical-slice`
@@ -50,6 +51,10 @@ to add another aggregate.
 - **THEN** its `README.md` lists `internal/domain`, `internal/app`, `internal/adapters/httpapi`, `internal/adapters/persistence`, and `internal/adapters/database` with their contents
 - **AND** it states that the adapters and the application layer depend on the domain, and the domain depends on no other layer
 - **AND** it describes the steps to add a second aggregate next to `Item`
+
+#### Scenario: README with a frontend
+- **WHEN** a project is generated with `--frontend htmx`
+- **THEN** its `README.md` lists the web directory, tells the reader to open `http://localhost:8080/`, and shows `curl` requests under `/api`
 
 ### Requirement: Domain-driven design architecture
 gobento SHALL ship an architecture `ddd` with a domain layer (the example
@@ -86,3 +91,17 @@ package SHALL import neither the store nor the database package.
 #### Scenario: Handlers stay independent of storage in ddd
 - **WHEN** a `ddd` project is generated for any supported selection
 - **THEN** the handlers package imports neither the store package nor the database package, directly or transitively
+
+### Requirement: Shipped architectures support frontends
+The `mvc` and `vertical-slice` architectures SHALL declare the optional `web`
+slot: `mvc` in `internal/views` and `vertical-slice` in `internal/web`,
+outside every feature directory because pages and static files are shared by
+all features.
+
+#### Scenario: MVC with htmx
+- **WHEN** the user runs `gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx`
+- **THEN** the project contains the package `views` in `internal/views`, which the entry point in `cmd/shop` mounts at `/`
+
+#### Scenario: Vertical slice with htmx
+- **WHEN** the user runs `gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc --frontend htmx`
+- **THEN** the project contains the package `web` in `internal/web`, which imports the `items` package and none of its subpackages

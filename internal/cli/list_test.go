@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -19,8 +20,10 @@ import (
 )
 
 // listFixture is a frozen catalog document, a copy of the website's export
-// at the time `gobento list` was added. The snapshot tests render it, so they
-// do not change whenever a component ships.
+// at the time `gobento list` was added, extended with the optional frontend
+// kind (htmx, its templ module and vendored asset, and a selection with htmx
+// for every mvc and vertical-slice selection). The snapshot tests render it,
+// so they do not change whenever a component ships.
 const listFixture = "testdata/list/catalog.json"
 
 // runList executes gobento with args against the document d (or the
@@ -149,7 +152,14 @@ func TestListComponentsShipped(t *testing.T) {
 			t.Fatal(err)
 		}
 		sections = append(sections, out)
-		heading := k.Title + " (" + kindFlag(catalog.Kind(k.ID)) + ")\n" + k.Description + "\n"
+		flag := kindFlag(catalog.Kind(k.ID))
+		if k.Optional {
+			flag += ", optional"
+			if !strings.Contains(out, "  "+catalog.None+"  ") {
+				t.Errorf("--kind %s does not list %s:\n%s", k.ID, catalog.None, out)
+			}
+		}
+		heading := k.Title + " (" + flag + ")\n" + k.Description + "\n"
 		if !strings.HasPrefix(out, heading) {
 			t.Errorf("--kind %s does not start with %q:\n%s", k.ID, heading, out)
 		}
@@ -215,6 +225,17 @@ func selectionRows(t *testing.T, out string) []string {
 	return rows
 }
 
+// selectionRow returns sel as selectionRows reads a row of the table: the
+// names of its components joined by slashes, with catalog.None for a
+// missing frontend.
+func selectionRow(sel catalog.Selection) string {
+	row := sel.String()
+	if sel.Component(catalog.KindFrontend) == nil {
+		row += "/" + catalog.None
+	}
+	return row
+}
+
 // TestListSelectionsShipped checks that the listed selections are exactly
 // the ones compose.Supported computes, in its order (spec: Every supported
 // selection).
@@ -227,7 +248,7 @@ func TestListSelectionsShipped(t *testing.T) {
 	}
 	var want []string
 	for _, sel := range compose.Supported(cat) {
-		want = append(want, sel.String())
+		want = append(want, selectionRow(sel))
 	}
 
 	out, _, err := runList(t, shippedDocument(t), "list", "selections")
@@ -248,7 +269,7 @@ func TestListSelectionsShipped(t *testing.T) {
 	}
 	var narrowed []string
 	for _, s := range want {
-		if strings.HasSuffix(s, "/postgres/gorm") {
+		if strings.Contains(s, "/postgres/gorm/") {
 			narrowed = append(narrowed, s)
 		}
 	}
@@ -364,7 +385,7 @@ func TestListJSON(t *testing.T) {
 	fields := map[string][]string{
 		"components": {"components", "kinds"},
 		"selections": {"supported"},
-		"versions":   {"go", "modules"},
+		"versions":   {"assets", "go", "modules"},
 	}
 	for sub, want := range fields {
 		out, _, err := runList(t, shippedDocument(t), "list", sub, "--json")
@@ -396,8 +417,8 @@ func TestListJSON(t *testing.T) {
 				t.Error("supported differs from the document")
 			}
 		case "versions":
-			if part.Go != d.Go || len(part.Modules) != len(d.Modules) {
-				t.Error("go or modules differ from the document")
+			if part.Go != d.Go || len(part.Modules) != len(d.Modules) || len(part.Assets) != len(d.Assets) {
+				t.Error("go, modules, or assets differ from the document")
 			}
 		}
 	}
@@ -446,7 +467,7 @@ func TestListErrors(t *testing.T) {
 			// Spec: Unknown kind.
 			name: "unknown kind",
 			args: []string{"list", "components", "--kind", "db"},
-			want: `--kind: unknown kind "db"; supported: architecture, framework, database, data`,
+			want: `--kind: unknown kind "db"; supported: architecture, framework, database, data, frontend`,
 		},
 		{
 			// Spec: Unknown component.
@@ -460,6 +481,11 @@ func TestListErrors(t *testing.T) {
 			want: "cannot list selections:\n" +
 				`  - --framework: unknown framework "express"; supported: chi, gin, nethttp` + "\n" +
 				`  - --data: unknown data-access library "ent"; supported: gorm, sqlc`,
+		},
+		{
+			name: "unknown frontend",
+			args: []string{"list", "selections", "--frontend", "react"},
+			want: `--frontend: unknown frontend "react"; supported: none, htmx`,
 		},
 		{
 			name: "argument",
@@ -483,6 +509,49 @@ func TestListErrors(t *testing.T) {
 				t.Errorf("printed %q on failure", out)
 			}
 		})
+	}
+}
+
+// TestListSelectionsFrontend checks the --frontend filter: a frontend keeps
+// the selections with it, and none keeps those without a frontend.
+func TestListSelectionsFrontend(t *testing.T) {
+	t.Parallel()
+
+	d := loadListFixture(t)
+	for _, tt := range []struct {
+		value string
+		want  func(map[string]string) bool
+	}{
+		{"htmx", func(s map[string]string) bool { return s["frontend"] == "htmx" }},
+		{catalog.None, func(s map[string]string) bool { _, ok := s["frontend"]; return !ok }},
+	} {
+		out, _, err := runList(t, d, "list", "selections", "--frontend", tt.value, "--json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got selectionsJSON
+		if err := json.Unmarshal([]byte(out), &got); err != nil {
+			t.Fatal(err)
+		}
+		var want []map[string]string
+		for _, s := range d.Supported {
+			if tt.want(s) {
+				want = append(want, s)
+			}
+		}
+		if len(want) == 0 || !slices.EqualFunc(got.Supported, want, maps.Equal) {
+			t.Errorf("--frontend %s = %v, want %v", tt.value, got.Supported, want)
+		}
+
+		text, _, err := runList(t, d, "list", "selections", "--frontend", tt.value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, row := range selectionRows(t, text) {
+			if !strings.HasSuffix(row, "/"+tt.value) {
+				t.Errorf("--frontend %s lists %s", tt.value, row)
+			}
+		}
 	}
 }
 

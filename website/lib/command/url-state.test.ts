@@ -16,6 +16,10 @@ describe('defaultState (spec: Defaults)', () => {
     });
   });
 
+  it('sets an optional kind to none, even with a single option (spec: Frontend is optional)', () => {
+    expect(defaultState(fixture).components.frontend).toBeUndefined();
+  });
+
   it('leaves a kind with several options unchosen', () => {
     expect(defaultState(fixture).components.architecture).toBeUndefined();
     expect(defaultState(fixture).components.data).toBeUndefined();
@@ -126,5 +130,42 @@ describe('decodeState', () => {
     const { state, notices } = decodeState(fixture, 'name=My+App');
     expect(notices).toEqual([]);
     expect(buildCommand(fixture, state).ok).toBe(false);
+  });
+});
+
+describe('optional kinds in the URL', () => {
+  const htmx: ConfigState = {
+    ...defaultState(fixture),
+    components: {
+      ...defaultState(fixture).components,
+      architecture: 'mvc',
+      data: 'sqlc',
+      frontend: 'htmx',
+    },
+  };
+
+  it('encodes a chosen frontend and leaves none out', () => {
+    expect(encodeState(fixture, htmx)).toBe('arch=mvc&data=sqlc&frontend=htmx');
+    const rest = { ...htmx.components };
+    delete rest.frontend;
+    expect(encodeState(fixture, { ...htmx, components: rest })).toBe('arch=mvc&data=sqlc');
+  });
+
+  it('round-trips a chosen frontend', () => {
+    expect(decodeState(fixture, encodeState(fixture, htmx)).state).toEqual(htmx);
+  });
+
+  it('reads the CLI spelling none as no frontend, without a notice', () => {
+    const decoded = decodeState(fixture, 'frontend=none');
+    expect(decoded.state.components.frontend).toBeUndefined();
+    expect(decoded.notices).toEqual([]);
+  });
+
+  it('falls back to none for an unknown frontend, with a notice', () => {
+    const decoded = decodeState(fixture, 'frontend=react');
+    expect(decoded.state.components.frontend).toBeUndefined();
+    expect(decoded.notices).toEqual([
+      'The link names frontend "react", which is not available; none is used.',
+    ]);
   });
 });

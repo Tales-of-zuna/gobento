@@ -86,7 +86,7 @@ func canAsk(supported []catalog.Selection, in newInput, pinErrs []error) bool {
 // interview asks for what in leaves open: the name when it is missing, then
 // the module path, and each kind without a flag that has several options
 // among the supported selections that match the flags and the earlier
-// answers. It fills in the answers, including kinds left with one option,
+// answers; for an optional kind, catalog.None is one of the options. It fills in the answers, including kinds left with one option,
 // and reports whether it asked anything.
 func interview(ctx context.Context, supported []catalog.Selection, in *newInput, a asker) (bool, error) {
 	asked := false
@@ -124,7 +124,10 @@ func interview(ctx context.Context, supported []catalog.Selection, in *newInput,
 			// No supported selection matches: Prepare reports it.
 			return asked, nil
 		case 1:
-			in.components[kind] = opts[0].value
+			// "none" alone is what an omitted optional flag means anyway.
+			if opts[0].value != catalog.None {
+				in.components[kind] = opts[0].value
+			}
 			continue
 		}
 		value, err := a.ask(ctx, kindQuestion(kind, opts))
@@ -162,10 +165,14 @@ func moduleQuestion(name string) question {
 
 // kindQuestion asks for a component of kind among opts.
 func kindQuestion(kind catalog.Kind, opts []option) question {
+	help := "Skip this question with " + kindFlag(kind) + " <name>."
+	if kind.Optional() {
+		help = "Skip this question with " + kindFlag(kind) + " <name>, or " + kindFlag(kind) + " " + catalog.None + "."
+	}
 	return question{
 		field:   string(kind),
 		title:   kindTitle(kind),
-		help:    "Skip this question with " + kindFlag(kind) + " <name>.",
+		help:    help,
 		options: opts,
 	}
 }
@@ -179,21 +186,29 @@ func kindTitle(kind catalog.Kind) string {
 		return "HTTP framework"
 	case catalog.KindDatabase:
 		return "Database"
+	case catalog.KindFrontend:
+		return "Frontend"
 	default:
 		return "Data access"
 	}
 }
 
 // matching returns the selections whose components have the names chosen
-// for their kinds; kinds without a name match any component.
+// for their kinds; kinds without a name match any component, and
+// catalog.None for an optional kind matches selections without one.
 func matching(supported []catalog.Selection, chosen map[catalog.Kind]string) []catalog.Selection {
 	var out []catalog.Selection
 	for _, sel := range supported {
 		ok := true
-		for _, c := range sel.Components() {
-			if name := chosen[c.Kind]; name != "" && name != c.Name {
-				ok = false
-				break
+		for _, kind := range catalog.Kinds() {
+			name := chosen[kind]
+			c := sel.Component(kind)
+			switch {
+			case name == "":
+			case kind.Optional() && name == catalog.None:
+				ok = ok && c == nil
+			default:
+				ok = ok && c != nil && c.Name == name
 			}
 		}
 		if ok {
@@ -203,23 +218,36 @@ func matching(supported []catalog.Selection, chosen map[catalog.Kind]string) []c
 	return out
 }
 
+// noneLabel labels the option of an optional kind that selects no
+// component.
+const noneLabel = "None (API only)"
+
 // componentOptions returns the distinct components of kind in sels as
-// options sorted by name, labelled with their title and name.
+// options sorted by name, labelled with their title and name. For an
+// optional kind, the option catalog.None comes first when a selection in
+// sels has no component of the kind.
 func componentOptions(sels []catalog.Selection, kind catalog.Kind) []option {
 	var opts []option
+	none := false
 	for _, sel := range sels {
-		for _, c := range sel.Components() {
-			if c.Kind != kind || slices.ContainsFunc(opts, func(o option) bool { return o.value == c.Name }) {
-				continue
-			}
-			label := c.Name
-			if c.Title != "" && c.Title != c.Name {
-				label = c.Title + " (" + c.Name + ")"
-			}
-			opts = append(opts, option{label: label, value: c.Name})
+		c := sel.Component(kind)
+		if c == nil {
+			none = true
+			continue
 		}
+		if slices.ContainsFunc(opts, func(o option) bool { return o.value == c.Name }) {
+			continue
+		}
+		label := c.Name
+		if c.Title != "" && c.Title != c.Name {
+			label = c.Title + " (" + c.Name + ")"
+		}
+		opts = append(opts, option{label: label, value: c.Name})
 	}
 	slices.SortFunc(opts, func(a, b option) int { return strings.Compare(a.value, b.value) })
+	if kind.Optional() && none {
+		opts = append([]option{{label: noneLabel, value: catalog.None}}, opts...)
+	}
 	return opts
 }
 
@@ -234,9 +262,11 @@ func equivalentCommand(supported []catalog.Selection, in newInput, f newFlags) s
 	}
 	for _, kind := range catalog.Kinds() {
 		value := in.components[kind]
-		// A kind with a single supported option is left out unless it was
-		// given: gobento selects it by itself.
-		if value == "" || givenFlag(f, kind) == "" && len(componentOptions(supported, kind)) < 2 {
+		// A kind with a single supported option, and an optional kind
+		// without a component, are left out unless given: gobento selects
+		// them by itself.
+		given := givenFlag(f, kind) != ""
+		if value == "" || !given && (len(componentOptions(supported, kind)) < 2 || kind.Optional() && value == catalog.None) {
 			continue
 		}
 		args = append(args, kindFlag(kind), shellQuote(value))
@@ -265,6 +295,8 @@ func givenFlag(f newFlags, kind catalog.Kind) string {
 		return f.framework
 	case catalog.KindDatabase:
 		return f.db
+	case catalog.KindFrontend:
+		return f.frontend
 	default:
 		return f.data
 	}

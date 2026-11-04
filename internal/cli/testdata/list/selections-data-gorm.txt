@@ -1,15 +1,27 @@
-ARCHITECTURE    FRAMEWORK  DATABASE  DATA
-mvc             chi        postgres  gorm
-mvc             chi        sqlite    gorm
-mvc             gin        postgres  gorm
-mvc             gin        sqlite    gorm
-mvc             nethttp    postgres  gorm
-mvc             nethttp    sqlite    gorm
-vertical-slice  chi        postgres  gorm
-vertical-slice  chi        sqlite    gorm
-vertical-slice  gin        postgres  gorm
-vertical-slice  gin        sqlite    gorm
-vertical-slice  nethttp    postgres  gorm
-vertical-slice  nethttp    sqlite    gorm
+ARCHITECTURE    FRAMEWORK  DATABASE  DATA  FRONTEND
+mvc             chi        postgres  gorm  none
+mvc             chi        postgres  gorm  htmx
+mvc             chi        sqlite    gorm  none
+mvc             chi        sqlite    gorm  htmx
+mvc             gin        postgres  gorm  none
+mvc             gin        postgres  gorm  htmx
+mvc             gin        sqlite    gorm  none
+mvc             gin        sqlite    gorm  htmx
+mvc             nethttp    postgres  gorm  none
+mvc             nethttp    postgres  gorm  htmx
+mvc             nethttp    sqlite    gorm  none
+mvc             nethttp    sqlite    gorm  htmx
+vertical-slice  chi        postgres  gorm  none
+vertical-slice  chi        postgres  gorm  htmx
+vertical-slice  chi        sqlite    gorm  none
+vertical-slice  chi        sqlite    gorm  htmx
+vertical-slice  gin        postgres  gorm  none
+vertical-slice  gin        postgres  gorm  htmx
+vertical-slice  gin        sqlite    gorm  none
+vertical-slice  gin        sqlite    gorm  htmx
+vertical-slice  nethttp    postgres  gorm  none
+vertical-slice  nethttp    postgres  gorm  htmx
+vertical-slice  nethttp    sqlite    gorm  none
+vertical-slice  nethttp    sqlite    gorm  htmx
 
-12 of 24 supported selections.
+24 of 48 supported selections.

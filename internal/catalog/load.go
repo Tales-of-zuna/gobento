@@ -72,8 +72,8 @@ type slotManifest struct {
 }
 
 // Load reads a catalog from fsys, whose root holds versions.yaml and one
-// directory per kind (architecture/, framework/, database/, data/), each
-// with one directory per component.
+// directory per kind (architecture/, framework/, database/, data/,
+// frontend/), each with one directory per component.
 //
 // Load validates every manifest, enforces that every file other than
 // component.yaml, versions.yaml, and embed.go ends in .tmpl and that no
@@ -211,6 +211,9 @@ func loadComponent(fsys fs.FS, kind Kind, dir string) (*Component, []error) {
 	}
 	if !namePattern.MatchString(c.Name) {
 		fail("name %q must match %s", c.Name, namePattern)
+	}
+	if kind.Optional() && c.Name == None {
+		fail("name %q is reserved: it selects no %s component", None, kind)
 	}
 	if strings.TrimSpace(m.Title) == "" {
 		fail("title is required")
@@ -417,21 +420,34 @@ func (c *Catalog) Component(kind Kind, name string) (*Component, bool) {
 	return c.components[i], true
 }
 
-// Candidates returns every selection of one component per kind whose trait
-// requirements are met, in kind order and then by name. A candidate is
-// supported only if it also composes; compose.Supported checks that.
+// Candidates returns every selection of one component per required kind and
+// at most one per optional kind whose trait requirements are met, in kind
+// order and then by name, with "no component" before the components of an
+// optional kind. A candidate is supported only if it also composes;
+// compose.Supported checks that.
 func (c *Catalog) Candidates() []Selection {
-	var out []Selection
-	for _, a := range c.Components(KindArchitecture) {
-		for _, f := range c.Components(KindFramework) {
-			for _, db := range c.Components(KindDatabase) {
-				for _, d := range c.Components(KindData) {
-					s := Selection{Architecture: a, Framework: f, Database: db, Data: d}
-					if s.CheckTraits() == nil {
-						out = append(out, s)
-					}
+	sels := []Selection{{}}
+	for _, kind := range Kinds() {
+		choices := c.Components(kind)
+		if kind.Optional() {
+			choices = append([]*Component{nil}, choices...)
+		}
+		var next []Selection
+		for _, s := range sels {
+			for _, comp := range choices {
+				if comp == nil {
+					next = append(next, s)
+					continue
 				}
+				next = append(next, s.With(comp))
 			}
+		}
+		sels = next
+	}
+	var out []Selection
+	for _, s := range sels {
+		if s.CheckTraits() == nil {
+			out = append(out, s)
 		}
 	}
 	return out

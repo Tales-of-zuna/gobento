@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net/url"
+	"path"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -36,6 +39,28 @@ type Rules struct {
 	Go GoRule
 	// Modules lists every module used by some component, sorted by path.
 	Modules []Module
+	// Assets lists every vendored asset, sorted by name.
+	Assets []Asset
+}
+
+// Asset is a file that components ship unmodified from an upstream release,
+// such as a JavaScript library served by the generated project. Its version
+// is fixed per gobento release, like a tool's, and cannot be pinned.
+type Asset struct {
+	// Name identifies the asset, for example htmx.org (its npm package).
+	Name string
+	// Components lists the components that ship the asset, as
+	// "<kind>/<name>" identifiers.
+	Components []string
+	// Version is the upstream release, for example 2.0.11.
+	Version string
+	// Source is the https URL of the upstream release archive (a .tgz).
+	Source string
+	// Path is the asset's path inside the archive, for example
+	// package/dist/htmx.min.js.
+	Path string
+	// SHA256 is the asset file's SHA-256 checksum in lowercase hex.
+	SHA256 string
 }
 
 // GoRule describes the supported Go versions for generated projects.
@@ -124,6 +149,15 @@ type rulesFile struct {
 		Default string `yaml:"default"`
 	} `yaml:"go"`
 	Modules map[string]moduleFile `yaml:"modules"`
+	Assets  map[string]assetFile  `yaml:"assets"`
+}
+
+type assetFile struct {
+	Components []string `yaml:"components"`
+	Version    string   `yaml:"version"`
+	Source     string   `yaml:"source"`
+	Path       string   `yaml:"path"`
+	SHA256     string   `yaml:"sha256"`
 }
 
 type moduleFile struct {
@@ -143,7 +177,8 @@ type constraintFile struct {
 // ParseRules parses and validates a rules file. It reports every problem it
 // finds, joined with errors.Join: unknown fields, malformed ranges or
 // versions, defaults outside their range, tool modules without an exact
-// range, and constraints that refer to unknown targets. References to
+// range, constraints that refer to unknown targets, and assets without
+// components or with a malformed version, source, path, or checksum. References to
 // components are checked separately with CheckComponents, because the
 // component catalog is loaded elsewhere.
 func ParseRules(data []byte) (*Rules, error) {
@@ -178,6 +213,15 @@ func ParseRules(data []byte) (*Rules, error) {
 		m, merrs := parseModule(p, file.Modules[p], file.Modules)
 		rules.Modules = append(rules.Modules, m)
 		errs = append(errs, merrs...)
+	}
+
+	for _, name := range slices.Sorted(maps.Keys(file.Assets)) {
+		a, aerrs := parseAsset(name, file.Assets[name])
+		rules.Assets = append(rules.Assets, a)
+		errs = append(errs, aerrs...)
+		if _, ok := file.Modules[name]; ok {
+			errs = append(errs, fmt.Errorf("asset %s: the name is also a module; use another one", name))
+		}
 	}
 
 	if err := errors.Join(errs...); err != nil {
@@ -244,6 +288,41 @@ func parseModule(path string, mf moduleFile, known map[string]moduleFile) (Modul
 	return m, errs
 }
 
+var (
+	// assetVersionPattern matches an asset version such as 2.0.11, as
+	// upstream projects outside Go write it.
+	assetVersionPattern = regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$`)
+	// sha256Pattern matches a SHA-256 checksum in lowercase hex.
+	sha256Pattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
+)
+
+// parseAsset converts and validates one asset entry.
+func parseAsset(name string, af assetFile) (Asset, []error) {
+	var errs []error
+	fail := func(format string, args ...any) {
+		errs = append(errs, fmt.Errorf("asset %s: "+format, append([]any{name}, args...)...))
+	}
+	if strings.TrimSpace(name) == "" {
+		fail("empty name")
+	}
+	if len(af.Components) == 0 {
+		fail("no components listed")
+	}
+	if !assetVersionPattern.MatchString(af.Version) {
+		fail("version %q must be a release such as 2.0.11", af.Version)
+	}
+	if u, err := url.Parse(af.Source); err != nil || u.Scheme != "https" || u.Host == "" {
+		fail("source %q must be an https URL of the release archive", af.Source)
+	}
+	if af.Path == "" || path.IsAbs(af.Path) || path.Clean(af.Path) != af.Path || strings.HasPrefix(af.Path, "../") {
+		fail("path %q must be a clean relative path inside the source archive", af.Path)
+	}
+	if !sha256Pattern.MatchString(af.SHA256) {
+		fail("sha256 %q must be 64 lowercase hexadecimal digits", af.SHA256)
+	}
+	return Asset{Name: name, Components: af.Components, Version: af.Version, Source: af.Source, Path: af.Path, SHA256: af.SHA256}, errs
+}
+
 func parseConstraint(cf constraintFile, known map[string]moduleFile) (Constraint, []error) {
 	var errs []error
 	when, err := ParseRange(cf.When)
@@ -285,7 +364,7 @@ func parseConstraint(cf constraintFile, known map[string]moduleFile) (Constraint
 }
 
 // CheckComponents reports every component reference in the rules for which
-// exists returns false, naming the module and the component.
+// exists returns false, naming the module or asset and the component.
 func (r *Rules) CheckComponents(exists func(id string) bool) error {
 	var errs []error
 	for _, m := range r.Modules {
@@ -295,7 +374,23 @@ func (r *Rules) CheckComponents(exists func(id string) bool) error {
 			}
 		}
 	}
+	for _, a := range r.Assets {
+		for _, c := range a.Components {
+			if !exists(c) {
+				errs = append(errs, fmt.Errorf("asset %s: unknown component %q", a.Name, c))
+			}
+		}
+	}
 	return errors.Join(errs...)
+}
+
+// Asset returns the asset with the given name.
+func (r *Rules) Asset(name string) (Asset, bool) {
+	i := slices.IndexFunc(r.Assets, func(a Asset) bool { return a.Name == name })
+	if i < 0 {
+		return Asset{}, false
+	}
+	return r.Assets[i], true
 }
 
 // CheckTraits reports every trait named in a module's trait conditions for

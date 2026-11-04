@@ -40,7 +40,7 @@ func TestDocsExampleManifest(t *testing.T) {
 		t.Fatalf("Load(example manifest) error = %v", err)
 	}
 	arch, ok := cat.Component(KindArchitecture, "mvc")
-	if !ok || len(arch.Slots) != 5 {
-		t.Errorf("example manifest = %+v, want an architecture with 5 slots", arch)
+	if !ok || len(arch.Slots) != 6 {
+		t.Errorf("example manifest = %+v, want an architecture with 6 slots", arch)
 	}
 }

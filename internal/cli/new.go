@@ -21,6 +21,7 @@ type newFlags struct {
 	framework string
 	db        string
 	data      string
+	frontend  string
 	goVersion string
 	pins      []string
 	dir       string
@@ -37,6 +38,8 @@ func kindFlag(k catalog.Kind) string {
 		return "--framework"
 	case catalog.KindDatabase:
 		return "--db"
+	case catalog.KindFrontend:
+		return "--frontend"
 	default:
 		return "--data"
 	}
@@ -51,16 +54,21 @@ func newNewCommand(a *app) *cobra.Command {
 		Long: `Create a new Go project named <name> in ./<name>, or in --dir.
 
 A component kind with a single supported option is selected automatically;
-for a kind with several, choose one with its flag. Versions default to
+for a kind with several, choose one with its flag. The frontend is optional:
+without --frontend (or with --frontend none), the project is API-only.
+With a frontend, the API is served under /api and the frontend's pages at
+every other path. Versions default to
 gobento's compatibility rules. All input is checked before anything is
 written, and every problem is reported at once. If generation fails or is
 interrupted, nothing is left behind.
 
 In a terminal, gobento asks for what is missing: the name (and then the module
 path) when <name> is omitted, and each component kind with several options
-whose flag is omitted. Flags skip their questions. Without a terminal, or with
---no-input, gobento asks nothing: <name> is required, and a kind with several
-options needs its flag. Set ACCESSIBLE=1 for plain-text questions.
+whose flag is omitted, including the frontend ("None (API only)" first). Flags
+skip their questions. Without a terminal, or with --no-input, gobento asks
+nothing: <name> is required, a required kind with several options needs its
+flag, and no frontend is selected unless --frontend names one. Set
+ACCESSIBLE=1 for plain-text questions.
 
 Generation runs the go command (go get and go mod tidy), so it needs Go and
 access to the Go module proxy. --dry-run needs neither.
@@ -74,6 +82,9 @@ access to the Go module proxy. --dry-run needs neither.
 
   # Use domain-driven design: a domain, an application service, and adapters
   gobento new shop --arch ddd --framework gin --db sqlite --data sqlc
+
+  # Add server-rendered pages with htmx and templ; the API moves under /api
+  gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend htmx
 
   # Choose every component and the module path explicitly
   gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
@@ -106,6 +117,7 @@ access to the Go module proxy. --dry-run needs neither.
 	fl.StringVar(&f.framework, "framework", "", "HTTP framework, for example chi, gin, or nethttp (asked for in a terminal; required otherwise when several are supported)")
 	fl.StringVar(&f.db, "db", "", "database, for example sqlite or postgres (asked for in a terminal; required otherwise when several are supported)")
 	fl.StringVar(&f.data, "data", "", "data-access library, for example sqlc or gorm (asked for in a terminal; required otherwise when several are supported)")
+	fl.StringVar(&f.frontend, "frontend", "", "frontend, for example htmx, or none for an API-only project (asked for in a terminal; default otherwise: none)")
 	fl.StringVar(&f.goVersion, "go", "", "Go version for go.mod, for example 1.26 (default: from the compatibility rules)")
 	fl.StringArrayVar(&f.pins, "pin", nil, "library version as module=version, for example modernc.org/sqlite=v1.61.0 (repeatable)")
 	fl.StringVar(&f.dir, "dir", "", "target directory, for example . for the current one (default: ./<name>)")
@@ -146,6 +158,7 @@ func (a *app) runNew(cmd *cobra.Command, args []string, f newFlags) error {
 			catalog.KindFramework:    f.framework,
 			catalog.KindDatabase:     f.db,
 			catalog.KindData:         f.data,
+			catalog.KindFrontend:     f.frontend,
 		},
 	}
 	if in.hasName {

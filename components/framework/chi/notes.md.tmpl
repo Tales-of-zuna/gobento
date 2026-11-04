@@ -2,9 +2,9 @@
 
 | Request | Response |
 |---|---|
-| `GET /health` | `200` with `{"status":"ok"}` |
-| `GET /items` | `200` with a JSON array of items, oldest first |
-| `POST /items` with `{"name":"..."}` | `201` with the created item |
+| `GET {{.APIPrefix}}/health` | `200` with `{"status":"ok"}` |
+| `GET {{.APIPrefix}}/items` | `200` with a JSON array of items, oldest first |
+| `POST {{.APIPrefix}}/items` with `{"name":"..."}` | `201` with the created item |
 
 Errors are JSON objects such as `{"error":"name is required"}`:
 

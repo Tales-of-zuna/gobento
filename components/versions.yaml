@@ -12,9 +12,17 @@
 # listed values for every listed trait, for example a driver needed only for
 # one SQL dialect. Otherwise it is not added to go.mod and cannot be pinned.
 #
-# Last checked against the Go module proxy and https://vuln.go.dev: 2026-11-04.
-# Range floors exclude every release with a known advisory, in the module
-# itself or in the dependency versions it requires.
+# Assets are files that components vendor unmodified from an upstream
+# release, such as a JavaScript library the generated project serves from
+# its binary. Like tools, they are fixed per gobento release and cannot be
+# pinned. source is the release archive and path the file inside it; sha256
+# is the file's checksum, which gobento's tests compare with the file the
+# component ships and, with network access, with the file in source.
+#
+# Last checked against the Go module proxy, the npm registry, and
+# https://vuln.go.dev: 2026-11-04. Range floors exclude every release with a
+# known advisory, in the module itself or in the dependency versions it
+# requires.
 
 go:
   range: ">=1.26 <1.28"
@@ -93,3 +101,25 @@ modules:
     constraints:
       - when: ">=v1.6.2"
         require: { gorm.io/gorm: ">=v1.31.2" }
+
+  github.com/a-h/templ:
+    components: [frontend/htmx]
+    # A library: the generated code imports the templ runtime. The range is
+    # exact because the component ships the code this version generates
+    # (pages_templ.go); bump it together with that file. The runtime imports
+    # only the standard library, so the golang.org/x/net version templ's
+    # command requires (with advisories in x/net/html and x/net/http2) is
+    # not built into generated projects.
+    role: library
+    range: "=v0.3.1100"
+    default: v0.3.1100
+
+assets:
+  # npm's latest release of htmx (htmx 4 is tagged next and changes
+  # defaults). 0BSD license.
+  htmx.org:
+    components: [frontend/htmx]
+    version: 2.0.11
+    source: https://registry.npmjs.org/htmx.org/-/htmx.org-2.0.11.tgz
+    path: package/dist/htmx.min.js
+    sha256: d6fdc75f204e6bdefa99b69bf1e6d4ac69b8a364f77929f45c13476b4000f717

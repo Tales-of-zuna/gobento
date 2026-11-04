@@ -4,10 +4,13 @@ import {
   goVersionReasons,
   moduleVersionReasons,
   resolvedVersions,
+  selectedAssets,
   selectedModules,
   selectionProblems,
   type Selection,
 } from './compat';
+import { catalog as realCatalog } from './data';
+import { KIND_IDS } from './kinds';
 import type { Catalog } from './schema';
 import { addPostgres, catalogWith, type CatalogData, moduleOf } from '@/lib/test/catalog';
 
@@ -206,5 +209,55 @@ describe('option reasons', () => {
     expect(componentReasons(catalogWith(), firstSlice, 'framework', 'express')).toEqual([
       'No framework named "express" is supported.',
     ]);
+  });
+});
+
+describe('optional kinds', () => {
+  const fixture = catalogWith();
+  const base = {
+    components: { architecture: 'mvc', framework: 'nethttp', database: 'sqlite', data: 'sqlc' },
+    go: fixture.go.default,
+    pins: {},
+  } as const;
+
+  it('treats a selection without a frontend as complete', () => {
+    expect(selectionProblems(fixture, base)).toEqual([]);
+  });
+
+  it('adds the frontend modules and vendored assets when one is chosen', () => {
+    const htmx = { ...base, components: { ...base.components, frontend: 'htmx' } };
+    expect(selectedModules(fixture, htmx).map((m) => m.path)).toContain('github.com/a-h/templ');
+    expect(selectedModules(fixture, base).map((m) => m.path)).not.toContain('github.com/a-h/templ');
+    expect(selectedAssets(fixture, htmx).map((a) => [a.name, a.version])).toEqual([
+      ['htmx.org', '2.0.11'],
+    ]);
+    expect(selectedAssets(fixture, base)).toEqual([]);
+  });
+
+  it('reports a frontend that needs a trait no chosen component provides', () => {
+    const strict = catalogWith((data) => {
+      data.components.find((c) => c.id === 'frontend/htmx')!.requires = { web: ['yes'] };
+    });
+    const htmx = { ...base, components: { ...base.components, frontend: 'htmx' } };
+    expect(componentReasons(strict, base, 'frontend', 'htmx').join(' ')).toContain(
+      'requires a component that provides web yes',
+    );
+    expect(selectionProblems(strict, htmx)).not.toEqual([]);
+  });
+});
+
+describe('the real catalog', () => {
+  // Compatibility comes from traits; it must agree with the CLI's list of
+  // supported selections, with and without a frontend.
+  it('accepts every supported selection and offers every option within it', () => {
+    for (const components of realCatalog.supported) {
+      const selection = { components, go: realCatalog.go.default, pins: {} };
+      expect(selectionProblems(realCatalog, selection), JSON.stringify(components)).toEqual([]);
+      for (const kind of KIND_IDS) {
+        const name = components[kind];
+        if (name === undefined) continue;
+        expect(componentReasons(realCatalog, selection, kind, name)).toEqual([]);
+      }
+    }
   });
 });

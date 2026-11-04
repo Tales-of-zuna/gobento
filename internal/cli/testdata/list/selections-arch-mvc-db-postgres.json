@@ -8,15 +8,36 @@
     },
     {
       "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
       "data": "sqlc",
       "database": "postgres",
       "framework": "chi"
     },
     {
       "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
       "data": "gorm",
       "database": "postgres",
       "framework": "gin"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "htmx"
     },
     {
       "architecture": "mvc",
@@ -26,7 +47,27 @@
     },
     {
       "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
       "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
       "database": "postgres",
       "framework": "nethttp"
     },
@@ -34,7 +75,8 @@
       "architecture": "mvc",
       "data": "sqlc",
       "database": "postgres",
-      "framework": "nethttp"
+      "framework": "nethttp",
+      "frontend": "htmx"
     }
   ]
 }

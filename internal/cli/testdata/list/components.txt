@@ -35,3 +35,10 @@ How the code reads and writes the database.
   sqlc  sqlc
         Type-safe Go code generated from SQL queries by sqlc.
         requires: conn=database/sql, sql-dialect=sqlite|postgresql, sql-schema=schema.sql
+
+Frontend (--frontend, optional)
+Web pages served next to the API, which then moves under /api.
+
+  none  No frontend (the default)
+  htmx  htmx + templ
+        Server-rendered pages written as templ components, made interactive with htmx, and served by the Go binary with no build step.

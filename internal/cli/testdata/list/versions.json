@@ -5,6 +5,17 @@
   },
   "modules": [
     {
+      "path": "github.com/a-h/templ",
+      "components": [
+        "frontend/htmx"
+      ],
+      "traits": {},
+      "role": "library",
+      "range": "=v0.3.1100",
+      "default": "v0.3.1100",
+      "constraints": []
+    },
+    {
       "path": "github.com/gin-gonic/gin",
       "components": [
         "framework/gin"
@@ -123,6 +134,16 @@
           }
         }
       ]
+    }
+  ],
+  "assets": [
+    {
+      "name": "htmx.org",
+      "components": [
+        "frontend/htmx"
+      ],
+      "version": "2.0.11",
+      "source": "https://registry.npmjs.org/htmx.org/-/htmx.org-2.0.11.tgz"
     }
   ]
 }

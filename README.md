@@ -24,15 +24,17 @@
 ## Why gobento?
 
 - **Your stack, your choice.** Pick the architecture, HTTP framework, database,
-  and data access library for a new project.
+  and data access library for a new project, and optionally a frontend.
 - **Versions you can trust.** Choose the Go and module versions you want. They
   are checked against compatibility rules kept as data, and gobento rejects
   combinations that do not work instead of silently changing them.
 - **Composed, not copy-pasted.** An architecture defines slots with Go
   contracts between them, and components fill the slots. There is no template
   per combination, so adding a component does not multiply the work.
-- **Proven builds.** Every supported combination is generated, built, and
-  tested in CI on Linux, macOS, and Windows.
+- **Proven builds.** Every supported backend combination is generated, built,
+  and tested in CI on Linux, macOS, and Windows, and the combinations with a
+  frontend are covered pairwise: every two components that can be used
+  together with a frontend are built together.
 - **Built to stay current.** All versions live in one rules file, so keeping
   up with upstream releases is a one-line, reviewed change instead of a hunt
   through templates.
@@ -72,11 +74,15 @@ code by layer, `vertical-slice` by feature, `ddd` in domain-driven layers with
 an application service), the HTTP framework with
 `--framework` (`nethttp`, `chi`, or `gin`), the database with `--db`
 (`sqlite` or `postgres`), and the data access with `--data` (`sqlc` or
-`gorm`). A component kind with a single option is chosen automatically, and
-versions come from gobento's compatibility rules. In a terminal, gobento asks
-for anything it still needs: run `gobento new` to be asked for the name,
-module path, and each component kind with several options. Flags skip their
-questions; in scripts and CI, name every kind with several options.
+`gorm`). A frontend is optional: without `--frontend` the project is an
+HTTP API, and `--frontend htmx` adds server-rendered pages (htmx + templ) at
+`/`, with the API under `/api`. A component kind with a single option is
+chosen automatically, and versions come from gobento's compatibility rules. In
+a terminal, gobento asks for anything it still needs: run `gobento new` to be
+asked for the name, module path, and each component kind with several
+options, including the frontend ("None (API only)" first). Flags skip their
+questions; in scripts and CI, name every kind with several options, and add
+`--frontend` only to get one.
 
 ```sh
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
@@ -99,6 +105,9 @@ gobento new shop --arch mvc --framework nethttp --db sqlite --data gorm
 
 # Use PostgreSQL; the project's README shows how to start a local server
 gobento new shop --arch mvc --framework chi --db postgres --data sqlc
+
+# Add web pages with htmx and templ; open http://localhost:8080/ after go run
+gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx
 
 # See the files gobento would create, without writing anything
 gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --dry-run
@@ -206,6 +215,24 @@ and its test instead, there is no `sqlc.yaml`, and the tables still come only
 from the database's embedded schema (no `AutoMigrate`). Both stacks build
 without cgo.
 
+With `--frontend htmx`, the project also serves web pages: `internal/views/`
+(`internal/web/` with `vertical-slice`) holds [templ](https://templ.guide)
+components with their generated Go code, so no templ command is needed to
+build, and [htmx](https://htmx.org) 2 vendored as a static file embedded in
+the binary, so the pages work offline. The page lists the items and adds one
+without a reload, and the form still works without JavaScript. The JSON API
+moves under `/api` (`/api/health`, `/api/items`) and is otherwise unchanged.
+
+```text
+shop/
+├── cmd/shop/              # mounts the API at /api/ and the pages at /; routing test
+├── internal/
+│   ├── views/             # handler, pages.templ, generated pages_templ.go, tests
+│   │   └── static/        # htmx.min.js and styles.css, embedded with go:embed
+│   └── ...                # models, controllers, database, store as above
+└── ...
+```
+
 ## How it works
 
 ```mermaid
@@ -232,7 +259,8 @@ flowchart LR
 - [x] More frameworks: gin, chi
 - [x] PostgreSQL
 - [x] GORM
-- [ ] Frontends: React, Vue, and Svelte via Vite; htmx + templ
+- [x] Frontends: htmx + templ
+- [ ] Frontends: React, Vue, and Svelte via Vite
 - [ ] Tailwind CSS
 - [x] More architectures: vertical slice
 - [x] More architectures: DDD

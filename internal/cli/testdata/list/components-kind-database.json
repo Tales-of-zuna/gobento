@@ -3,7 +3,8 @@
     {
       "id": "database",
       "title": "Database",
-      "description": "Where the project stores its data."
+      "description": "Where the project stores its data.",
+      "optional": false
     }
   ],
   "components": [

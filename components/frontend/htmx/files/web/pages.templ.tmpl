@@ -1,0 +1,95 @@
+package {{.Slots.web.Package}}
+
+import (
+	"time"
+
+	"{{.Slots.models.Import}}"
+)
+
+// htmxConfig lets htmx swap 422 responses, which carry the form with its
+// error message; htmx swaps only 2xx and 3xx responses by default.
+const htmxConfig = `{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"422","swap":true},{"code":"[45]..","swap":false,"error":true}]}`
+
+// Page is the home page: every item and a form that adds one. name and
+// problem fill the form again after a rejected submission.
+templ Page(list []{{.Slots.models.Package}}.Item, name, problem string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<meta name="htmx-config" content={ htmxConfig }/>
+			<title>{{.Project.Name}}</title>
+			<link rel="stylesheet" href="/static/styles.css"/>
+			<script src="/static/htmx.min.js" defer></script>
+		</head>
+		<body>
+			<main>
+				<h1>Items</h1>
+				<ul id="items">
+					for _, item := range list {
+						@ItemRow(item)
+					}
+				</ul>
+				<p class="empty">No items yet. Add the first one below.</p>
+				@ItemForm(name, problem, false)
+			</main>
+			<footer>
+				<p>The same items as JSON: <a href="{{.APIPrefix}}/items"><code>{{.APIPrefix}}/items</code></a></p>
+			</footer>
+		</body>
+	</html>
+}
+
+// ItemRow is one item of the list.
+templ ItemRow(item {{.Slots.models.Package}}.Item) {
+	<li>
+		<span class="name">{ item.Name }</span>
+		<time datetime={ item.CreatedAt.UTC().Format(time.RFC3339) }>{ item.CreatedAt.UTC().Format("2006-01-02 15:04") }</time>
+	</li>
+}
+
+// Created is the response to an item added with htmx: the new item, which
+// htmx appends to the list, and an empty form, which replaces the current
+// one out of band and so clears it.
+templ Created(item {{.Slots.models.Package}}.Item) {
+	@ItemRow(item)
+	@ItemForm("", "", true)
+}
+
+// ItemForm adds an item. Without JavaScript it is a plain form post; with
+// htmx, it posts in the background and appends the new item to the list.
+// problem, if not empty, explains why the last submission was rejected.
+// With oob, htmx swaps the form in place of the current one.
+templ ItemForm(name, problem string, oob bool) {
+	<form
+		id="new-item"
+		method="post"
+		action="/items"
+		hx-post="/items"
+		hx-target="#items"
+		hx-swap="beforeend"
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
+		<label for="name">Name</label>
+		<div class="row">
+			<input
+				id="name"
+				name="name"
+				value={ name }
+				autocomplete="off"
+				required
+				if problem != "" {
+					aria-invalid="true"
+					aria-describedby="name-problem"
+				}
+			/>
+			<button type="submit">Add</button>
+		</div>
+		if problem != "" {
+			<p id="name-problem" class="problem" role="alert">{ problem }</p>
+		}
+	</form>
+}

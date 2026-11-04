@@ -95,7 +95,8 @@ type Spec struct {
 	// Module is the module path; "" means the project name.
 	Module string
 	// Components maps each kind to the chosen component name. A missing or
-	// empty entry selects the kind's only supported component.
+	// empty entry selects the kind's only supported component; for an
+	// optional kind, it selects no component, as catalog.None does.
 	Components map[catalog.Kind]string
 	// Go is the chosen Go version, or "" for the default.
 	Go string
@@ -205,6 +206,7 @@ func Prepare(cat *catalog.Catalog, spec Spec) (*Prepared, error) {
 		Project:   compose.Project{Name: p.Name, Module: p.Module, GoVersion: goDirective},
 		Selection: sel,
 		Versions:  res.Versions(),
+		Assets:    res.AssetVersions(),
 	})
 	if err != nil {
 		return nil, err
@@ -214,20 +216,24 @@ func Prepare(cat *catalog.Catalog, spec Spec) (*Prepared, error) {
 }
 
 // selectComponents resolves the chosen component names into a supported
-// selection, auto-selecting kinds with a single supported component. It also
-// returns the IDs of the components whose versions apply: the selected ones,
-// and every component of a kind that could not be resolved.
+// selection, auto-selecting required kinds with a single supported
+// component and selecting no component of an optional kind whose name is
+// empty or catalog.None. It also returns the IDs of the components whose
+// versions apply: the selected ones, and every component of a kind that
+// could not be resolved.
 func selectComponents(cat *catalog.Catalog, chosen map[catalog.Kind]string) (catalog.Selection, []string, []error) {
 	supported := compose.Supported(cat)
 	var (
-		errs  []error
-		ids   []string
-		comps = make(map[catalog.Kind]*catalog.Component)
+		errs []error
+		ids  []string
+		sel  catalog.Selection
 	)
 	for _, kind := range catalog.Kinds() {
 		names := supportedNames(supported, kind)
 		value := chosen[kind]
 		switch {
+		case kind.Optional() && (value == "" || value == catalog.None):
+			continue
 		case value == "" && len(names) == 1:
 			value = names[0]
 		case value == "" || !slices.Contains(names, value):
@@ -238,17 +244,11 @@ func selectComponents(cat *catalog.Catalog, chosen map[catalog.Kind]string) (cat
 			continue
 		}
 		c, _ := cat.Component(kind, value)
-		comps[kind] = c
+		sel = sel.With(c)
 		ids = append(ids, c.ID())
 	}
 	if len(errs) > 0 {
 		return catalog.Selection{}, ids, errs
-	}
-	sel := catalog.Selection{
-		Architecture: comps[catalog.KindArchitecture],
-		Framework:    comps[catalog.KindFramework],
-		Database:     comps[catalog.KindDatabase],
-		Data:         comps[catalog.KindData],
 	}
 	if !slices.ContainsFunc(supported, func(s catalog.Selection) bool { return s.String() == sel.String() }) {
 		if err := compose.Check(cat, sel); err != nil {
@@ -259,17 +259,25 @@ func selectComponents(cat *catalog.Catalog, chosen map[catalog.Kind]string) (cat
 }
 
 // supportedNames returns the sorted, unique names of kind in the supported
-// selections.
+// selections. For an optional kind, catalog.None comes first when a
+// supported selection has no component of the kind.
 func supportedNames(supported []catalog.Selection, kind catalog.Kind) []string {
 	var names []string
+	none := false
 	for _, s := range supported {
-		for _, c := range s.Components() {
-			if c.Kind == kind && !slices.Contains(names, c.Name) {
-				names = append(names, c.Name)
-			}
+		c := s.Component(kind)
+		if c == nil {
+			none = true
+			continue
+		}
+		if !slices.Contains(names, c.Name) {
+			names = append(names, c.Name)
 		}
 	}
 	slices.Sort(names)
+	if kind.Optional() && none {
+		names = append([]string{catalog.None}, names...)
+	}
 	return names
 }
 

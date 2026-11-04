@@ -294,3 +294,51 @@ func TestCheckModule(t *testing.T) {
 		}
 	}
 }
+
+// TestPrepareFrontend covers the spec scenarios "Optional kind needs no
+// flag", "Unknown frontend", and "Override of a vendored asset".
+func TestPrepareFrontend(t *testing.T) {
+	t.Parallel()
+
+	cat := shippedCatalog(t)
+	spec := func(frontend string, pins map[string]string) Spec {
+		return Spec{Name: "shop", Components: map[catalog.Kind]string{
+			catalog.KindArchitecture: "mvc", catalog.KindFramework: "nethttp",
+			catalog.KindDatabase: "sqlite", catalog.KindData: "sqlc", catalog.KindFrontend: frontend,
+		}, Pins: pins}
+	}
+	for _, frontend := range []string{"", "none"} {
+		p, err := Prepare(cat, spec(frontend, nil))
+		if err != nil {
+			t.Fatalf("Prepare(frontend %q) error = %v", frontend, err)
+		}
+		if p.Selection.Frontend != nil || p.Plan.Slots["web"].Filled {
+			t.Errorf("Prepare(frontend %q) selected a frontend", frontend)
+		}
+	}
+
+	p, err := Prepare(cat, spec("htmx", nil))
+	if err != nil {
+		t.Fatalf("Prepare(htmx) error = %v", err)
+	}
+	if p.Selection.String() != "mvc/nethttp/sqlite/sqlc/htmx" {
+		t.Errorf("Selection = %s", p.Selection)
+	}
+	if got := p.Versions.AssetVersions()["htmx.org"]; got == "" {
+		t.Error("no htmx.org asset version resolved")
+	}
+	if _, ok := p.Plan.File("internal/views/static/htmx.min.js"); !ok {
+		t.Error("internal/views/static/htmx.min.js is not planned")
+	}
+
+	_, err = Prepare(cat, spec("react", nil))
+	var se *SelectionError
+	if !errors.As(err, &se) || se.Kind != catalog.KindFrontend || strings.Join(se.Supported, ",") != "none,htmx" {
+		t.Errorf("Prepare(react) error = %v, want a frontend SelectionError listing none and htmx", err)
+	}
+
+	_, err = Prepare(cat, spec("htmx", map[string]string{"htmx.org": "2.0.10"}))
+	if !errors.Is(err, compat.ErrNotPinnable) {
+		t.Errorf("Prepare(pin htmx.org) error = %v, want ErrNotPinnable", err)
+	}
+}

@@ -27,13 +27,14 @@ export function Stack() {
           </div>
         </div>
         <Stagger inView>
-          <ul className={`${s.tray} ${s.four}`}>
+          <ul className={`${s.tray} ${s.five}`}>
             {cells.map((cell) => (
               <Item as="li" kind="pop" key={cell.kind}>
                 <div className={`${s.cell} ${KIND_CLASS[cell.kind]}`}>
                   <h3 className={s.kind}>
                     <i aria-hidden="true" />
                     {cell.title}
+                    {cell.optional && <small className={s.optl}>optional</small>}
                   </h3>
                   {cell.options.map((option) => (
                     <div key={option.name} className={`${s.opt} ${s.sel}`}>

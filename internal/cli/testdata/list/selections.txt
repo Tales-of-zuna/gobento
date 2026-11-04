@@ -1,27 +1,51 @@
-ARCHITECTURE    FRAMEWORK  DATABASE  DATA
-mvc             chi        postgres  gorm
-mvc             chi        postgres  sqlc
-mvc             chi        sqlite    gorm
-mvc             chi        sqlite    sqlc
-mvc             gin        postgres  gorm
-mvc             gin        postgres  sqlc
-mvc             gin        sqlite    gorm
-mvc             gin        sqlite    sqlc
-mvc             nethttp    postgres  gorm
-mvc             nethttp    postgres  sqlc
-mvc             nethttp    sqlite    gorm
-mvc             nethttp    sqlite    sqlc
-vertical-slice  chi        postgres  gorm
-vertical-slice  chi        postgres  sqlc
-vertical-slice  chi        sqlite    gorm
-vertical-slice  chi        sqlite    sqlc
-vertical-slice  gin        postgres  gorm
-vertical-slice  gin        postgres  sqlc
-vertical-slice  gin        sqlite    gorm
-vertical-slice  gin        sqlite    sqlc
-vertical-slice  nethttp    postgres  gorm
-vertical-slice  nethttp    postgres  sqlc
-vertical-slice  nethttp    sqlite    gorm
-vertical-slice  nethttp    sqlite    sqlc
+ARCHITECTURE    FRAMEWORK  DATABASE  DATA  FRONTEND
+mvc             chi        postgres  gorm  none
+mvc             chi        postgres  gorm  htmx
+mvc             chi        postgres  sqlc  none
+mvc             chi        postgres  sqlc  htmx
+mvc             chi        sqlite    gorm  none
+mvc             chi        sqlite    gorm  htmx
+mvc             chi        sqlite    sqlc  none
+mvc             chi        sqlite    sqlc  htmx
+mvc             gin        postgres  gorm  none
+mvc             gin        postgres  gorm  htmx
+mvc             gin        postgres  sqlc  none
+mvc             gin        postgres  sqlc  htmx
+mvc             gin        sqlite    gorm  none
+mvc             gin        sqlite    gorm  htmx
+mvc             gin        sqlite    sqlc  none
+mvc             gin        sqlite    sqlc  htmx
+mvc             nethttp    postgres  gorm  none
+mvc             nethttp    postgres  gorm  htmx
+mvc             nethttp    postgres  sqlc  none
+mvc             nethttp    postgres  sqlc  htmx
+mvc             nethttp    sqlite    gorm  none
+mvc             nethttp    sqlite    gorm  htmx
+mvc             nethttp    sqlite    sqlc  none
+mvc             nethttp    sqlite    sqlc  htmx
+vertical-slice  chi        postgres  gorm  none
+vertical-slice  chi        postgres  gorm  htmx
+vertical-slice  chi        postgres  sqlc  none
+vertical-slice  chi        postgres  sqlc  htmx
+vertical-slice  chi        sqlite    gorm  none
+vertical-slice  chi        sqlite    gorm  htmx
+vertical-slice  chi        sqlite    sqlc  none
+vertical-slice  chi        sqlite    sqlc  htmx
+vertical-slice  gin        postgres  gorm  none
+vertical-slice  gin        postgres  gorm  htmx
+vertical-slice  gin        postgres  sqlc  none
+vertical-slice  gin        postgres  sqlc  htmx
+vertical-slice  gin        sqlite    gorm  none
+vertical-slice  gin        sqlite    gorm  htmx
+vertical-slice  gin        sqlite    sqlc  none
+vertical-slice  gin        sqlite    sqlc  htmx
+vertical-slice  nethttp    postgres  gorm  none
+vertical-slice  nethttp    postgres  gorm  htmx
+vertical-slice  nethttp    postgres  sqlc  none
+vertical-slice  nethttp    postgres  sqlc  htmx
+vertical-slice  nethttp    sqlite    gorm  none
+vertical-slice  nethttp    sqlite    gorm  htmx
+vertical-slice  nethttp    sqlite    sqlc  none
+vertical-slice  nethttp    sqlite    sqlc  htmx
 
-24 supported selections.
+48 supported selections.

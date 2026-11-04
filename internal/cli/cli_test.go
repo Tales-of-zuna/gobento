@@ -208,6 +208,12 @@ func TestNewErrors(t *testing.T) {
 			want: []string{"--framework: choose a framework; supported: chi, gin, nethttp"},
 		},
 		{
+			// Spec: Unknown frontend.
+			name: "unknown frontend",
+			args: []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc", "--frontend", "react"},
+			want: []string{`--frontend: unknown frontend "react"; supported: none, htmx`},
+		},
+		{
 			// Spec: Architecture must be chosen.
 			name: "architecture must be chosen",
 			args: []string{"new", "shop"},
@@ -470,5 +476,40 @@ func TestShellQuote(t *testing.T) {
 		if got := shellQuote(in); got != want {
 			t.Errorf("shellQuote(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+// TestNewFrontend covers the spec scenarios "Optional kind needs no flag",
+// "No frontend by default", "Explicitly none", and "htmx frontend".
+func TestNewFrontend(t *testing.T) {
+	t.Parallel()
+
+	base := []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc", "--dry-run"}
+	tests := []struct {
+		name  string
+		extra []string
+		want  string
+		views bool
+	}{
+		{"flag omitted", nil, "(mvc/nethttp/sqlite/sqlc, Go 1.27)", false},
+		{"none", []string{"--frontend", "none"}, "(mvc/nethttp/sqlite/sqlc, Go 1.27)", false},
+		{"htmx", []string{"--frontend", "htmx"}, "(mvc/nethttp/sqlite/sqlc/htmx, Go 1.27)", true},
+	}
+	var outputs []string
+	for _, tt := range tests {
+		out, stderr, err := run(t, components.FS(), &fakeGenerator{}, append(base, tt.extra...)...)
+		if err != nil {
+			t.Fatalf("%s: %v\n%s", tt.name, err, stderr)
+		}
+		if !strings.Contains(out, tt.want) {
+			t.Errorf("%s: output does not contain %q:\n%s", tt.name, tt.want, out)
+		}
+		if got := strings.Contains(out, "internal/views/pages.templ"); got != tt.views {
+			t.Errorf("%s: lists internal/views/pages.templ = %v, want %v", tt.name, got, tt.views)
+		}
+		outputs = append(outputs, out)
+	}
+	if outputs[0] != outputs[1] {
+		t.Errorf("--frontend none plans other files than no --frontend:\n%s\n%s", outputs[0], outputs[1])
 	}
 }

@@ -1,16 +1,22 @@
 Go >=1.26 <1.28 (default 1.27)
 
-MODULE                    ROLE     RANGE              DEFAULT  USED BY            ONLY WHEN
-github.com/gin-gonic/gin  library  >=v1.11.0 <v2.0.0  v1.12.0  framework/gin      -
-github.com/go-chi/chi/v5  library  >=v5.3.0 <v6.0.0   v5.5.0   framework/chi      -
-github.com/jackc/pgx/v5   library  >=v5.12.0 <v6.0.0  v5.12.0  database/postgres  -
-github.com/libtnb/sqlite  library  >=v1.1.0 <v2.0.0   v1.2.2   data/gorm          sql-dialect=sqlite
-github.com/sqlc-dev/sqlc  tool     =v1.31.1           v1.31.1  data/sqlc          -
-gorm.io/driver/postgres   library  >=v1.6.1 <v2.0.0   v1.6.3   data/gorm          sql-dialect=postgresql
-gorm.io/gorm              library  >=v1.31.1 <v2.0.0  v1.31.2  data/gorm          -
-modernc.org/sqlite        library  >=v1.61.0 <v2.0.0  v1.61.1  database/sqlite    -
+MODULE                    ROLE     RANGE              DEFAULT    USED BY            ONLY WHEN
+github.com/a-h/templ      library  =v0.3.1100         v0.3.1100  frontend/htmx      -
+github.com/gin-gonic/gin  library  >=v1.11.0 <v2.0.0  v1.12.0    framework/gin      -
+github.com/go-chi/chi/v5  library  >=v5.3.0 <v6.0.0   v5.5.0     framework/chi      -
+github.com/jackc/pgx/v5   library  >=v5.12.0 <v6.0.0  v5.12.0    database/postgres  -
+github.com/libtnb/sqlite  library  >=v1.1.0 <v2.0.0   v1.2.2     data/gorm          sql-dialect=sqlite
+github.com/sqlc-dev/sqlc  tool     =v1.31.1           v1.31.1    data/sqlc          -
+gorm.io/driver/postgres   library  >=v1.6.1 <v2.0.0   v1.6.3     data/gorm          sql-dialect=postgresql
+gorm.io/gorm              library  >=v1.31.1 <v2.0.0  v1.31.2    data/gorm          -
+modernc.org/sqlite        library  >=v1.61.0 <v2.0.0  v1.61.1    database/sqlite    -
 
 Constraints:
   github.com/libtnb/sqlite >=v1.2.0 needs gorm.io/gorm >=v1.31.2
   gorm.io/driver/postgres >=v1.6.2 needs gorm.io/gorm >=v1.31.2
   modernc.org/sqlite >=v1.61.0 needs go >=1.26
+
+Vendored assets (fixed per gobento release):
+
+ASSET     VERSION  USED BY        SOURCE
+htmx.org  2.0.11   frontend/htmx  https://registry.npmjs.org/htmx.org/-/htmx.org-2.0.11.tgz

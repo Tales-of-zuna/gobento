@@ -19,6 +19,7 @@ describe('beltPlates', () => {
       'SQLite',
       'GORM',
       'sqlc',
+      'htmx + templ',
     ]);
     expect(plates.filter((p) => p.status === 'roadmap')).toHaveLength(ROADMAP.length);
   });
@@ -50,7 +51,10 @@ describe('stackCells', () => {
       'HTTP framework',
       'Database',
       'Data access',
+      'Frontend',
     ]);
+    expect(cells.map((c) => c.optional)).toEqual([false, false, false, false, true]);
+    expect(cells[4]!.options.map((o) => o.name)).toEqual(['htmx + templ']);
     expect(cells[1]!.options.map((o) => o.name)).toEqual(['net/http']);
     expect(cells[1]!.roadmap).toEqual(['echo', 'fiber']);
   });

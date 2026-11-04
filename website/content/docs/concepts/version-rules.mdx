@@ -139,6 +139,46 @@ how to regenerate the code with the pinned version:
 go run github.com/sqlc-dev/sqlc/cmd/sqlc@<version> generate
 ```
 
+templ, used by the htmx frontend, is the same idea in library form: the
+generated code imports the templ runtime, so `github.com/a-h/templ` is a
+library in `go.mod`, but its range is exact (`=v0.3.1100`) because the
+component ships the code that version generates. Bump the version together
+with that code.
+
+## Vendored assets
+
+Some components ship a file that is not Go code and not a Go module, such as
+the htmx JavaScript library the htmx frontend serves from the binary. Such a
+file is an **asset**, recorded in the same rules file:
+
+```yaml title="components/versions.yaml"
+assets:
+  htmx.org:
+    components: [frontend/htmx]
+    version: 2.0.11
+    source: https://registry.npmjs.org/htmx.org/-/htmx.org-2.0.11.tgz
+    path: package/dist/htmx.min.js
+    sha256: d6fdc75f204e6bdefa99b69bf1e6d4ac69b8a364f77929f45c13476b4000f717
+```
+
+| Key          | Meaning                                              |
+| ------------ | ---------------------------------------------------- |
+| `components` | The components that ship the file                    |
+| `version`    | The upstream release, such as `2.0.11`               |
+| `source`     | The `https` URL of the release archive (a `.tgz`)    |
+| `path`       | The file's path inside that archive                  |
+| `sha256`     | The file's SHA-256 checksum, 64 lowercase hex digits |
+
+The component ships the file unmodified, so a project needs no network
+access to get it, at generation or at run time. Like a tool, an asset is fixed
+per gobento release and cannot be pinned. Templates can name its version, as
+in `{{index .Assets "htmx.org"}}`, but never contain it.
+
+gobento's tests check both ends: the file the component renders has the
+recorded checksum, and, with network access, so does the file at `path` in
+`source`. To update an asset, replace the file and change `version`,
+`source`, and `sha256` together.
+
 ## Constraint errors
 
 A constraint ties one version to another. In the example above, sqlite

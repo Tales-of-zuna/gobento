@@ -21,14 +21,17 @@ var update = flag.Bool("update", false, "rewrite testdata/golden* from the curre
 
 // goldens maps each full-project golden directory to the reference selection
 // it holds: one per architecture, with the same framework, database, and
-// data access.
+// data access, and the first one again with a frontend, which shows how the
+// architecture mounts it.
 var goldens = []struct {
-	dir string
-	sel [4]string // architecture, framework, database, data
+	dir      string
+	sel      [4]string // architecture, framework, database, data
+	frontend string    // "" for none
 }{
 	{dir: "testdata/golden", sel: [4]string{"mvc", "nethttp", "sqlite", "sqlc"}},
 	{dir: "testdata/golden-vertical-slice", sel: [4]string{"vertical-slice", "nethttp", "sqlite", "sqlc"}},
 	{dir: "testdata/golden-ddd", sel: [4]string{"ddd", "nethttp", "sqlite", "sqlc"}},
+	{dir: "testdata/golden-htmx", sel: [4]string{"mvc", "nethttp", "sqlite", "sqlc"}, frontend: "htmx"},
 }
 
 // goldenComponentsDir holds the files each component contributes, in
@@ -41,8 +44,8 @@ const goldenComponentsDir = "testdata/golden-components"
 // -update to accept intended changes, and review the diff.
 func TestGolden(t *testing.T) {
 	for _, g := range goldens {
-		t.Run(g.sel[0], func(t *testing.T) {
-			checkGolden(t, g.dir, referencePlan(t, g.sel).Files)
+		t.Run(filepath.Base(g.dir), func(t *testing.T) {
+			checkGolden(t, g.dir, referencePlanWith(t, g.sel, g.frontend).Files)
 		})
 	}
 }
@@ -169,12 +172,26 @@ func shippedCatalog(t *testing.T) *catalog.Catalog {
 	return cat
 }
 
-// referencePlan composes the named selection of the shipped catalog for the
-// example project shop, with default versions.
+// referencePlan composes the named selection of the shipped catalog, without
+// a frontend, for the example project shop, with default versions.
 func referencePlan(t *testing.T, names [4]string) *Plan {
 	t.Helper()
+	return referencePlanWith(t, names, "")
+}
+
+// referencePlanWith is referencePlan with the named frontend, or none for "".
+func referencePlanWith(t *testing.T, names [4]string, frontend string) *Plan {
+	t.Helper()
 	cat := shippedCatalog(t)
-	return planFor(t, cat, pick(t, cat, names[0], names[1], names[2], names[3]))
+	sel := pick(t, cat, names[0], names[1], names[2], names[3])
+	if frontend != "" {
+		ui, ok := cat.Component(catalog.KindFrontend, frontend)
+		if !ok {
+			t.Fatalf("frontend %s is not shipped", frontend)
+		}
+		sel = sel.With(ui)
+	}
+	return planFor(t, cat, sel)
 }
 
 // planFor composes sel with default versions for the example project shop.
@@ -196,6 +213,7 @@ func planFor(t *testing.T, cat *catalog.Catalog, sel catalog.Selection) *Plan {
 		Project:   Project{Name: "shop", Module: "example.com/shop", GoVersion: goVersion},
 		Selection: sel,
 		Versions:  res.Versions(),
+		Assets:    res.AssetVersions(),
 	})
 	if err != nil {
 		t.Fatalf("Compose() error = %v", err)
@@ -293,7 +311,11 @@ func TestShippedCatalogSupported(t *testing.T) {
 		for _, fw := range []string{"chi", "gin", "nethttp"} {
 			for _, db := range []string{"postgres", "sqlite"} {
 				for _, data := range []string{"gorm", "sqlc"} {
-					want = append(want, arch+"/"+fw+"/"+db+"/"+data)
+					sel := arch + "/" + fw + "/" + db + "/" + data
+					want = append(want, sel)
+					if arch != "ddd" {
+						want = append(want, sel+"/htmx")
+					}
 				}
 			}
 		}

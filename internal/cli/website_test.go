@@ -123,8 +123,9 @@ func TestDocsSeveralProblems(t *testing.T) {
 }
 
 // TestDocsListComponents checks that the gobento list reference shows the
-// output of its example command exactly: the text block after the
-// list-components-database marker in website/content/docs/cli/list.mdx,
+// output of its example commands exactly: the text blocks after the
+// list-components-database, list-components-frontend, and
+// list-selections-mvc-postgres markers in website/content/docs/cli/list.mdx,
 // whose first line is the command.
 func TestDocsListComponents(t *testing.T) {
 	t.Parallel()
@@ -133,24 +134,29 @@ func TestDocsListComponents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, after, ok := strings.Cut(string(doc), "{/* list-components-database */}\n\n```text\n")
-	if !ok {
-		t.Fatal("list.mdx has no list-components-database text block")
-	}
-	block, _, ok := strings.Cut(after, "```")
-	if !ok {
-		t.Fatal("the list-components-database block is not closed")
-	}
-	command, shown, _ := strings.Cut(block, "\n")
-	args, ok := strings.CutPrefix(command, "$ gobento ")
-	if !ok {
-		t.Fatalf("the block starts with %q, want a $ gobento command", command)
-	}
-	out, _, err := run(t, components.FS(), &fakeGenerator{}, strings.Fields(args)...)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if shown != out {
-		t.Errorf("list.mdx shows:\n%s\nwant the output of gobento %s:\n%s", shown, args, out)
+	for _, marker := range []string{"list-components-database", "list-components-frontend", "list-selections-mvc-postgres"} {
+		_, after, ok := strings.Cut(string(doc), "{/* "+marker+" */}\n\n```text\n")
+		if !ok {
+			t.Errorf("list.mdx has no %s text block", marker)
+			continue
+		}
+		block, _, ok := strings.Cut(after, "```")
+		if !ok {
+			t.Errorf("the %s block is not closed", marker)
+			continue
+		}
+		command, shown, _ := strings.Cut(block, "\n")
+		args, ok := strings.CutPrefix(command, "$ gobento ")
+		if !ok {
+			t.Errorf("the %s block starts with %q, want a $ gobento command", marker, command)
+			continue
+		}
+		out, _, err := run(t, components.FS(), &fakeGenerator{}, strings.Fields(args)...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if shown != out {
+			t.Errorf("list.mdx shows:\n%s\nwant the output of gobento %s:\n%s", shown, args, out)
+		}
 	}
 }

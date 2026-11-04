@@ -5,7 +5,7 @@ const STEPS = [
   {
     kind: s.kHttp,
     title: 'Choose',
-    text: 'Pick an architecture, HTTP framework, database and data access, in the CLI or the configurator.',
+    text: 'Pick an architecture, HTTP framework, database and data access, plus an optional frontend, in the CLI or the configurator.',
   },
   {
     kind: s.kDb,
@@ -15,7 +15,7 @@ const STEPS = [
   {
     kind: s.kData,
     title: 'Prove',
-    text: 'Every supported combination is generated, built and tested in CI before it is offered to you.',
+    text: 'CI generates, builds and tests every supported selection without a frontend, and covers those with one pairwise, before they are offered to you.',
   },
 ];
 

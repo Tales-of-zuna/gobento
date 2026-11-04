@@ -10,7 +10,9 @@ import {
   goVersions,
   kindGroups,
   moduleFields,
+  NONE,
   trayCells,
+  withChoice,
   withPin,
 } from './view-model';
 
@@ -22,6 +24,11 @@ const withArch = (architecture: string) => ({
   components: { ...defaults.components, architecture, data: 'sqlc' },
 });
 const mvc = withArch('mvc');
+/** A state with the htmx frontend added. */
+const htmx = (state: typeof defaults) => ({
+  ...state,
+  components: { ...state.components, frontend: 'htmx' },
+});
 
 describe('goVersions', () => {
   it('lists every minor in the range', () => {
@@ -147,7 +154,13 @@ describe('trayCells and fileTree', () => {
       'net/http',
       'SQLite',
       'sqlc',
+      undefined,
     ]);
+    expect(trayCells(catalog, htmx(mvc)).at(-1)).toMatchObject({
+      kind: 'frontend',
+      label: 'Frontend',
+      value: 'htmx + templ',
+    });
     expect(trayCells(catalog, { ...defaults, components: {} }).every((c) => !c.value)).toBe(true);
   });
 
@@ -215,5 +228,68 @@ describe('blockedMessage', () => {
       'No command yet. Fix the modernc.org/sqlite version under Advanced to get a copyable command.',
     );
     expect(blockedMessage(catalog, buildCommand(catalog, mvc))).toBe('');
+  });
+});
+
+describe('optional frontend (spec: Frontend is optional)', () => {
+  const frontend = (state: typeof defaults) =>
+    kindGroups(catalog, state, new Map()).find((g) => g.kind === 'frontend')!;
+
+  it('offers None (API only) first and preselected, then every frontend and the roadmap', () => {
+    const group = frontend(mvc);
+    expect(group.description).toBe(
+      'Optional. Web pages served next to the API, which then moves under /api.',
+    );
+    expect(group.options.map((o) => [o.value, o.title, o.status])).toEqual([
+      [NONE, 'None (API only)', 'selected'],
+      ['htmx', 'htmx + templ', 'available'],
+      ['react', 'React via Vite', 'soon'],
+      ['vue', 'Vue via Vite', 'soon'],
+      ['svelte', 'Svelte via Vite', 'soon'],
+      ['tailwind', 'Tailwind CSS', 'soon'],
+    ]);
+  });
+
+  it('selects htmx and keeps None available', () => {
+    expect(
+      frontend(htmx(mvc))
+        .options.slice(0, 2)
+        .map((o) => o.status),
+    ).toEqual(['available', 'selected']);
+  });
+
+  it('keeps every other option compatible when htmx is chosen', () => {
+    for (const group of kindGroups(catalog, htmx(mvc), new Map())) {
+      expect(group.options.filter((o) => o.status === 'incompatible')).toEqual([]);
+    }
+  });
+
+  it('clears an optional kind on None and sets it otherwise', () => {
+    expect(withChoice(catalog, htmx(mvc).components, 'frontend', NONE)).toEqual(mvc.components);
+    expect(withChoice(catalog, mvc.components, 'frontend', 'htmx')).toEqual(htmx(mvc).components);
+  });
+
+  it('lists templ and the vendored htmx.org only when htmx is chosen', () => {
+    const fields = moduleFields(catalog, htmx(mvc), new Map());
+    expect(fields.map((f) => [f.path, f.fixed, f.tag])).toEqual([
+      ['github.com/a-h/templ', false, undefined],
+      ['github.com/sqlc-dev/sqlc', true, 'Fixed'],
+      ['modernc.org/sqlite', false, undefined],
+      ['htmx.org', true, 'Vendored'],
+    ]);
+    expect(fields.at(-1)).toMatchObject({ value: '2.0.11', usedBy: 'htmx + templ' });
+    expect(moduleFields(catalog, mvc, new Map()).map((f) => f.path)).not.toContain('htmx.org');
+  });
+
+  it('previews the pages in the architecture web package', () => {
+    const lines = (state: typeof defaults) =>
+      fileTree(catalog, state, true).flatMap((l) => (l.depth === 2 ? [l.label] : []));
+    expect(lines(htmx(mvc))).toEqual(
+      expect.arrayContaining(['views/', 'views/pages.templ', 'views/static/']),
+    );
+    expect(lines(htmx(withArch('vertical-slice')))).toEqual(
+      expect.arrayContaining(['web/', 'web/pages.templ', 'web/static/']),
+    );
+    expect(lines(mvc).some((l) => l.startsWith('views/'))).toBe(false);
   });
 });

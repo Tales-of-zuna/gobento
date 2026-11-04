@@ -8,7 +8,7 @@ import (
 )
 
 // Kind is a component kind. A selection contains exactly one component of
-// each kind.
+// each required kind and at most one of each optional kind.
 type Kind string
 
 // The component kinds, in the order used for listing, notes, and errors.
@@ -17,16 +17,27 @@ const (
 	KindFramework    Kind = "framework"
 	KindDatabase     Kind = "database"
 	KindData         Kind = "data"
+	// KindFrontend is optional: a project without a frontend is API-only.
+	KindFrontend Kind = "frontend"
 )
+
+// None is the name that selects no component of an optional kind, for
+// example --frontend none. No component of an optional kind may use it.
+const None = "none"
 
 // Kinds returns every component kind in canonical order.
 func Kinds() []Kind {
-	return []Kind{KindArchitecture, KindFramework, KindDatabase, KindData}
+	return []Kind{KindArchitecture, KindFramework, KindDatabase, KindData, KindFrontend}
 }
 
 // valid reports whether k is one of the known kinds.
 func (k Kind) valid() bool {
 	return slices.Contains(Kinds(), k)
+}
+
+// Optional reports whether a selection may leave out a component of kind k.
+func (k Kind) Optional() bool {
+	return k == KindFrontend
 }
 
 // RootSlot is the pseudo-slot for files placed at the project root. Its
@@ -120,19 +131,54 @@ type File struct {
 	Template string
 }
 
-// Selection is one component of each kind.
+// Selection is one component of each required kind and at most one of each
+// optional kind. A nil field of an optional kind selects no component.
 type Selection struct {
 	Architecture *Component
 	Framework    *Component
 	Database     *Component
 	Data         *Component
+	// Frontend is optional; nil means an API-only project.
+	Frontend *Component
+}
+
+// all returns the fields of s in kind order, including nil ones.
+func (s Selection) all() []*Component {
+	return []*Component{s.Architecture, s.Framework, s.Database, s.Data, s.Frontend}
+}
+
+// Component returns the selected component of kind k, or nil if there is
+// none.
+func (s Selection) Component(k Kind) *Component {
+	i := slices.Index(Kinds(), k)
+	if i < 0 {
+		return nil
+	}
+	return s.all()[i]
+}
+
+// With returns s with c as its component of c's kind.
+func (s Selection) With(c *Component) Selection {
+	switch c.Kind {
+	case KindArchitecture:
+		s.Architecture = c
+	case KindFramework:
+		s.Framework = c
+	case KindDatabase:
+		s.Database = c
+	case KindData:
+		s.Data = c
+	case KindFrontend:
+		s.Frontend = c
+	}
+	return s
 }
 
 // Components returns the selected components in kind order, skipping kinds
 // that have no component.
 func (s Selection) Components() []*Component {
 	var out []*Component
-	for _, c := range []*Component{s.Architecture, s.Framework, s.Database, s.Data} {
+	for _, c := range s.all() {
 		if c != nil {
 			out = append(out, c)
 		}
@@ -141,15 +187,18 @@ func (s Selection) Components() []*Component {
 }
 
 // String returns the selection as names in kind order, for example
-// "mvc/nethttp/sqlite/sqlc".
+// "mvc/nethttp/sqlite/sqlc", or "mvc/nethttp/sqlite/sqlc/htmx" with a
+// frontend. A missing required kind is shown as "-"; an optional kind
+// without a component is left out.
 func (s Selection) String() string {
-	names := make([]string, 0, 4)
-	for _, c := range []*Component{s.Architecture, s.Framework, s.Database, s.Data} {
-		if c == nil {
+	names := make([]string, 0, len(Kinds()))
+	for i, c := range s.all() {
+		switch {
+		case c != nil:
+			names = append(names, c.Name)
+		case !Kinds()[i].Optional():
 			names = append(names, "-")
-			continue
 		}
-		names = append(names, c.Name)
 	}
 	return strings.Join(names, "/")
 }

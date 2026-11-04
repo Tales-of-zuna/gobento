@@ -25,15 +25,15 @@ the known kinds.
 
 #### Scenario: Unknown kind
 - **WHEN** a user runs `gobento list components --kind db`
-- **THEN** gobento exits with status 1 and reports that `db` is not a kind, naming `architecture, framework, database, data`
+- **THEN** gobento exits with status 1 and reports that `db` is not a kind, naming `architecture, framework, database, data, frontend`
 
 ### Requirement: List the supported selections
 `gobento list selections` SHALL print every supported selection, one per
 line with one column per kind, in the order of the catalog's candidates, and
-the number of selections. The flags `--arch`, `--framework`, `--db`, and
-`--data` SHALL restrict the output to the selections that contain the named
-component; a name that is not a component of the kind SHALL be an error that
-names the components of that kind.
+the number of selections. The flags `--arch`, `--framework`, `--db`, `--data`,
+and `--frontend` SHALL restrict the output to the selections that contain the
+named component; a name that is not a component of the kind SHALL be an error
+that names the components of that kind.
 
 #### Scenario: Every supported selection
 - **WHEN** a user runs `gobento list selections`
@@ -47,11 +47,28 @@ names the components of that kind.
 - **WHEN** a user runs `gobento list selections --db mysql`
 - **THEN** gobento exits with status 1 and reports that `mysql` is not a database, naming the supported ones
 
+### Requirement: Optional kinds in the listing
+`gobento list components` SHALL mark an optional kind as optional and SHALL
+list `none`, the value that selects no component of the kind, before its
+components. `gobento list selections` SHALL show `none` in the column of an
+optional kind for a selection without a component of that kind, and
+`--frontend none` SHALL restrict the output to the selections without a
+frontend.
+
+#### Scenario: Optional kind
+- **WHEN** a user runs `gobento list components --kind frontend`
+- **THEN** the output starts with `Frontend (--frontend, optional)` and lists `none` before `htmx`
+
+#### Scenario: Without a frontend
+- **WHEN** a user runs `gobento list selections --frontend none`
+- **THEN** every row shows `none` as the frontend, and every supported selection without a frontend is listed
+
 ### Requirement: List the version rules
 `gobento list versions` SHALL print the supported Go range and the default Go
 version, and every module of the rules file, sorted by path, with its path, role,
 range, default, the components that use it, the trait values it is
-conditioned on, and its constraints.
+conditioned on, and its constraints, followed by every vendored asset with its
+name, version, the components that use it, and its source.
 
 #### Scenario: Module with a trait condition and a constraint
 - **WHEN** a user runs `gobento list versions`
@@ -69,7 +86,7 @@ supported selections, and the version rules, in that order.
 With `--json`, every form of `gobento list` SHALL print one JSON document
 instead of text. `gobento list --json` SHALL print the same document the
 website is built from, with the fields `kinds`, `components`, `go`, `modules`,
-`supported`, and `rules`. Lists SHALL be empty lists rather than null.
+`assets`, `supported`, and `rules`. Lists SHALL be empty lists rather than null.
 
 #### Scenario: Same data as the website
 - **WHEN** `gobento list --json` runs for a gobento build
@@ -78,8 +95,8 @@ website is built from, with the fields `kinds`, `components`, `go`, `modules`,
 ### Requirement: JSON output of a subcommand
 With `--json`, each subcommand SHALL print an object with only the fields it
 lists, in the format of the full document: `components` prints `kinds` and
-`components`, `selections` prints `supported`, and `versions` prints `go` and
-`modules`. Filters SHALL apply to the JSON as to the text.
+`components`, `selections` prints `supported`, and `versions` prints `go`,
+`modules`, and `assets`. Filters SHALL apply to the JSON as to the text.
 
 #### Scenario: Scripts read the components
 - **WHEN** a script runs `gobento list components --kind database --json`

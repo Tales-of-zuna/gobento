@@ -7,3 +7,4 @@ slots:
   handlers: { dir: internal/items/itemshttp,     filled_by: framework, required: true }
   database: { dir: internal/platform/database,   filled_by: database,  required: true }
   store:    { dir: internal/items/itemsstore,    filled_by: data,      required: true }
+  web:      { dir: internal/web,                 filled_by: frontend }
