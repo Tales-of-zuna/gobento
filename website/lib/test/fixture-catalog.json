@@ -229,6 +229,7 @@
     {
       "name": "tailwindcss",
       "components": ["css/tailwind"],
+      "traits": { "frontend-build": ["go"] },
       "version": "4.3.4",
       "platforms": [
         "darwin/amd64",

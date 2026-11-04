@@ -105,6 +105,12 @@ Add a React single-page app built with Vite (or `--frontend vue`, `svelte`):
 gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend react
 ```
 
+Style that app with Tailwind CSS through its Vite plugin:
+
+```sh
+gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend react --css tailwind
+```
+
 Choose every component and the module path explicitly:
 
 ```sh
@@ -223,8 +229,16 @@ Go module path example.com/shop
    removes a few demo files the example page leaves unused, keeps its own
    files where the scaffolder wrote the same path, and runs
    `npm install --package-lock-only` to write `frontend/package-lock.json`
-   without installing anything (there is no `node_modules`). The version
-   comes from the [version rules](/docs/concepts/version-rules#nodejs-and-npm).
+   without installing anything (there is no `node_modules`). With
+   `--css tailwind`, that install also adds `tailwindcss` and
+   `@tailwindcss/vite` to the `devDependencies` of `frontend/package.json`
+   (`--save-dev`). The versions come from the
+   [version rules](/docs/concepts/version-rules#nodejs-and-npm). npm 12
+   refuses some registry tarballs in this mode (Tailwind's optional
+   WebAssembly build, which bundles its dependencies), although a full
+   install accepts them; gobento then repeats the install with
+   `--allow-remote=all` and fails unless every package in the lock file comes
+   from the configured registry's host.
 5. **Resolve** the exact versions with the Go toolchain (`go get`, then
    `go mod tidy`).
 6. **Re-check** that `go.mod` contains exactly the chosen versions. See
@@ -356,6 +370,16 @@ gobento would create example.com/shop (mvc/nethttp/sqlite/sqlc/react, Go 1.27) i
   internal/views/handler_test.go
   sqlc.yaml
 During generation, npm create vite@9.3.3 frontend -- --template react-ts adds more files to frontend/ (template react-ts) and npm writes frontend/package-lock.json;
+this needs Node.js >=v22.12.0, npm, and network access to the npm registry.
+```
+
+With `--css tailwind` as well, the selection reads
+`mvc/nethttp/sqlite/sqlc/react/tailwind`, the files are the same, and one
+more line names the npm packages Tailwind CSS adds:
+
+```text
+During generation, npm create vite@9.3.3 frontend -- --template react-ts adds more files to frontend/ (template react-ts) and npm writes frontend/package-lock.json;
+npm adds the development dependencies @tailwindcss/vite@4.3.4, tailwindcss@4.3.4 to frontend/package.json;
 this needs Node.js >=v22.12.0, npm, and network access to the npm registry.
 ```
 
@@ -499,7 +523,7 @@ A CSS framework without a frontend that supports it:
 ```text
 $ gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --css tailwind
 gobento: cannot create "shop":
-  - the combination mvc/nethttp/sqlite/sqlc/tailwind is not supported: incompatible traits: trait frontend-build: css/tailwind requires one of [go, vite], but no selected component provides it; frontend-build is provided by frontend/htmx
+  - the combination mvc/nethttp/sqlite/sqlc/tailwind is not supported: incompatible traits: trait frontend-build: css/tailwind requires one of [go, vite], but no selected component provides it; frontend-build is provided by frontend/htmx, frontend/react, frontend/svelte, frontend/vue
 ```
 
 A module no selected component uses:

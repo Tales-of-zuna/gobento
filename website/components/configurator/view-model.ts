@@ -392,6 +392,14 @@ const COMPONENT_FILES: Readonly<Record<string, readonly string[]>> = {
     'internal/platform/database/',
   ],
   'data/sqlc': ['sqlc.yaml'],
+};
+
+/**
+ * Files a component adds only with a frontend built by the Go toolchain
+ * (trait `frontend-build: go`), by component id: with a Vite frontend,
+ * Tailwind CSS is compiled by the Vite build instead.
+ */
+const GO_BUILD_FILES: Readonly<Record<string, readonly string[]>> = {
   'css/tailwind': ['tailwind.css', 'internal/tools/tailwindcss/'],
 };
 
@@ -473,6 +481,9 @@ export function fileTree(catalog: Catalog, state: ConfigState, nameValid: boolea
   });
   const ids = components.map((c) => c.id);
   const files = ids.flatMap((id) => COMPONENT_FILES[id] ?? []);
+  if (components.some((c) => c.provides['frontend-build'] === 'go')) {
+    files.push(...ids.flatMap((id) => GO_BUILD_FILES[id] ?? []));
+  }
   const web = ids.map((id) => WEB_DIRS[id]).find((dir) => dir !== undefined) ?? 'internal/web/';
   const vite = components.filter((c) => c.provides['frontend-build'] === 'vite');
   for (const component of components) {

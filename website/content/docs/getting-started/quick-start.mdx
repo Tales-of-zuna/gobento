@@ -396,7 +396,10 @@ posts from other sites are rejected with `403`.
 ## With Tailwind CSS
 
 With a frontend, add `--css tailwind` to style the pages with
-[Tailwind CSS](https://tailwindcss.com):
+[Tailwind CSS](https://tailwindcss.com). With htmx, the stylesheet is
+compiled by the standalone Tailwind CLI, so no Node.js is needed; for the
+Vite frontends, see
+[Tailwind CSS with React, Vue, or Svelte](#tailwind-css-with-react-vue-or-svelte).
 
 ```sh
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx --css tailwind
@@ -501,6 +504,29 @@ scaffolded project's checks, and `npm run build` before the Go checks, and
 the Dockerfile builds the app in a `node` stage. The three frontends are
 alike: the same files apart from the framework's file names, the same page,
 and the same tooling.
+
+### Tailwind CSS with React, Vue, or Svelte
+
+Add `--css tailwind` to style the app with Tailwind CSS through its Vite
+plugin:
+
+```sh
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend react --css tailwind
+```
+
+After the scaffolder, npm adds `tailwindcss` and `@tailwindcss/vite` 4.3.4,
+the versions in gobento's rules file, to the `devDependencies` of
+`frontend/package.json` and to `frontend/package-lock.json`; `--dry-run`
+lists them. `frontend/vite.config.ts` imports the plugin and adds
+`tailwindcss()` to its `plugins`, and `frontend/src/index.css` (`style.css`
+with Vue, `app.css` with Svelte) starts with `@import "tailwindcss";`,
+before the example page's plain CSS. Use utility classes in the components,
+or replace those rules.
+
+`npm run build` and `make dev` compile every utility class the sources use,
+so there is no `tailwind.css`, no committed stylesheet, no `make generate`
+step, and no extra CI step: the frontend build that the tooling already runs
+compiles the styles.
 
 ## Next steps
 

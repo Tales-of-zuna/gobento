@@ -82,6 +82,51 @@ func TestGenerateScaffold(t *testing.T) {
 	assertNoTempDirs(t, parent)
 }
 
+// TestGenerateScaffoldAllowRemote covers npm 12's refusal of registry
+// tarballs with bundled dependencies in lock-only installs (npm/cli#9800):
+// the install is retried with --allow-remote=all, and the lock file must
+// resolve every package on the configured registry's host.
+func TestGenerateScaffoldAllowRemote(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name, resolved, wantErr string
+	}{
+		{name: "registry tarballs", resolved: ""},
+		{name: "tarball from another host", resolved: "https://evil.example/a-1.0.0.tgz", wantErr: "node_modules/a to https://evil.example/a-1.0.0.tgz, which is not on the npm registry registry.npmjs.org"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			parent := t.TempDir()
+			target := filepath.Join(parent, "shop")
+			log := filepath.Join(t.TempDir(), "npm.log")
+			env := []string{"FAKE_NPM=allowremote", "FAKE_NPM_LOG=" + log}
+			if tc.resolved != "" {
+				env = append(env, "FAKE_NPM_RESOLVED="+tc.resolved)
+			}
+			req := scaffoldRequest(t, target, env...)
+			req.Scaffolds[0].DevDependencies = []string{"tailwindcss@4.3.4"}
+			err := Generate(context.Background(), req)
+			if tc.wantErr == "" {
+				if err != nil {
+					t.Fatalf("Generate() error = %v", err)
+				}
+				if calls := readFile(t, log); !strings.Contains(calls, "--save-dev tailwindcss@4.3.4 --allow-remote=all") {
+					t.Errorf("npm was not retried with --allow-remote=all:\n%s", calls)
+				}
+				return
+			}
+			if !errors.Is(err, ErrNPMCommand) || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Errorf("Generate() error = %v, want %q", err, tc.wantErr)
+			}
+			if _, statErr := os.Stat(target); statErr == nil {
+				t.Error("the project was left behind")
+			}
+			assertNoTempDirs(t, parent)
+		})
+	}
+}
+
 // TestGenerateScaffoldFailures covers the spec scenario "Scaffolder fails"
 // and a scaffolder output without a file of the remove list.
 func TestGenerateScaffoldFailures(t *testing.T) {

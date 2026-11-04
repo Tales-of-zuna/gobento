@@ -2,7 +2,10 @@
 # where a CSS framework (the css kind) inserts its contributions. A frontend
 # includes a point with {{contrib "<point>"}} in its templates; it includes
 # only the points of its build system (the trait frontend-build), and a CSS
-# framework contributes only to those, guarded by the same trait.
+# framework contributes only to those, guarded by the same trait. npm
+# packages a CSS framework needs in a Vite frontend are not a point: they
+# are listed in the npm: section of versions.yaml (role dev-dependency), and
+# generation installs them into the scaffolded frontend.
 contributions:
   # frontend-build: go
   stylesheet: >-
@@ -11,11 +14,12 @@ contributions:
     frontend documents (htmx: row, empty, problem, and name).
   # frontend-build: vite
   vite-config-imports: >-
-    JavaScript import lines at the top of the Vite configuration
-    (vite.config.*), for example a Vite plugin's import.
+    Import lines at the top of frontend/vite.config.ts, after the
+    frontend's own, for example a Vite plugin's import.
+  vite-plugins: >-
+    Entries of the plugins array of frontend/vite.config.ts, after the
+    framework's plugin, one per line with a trailing comma, for example
+    "tailwindcss(),".
   css-imports: >-
-    CSS lines at the top of the app's main stylesheet, before its own
-    rules, for example an @import of the CSS framework.
-  npm-dev-dependencies: >-
-    npm packages with exact versions, one "<name>@<version>" per line, that
-    the frontend installs as development dependencies after scaffolding.
+    CSS lines at the top of the stylesheet the app's entry imports, before
+    its own rules, for example `@import "tailwindcss";`.

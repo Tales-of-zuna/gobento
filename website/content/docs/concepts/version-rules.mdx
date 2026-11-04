@@ -85,6 +85,12 @@ Conditions name traits, not components, so a new database that provides
 rules file. Loading fails if a condition names a trait that no component
 provides.
 
+[Binaries](#downloaded-binaries) and [npm packages](#nodejs-and-npm) take
+the same `traits` condition. Tailwind CSS uses it: its standalone CLI is
+listed with `traits: { frontend-build: [go] }`, for htmx, and its npm
+packages with `traits: { frontend-build: [vite] }`, for React, Vue, and
+Svelte, so each selection gets only the one it builds with.
+
 ## Ranges
 
 A range is a space-separated list of comparators, all ANDed together:
@@ -193,6 +199,7 @@ program is a **binary**, recorded with a download for each platform:
 binaries:
   tailwindcss:
     components: [css/tailwind]
+    traits: { frontend-build: [go] }
     version: 4.3.4
     checksums: https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.4/sha256sums.txt
     platforms:
@@ -202,17 +209,18 @@ binaries:
       # darwin/amd64, darwin/arm64, linux/arm64, windows/amd64, windows/arm64
 ```
 
-| Key                    | Meaning                                                                                          |
-| ---------------------- | ------------------------------------------------------------------------------------------------ |
-| `components`           | The components that use the binary                                                               |
-| `version`              | The upstream release, such as `4.3.4`                                                            |
-| `checksums`            | Optional. The `https` URL of the release's checksum file (`<sha256>  <file>` lines)              |
-| `platforms`            | One entry per `GOOS/GOARCH` platform the release supports                                        |
-| `platforms.<p>.url`    | The `https` URL of the file for that platform; it must contain the version                       |
-| `platforms.<p>.sha256` | The file's SHA-256 checksum, 64 lowercase hex digits, which the project checks before running it |
+| Key                    | Meaning                                                                                                                |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `components`           | The components that use the binary                                                                                     |
+| `traits`               | Optional. Trait values the selection must provide for the binary to be used; see [Trait conditions](#trait-conditions) |
+| `version`              | The upstream release, such as `4.3.4`                                                                                  |
+| `checksums`            | Optional. The `https` URL of the release's checksum file (`<sha256>  <file>` lines)                                    |
+| `platforms`            | One entry per `GOOS/GOARCH` platform the release supports                                                              |
+| `platforms.<p>.url`    | The `https` URL of the file for that platform; it must contain the version                                             |
+| `platforms.<p>.sha256` | The file's SHA-256 checksum, 64 lowercase hex digits, which the project checks before running it                       |
 
 A generated project downloads a binary only when a developer runs it (with
-Tailwind CSS: `make generate` after a style change), never to build, test, or
+htmx and Tailwind CSS: `make generate` after a style change), never to build, test, or
 run the project, and never at generation time. Like an asset, a binary is
 fixed per gobento release and cannot be pinned. Templates read it as
 `{{.Binaries.tailwindcss.Version}}` and range over
@@ -222,14 +230,18 @@ and runs the CLI. Loading the rules rejects a platform that is not
 `GOOS/GOARCH`, a URL without the version, and a malformed checksum, and
 gobento's tests compare every checksum with the release's `checksums` file
 when they have network access. To update a binary, change `version`, every
-URL, and every `sha256` together, from the release's checksum file.
+URL, and every `sha256` together, from the release's checksum file. The
+Tailwind CLI's version also moves with the npm packages `tailwindcss` and
+`@tailwindcss/vite` (see [Node.js and npm](#nodejs-and-npm)), which Tailwind
+releases together with it; a test fails when the three differ.
 
 ## Node.js and npm
 
 The React, Vue, and Svelte frontends are created at generation time by
 Vite's official scaffolder, `create-vite`, which is an npm package. The rules
 file records the Node.js versions this needs and every npm package
-components use:
+components use, including the packages a CSS framework adds to a Vite
+frontend:
 
 ```yaml title="components/versions.yaml"
 node:
@@ -240,6 +252,16 @@ npm:
     components: [frontend/react, frontend/svelte, frontend/vue]
     role: scaffolder
     version: 9.3.3
+  '@tailwindcss/vite':
+    components: [css/tailwind]
+    traits: { frontend-build: [vite] }
+    role: dev-dependency
+    version: 4.3.4
+  tailwindcss:
+    components: [css/tailwind]
+    traits: { frontend-build: [vite] }
+    role: dev-dependency
+    version: 4.3.4
 ```
 
 | Field          | Meaning                                                                                                                                                                                               |
@@ -248,6 +270,7 @@ npm:
 | `node.default` | The Node.js release line of the generated tooling, such as `26`: `actions/setup-node` in CI and the `node` image of the Dockerfile. Templates read it as `{{.Node}}`; it must lie inside `node.range` |
 | `npm.<name>`   | One entry per npm package, keyed by package name                                                                                                                                                      |
 | `components`   | The components that use the package                                                                                                                                                                   |
+| `traits`       | Optional. Trait values the selection must provide for the package to be used; see [Trait conditions](#trait-conditions)                                                                               |
 | `role`         | `scaffolder` (run at generation time), or `dependency` or `dev-dependency` (added to every scaffolded frontend of a selection that uses the package)                                                  |
 | `version`      | One exact version, such as `9.3.3`. Templates read it as `{{index .NPM "<name>"}}`                                                                                                                    |
 
@@ -258,6 +281,15 @@ A scaffolder's name starts with `create-`, and it runs as
 project's own dependencies, such as React and Vite, are chosen by the
 scaffolder and recorded in the project's `frontend/package-lock.json`, not
 in the rules file.
+
+Packages with the role `dependency` or `dev-dependency` are installed by the
+same step, right after the scaffolder ran: npm adds them at their exact
+version to the scaffolded frontend's `package.json` and records them in its
+`package-lock.json`. With React, Vue, or Svelte and `--css tailwind`, that
+adds `tailwindcss` and `@tailwindcss/vite` 4.3.4 to `devDependencies`, and
+`gobento new --dry-run` lists them. A selection without a scaffolded
+frontend installs nothing: htmx with Tailwind CSS uses the standalone CLI
+from [Downloaded binaries](#downloaded-binaries) and needs no Node.js.
 
 Like tools, assets, and binaries, npm package versions are fixed per gobento
 release. `--pin create-vite=9.0.0` is rejected:

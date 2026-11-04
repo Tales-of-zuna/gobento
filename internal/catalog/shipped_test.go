@@ -216,3 +216,30 @@ func hasComponent(cat *catalog.Catalog, id string) bool {
 	}
 	return false
 }
+
+// TestTailwindReleasedTogether covers the spec scenario "Tailwind's npm
+// packages from the rules": the npm packages Vite frontends install with
+// css/tailwind have the version of the standalone CLI, since Tailwind
+// releases them together.
+func TestTailwindReleasedTogether(t *testing.T) {
+	t.Parallel()
+
+	cat, err := catalog.Load(components.FS())
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	rules := cat.Rules()
+	cli, ok := rules.Binary("tailwindcss")
+	if !ok {
+		t.Fatal("no tailwindcss binary in the rules")
+	}
+	for _, name := range []string{"tailwindcss", "@tailwindcss/vite"} {
+		p, ok := rules.NPMPackage(name)
+		switch {
+		case !ok:
+			t.Errorf("npm package %s is not in the rules", name)
+		case p.Version != cli.Version || p.Role != compat.NPMDevDependency || !slices.Equal(p.Components, []string{"css/tailwind"}):
+			t.Errorf("npm %s = %+v, want a dev-dependency of css/tailwind at the CLI's version %s", name, p, cli.Version)
+		}
+	}
+}

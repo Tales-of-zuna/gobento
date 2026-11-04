@@ -1,7 +1,0 @@
-# A fixture of a Vite frontend for the Vite hook of the css kind (see
-# TestViteHook): it includes the frontend kind's Vite points the way a
-# Vite frontend component does. It is not shipped.
-name: vite
-title: Vite fixture
-provides:
-  frontend-build: vite

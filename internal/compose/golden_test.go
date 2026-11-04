@@ -36,6 +36,7 @@ var goldens = []struct {
 	{dir: "testdata/golden-ddd-htmx", sel: [4]string{"ddd", "nethttp", "sqlite", "sqlc"}, frontend: "htmx"},
 	{dir: "testdata/golden-htmx-tailwind", sel: [4]string{"mvc", "nethttp", "sqlite", "sqlc"}, frontend: "htmx", css: "tailwind"},
 	{dir: "testdata/golden-react", sel: [4]string{"mvc", "nethttp", "sqlite", "sqlc"}, frontend: "react"},
+	{dir: "testdata/golden-react-tailwind", sel: [4]string{"mvc", "nethttp", "sqlite", "sqlc"}, frontend: "react", css: "tailwind"},
 }
 
 // goldenComponentsDir holds the files each component contributes, in
@@ -346,10 +347,7 @@ func TestShippedCatalogSupported(t *testing.T) {
 					sel := arch + "/" + fw + "/" + db + "/" + data
 					want = append(want, sel)
 					for _, ui := range []string{"htmx", "react", "svelte", "vue"} {
-						want = append(want, sel+"/"+ui)
-						if ui == "htmx" {
-							want = append(want, sel+"/htmx/tailwind")
-						}
+						want = append(want, sel+"/"+ui, sel+"/"+ui+"/tailwind")
 					}
 				}
 			}

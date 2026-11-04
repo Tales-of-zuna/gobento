@@ -16,14 +16,26 @@ gobento new shop --module example.com/shop --arch ddd --framework chi --db postg
 gobento new shop --arch ddd --framework chi --db postgres --data gorm --frontend react
 # ddd/chi/postgres/gorm/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework chi --db postgres --data gorm --frontend react --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# ddd/chi/postgres/gorm/react/tailwind, defaults
+gobento new shop --arch ddd --framework chi --db postgres --data gorm --frontend react --css tailwind
+# ddd/chi/postgres/gorm/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework chi --db postgres --data gorm --frontend react --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # ddd/chi/postgres/gorm/svelte, defaults
 gobento new shop --arch ddd --framework chi --db postgres --data gorm --frontend svelte
 # ddd/chi/postgres/gorm/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework chi --db postgres --data gorm --frontend svelte --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# ddd/chi/postgres/gorm/svelte/tailwind, defaults
+gobento new shop --arch ddd --framework chi --db postgres --data gorm --frontend svelte --css tailwind
+# ddd/chi/postgres/gorm/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework chi --db postgres --data gorm --frontend svelte --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # ddd/chi/postgres/gorm/vue, defaults
 gobento new shop --arch ddd --framework chi --db postgres --data gorm --frontend vue
 # ddd/chi/postgres/gorm/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework chi --db postgres --data gorm --frontend vue --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# ddd/chi/postgres/gorm/vue/tailwind, defaults
+gobento new shop --arch ddd --framework chi --db postgres --data gorm --frontend vue --css tailwind
+# ddd/chi/postgres/gorm/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework chi --db postgres --data gorm --frontend vue --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # ddd/chi/postgres/sqlc, defaults
 gobento new shop --arch ddd --framework chi --db postgres --data sqlc
 # ddd/chi/postgres/sqlc, explicit module and range floors
@@ -40,14 +52,26 @@ gobento new shop --module example.com/shop --arch ddd --framework chi --db postg
 gobento new shop --arch ddd --framework chi --db postgres --data sqlc --frontend react
 # ddd/chi/postgres/sqlc/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework chi --db postgres --data sqlc --frontend react --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
+# ddd/chi/postgres/sqlc/react/tailwind, defaults
+gobento new shop --arch ddd --framework chi --db postgres --data sqlc --frontend react --css tailwind
+# ddd/chi/postgres/sqlc/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework chi --db postgres --data sqlc --frontend react --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
 # ddd/chi/postgres/sqlc/svelte, defaults
 gobento new shop --arch ddd --framework chi --db postgres --data sqlc --frontend svelte
 # ddd/chi/postgres/sqlc/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework chi --db postgres --data sqlc --frontend svelte --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
+# ddd/chi/postgres/sqlc/svelte/tailwind, defaults
+gobento new shop --arch ddd --framework chi --db postgres --data sqlc --frontend svelte --css tailwind
+# ddd/chi/postgres/sqlc/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework chi --db postgres --data sqlc --frontend svelte --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
 # ddd/chi/postgres/sqlc/vue, defaults
 gobento new shop --arch ddd --framework chi --db postgres --data sqlc --frontend vue
 # ddd/chi/postgres/sqlc/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework chi --db postgres --data sqlc --frontend vue --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
+# ddd/chi/postgres/sqlc/vue/tailwind, defaults
+gobento new shop --arch ddd --framework chi --db postgres --data sqlc --frontend vue --css tailwind
+# ddd/chi/postgres/sqlc/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework chi --db postgres --data sqlc --frontend vue --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
 # ddd/chi/sqlite/gorm, defaults
 gobento new shop --arch ddd --framework chi --db sqlite --data gorm
 # ddd/chi/sqlite/gorm, explicit module and range floors
@@ -64,14 +88,26 @@ gobento new shop --module example.com/shop --arch ddd --framework chi --db sqlit
 gobento new shop --arch ddd --framework chi --db sqlite --data gorm --frontend react
 # ddd/chi/sqlite/gorm/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework chi --db sqlite --data gorm --frontend react --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# ddd/chi/sqlite/gorm/react/tailwind, defaults
+gobento new shop --arch ddd --framework chi --db sqlite --data gorm --frontend react --css tailwind
+# ddd/chi/sqlite/gorm/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework chi --db sqlite --data gorm --frontend react --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # ddd/chi/sqlite/gorm/svelte, defaults
 gobento new shop --arch ddd --framework chi --db sqlite --data gorm --frontend svelte
 # ddd/chi/sqlite/gorm/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework chi --db sqlite --data gorm --frontend svelte --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# ddd/chi/sqlite/gorm/svelte/tailwind, defaults
+gobento new shop --arch ddd --framework chi --db sqlite --data gorm --frontend svelte --css tailwind
+# ddd/chi/sqlite/gorm/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework chi --db sqlite --data gorm --frontend svelte --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # ddd/chi/sqlite/gorm/vue, defaults
 gobento new shop --arch ddd --framework chi --db sqlite --data gorm --frontend vue
 # ddd/chi/sqlite/gorm/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework chi --db sqlite --data gorm --frontend vue --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# ddd/chi/sqlite/gorm/vue/tailwind, defaults
+gobento new shop --arch ddd --framework chi --db sqlite --data gorm --frontend vue --css tailwind
+# ddd/chi/sqlite/gorm/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework chi --db sqlite --data gorm --frontend vue --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # ddd/chi/sqlite/sqlc, defaults
 gobento new shop --arch ddd --framework chi --db sqlite --data sqlc
 # ddd/chi/sqlite/sqlc, explicit module and range floors
@@ -88,14 +124,26 @@ gobento new shop --module example.com/shop --arch ddd --framework chi --db sqlit
 gobento new shop --arch ddd --framework chi --db sqlite --data sqlc --frontend react
 # ddd/chi/sqlite/sqlc/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework chi --db sqlite --data sqlc --frontend react --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
+# ddd/chi/sqlite/sqlc/react/tailwind, defaults
+gobento new shop --arch ddd --framework chi --db sqlite --data sqlc --frontend react --css tailwind
+# ddd/chi/sqlite/sqlc/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework chi --db sqlite --data sqlc --frontend react --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
 # ddd/chi/sqlite/sqlc/svelte, defaults
 gobento new shop --arch ddd --framework chi --db sqlite --data sqlc --frontend svelte
 # ddd/chi/sqlite/sqlc/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework chi --db sqlite --data sqlc --frontend svelte --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
+# ddd/chi/sqlite/sqlc/svelte/tailwind, defaults
+gobento new shop --arch ddd --framework chi --db sqlite --data sqlc --frontend svelte --css tailwind
+# ddd/chi/sqlite/sqlc/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework chi --db sqlite --data sqlc --frontend svelte --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
 # ddd/chi/sqlite/sqlc/vue, defaults
 gobento new shop --arch ddd --framework chi --db sqlite --data sqlc --frontend vue
 # ddd/chi/sqlite/sqlc/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework chi --db sqlite --data sqlc --frontend vue --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
+# ddd/chi/sqlite/sqlc/vue/tailwind, defaults
+gobento new shop --arch ddd --framework chi --db sqlite --data sqlc --frontend vue --css tailwind
+# ddd/chi/sqlite/sqlc/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework chi --db sqlite --data sqlc --frontend vue --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
 # ddd/gin/postgres/gorm, defaults
 gobento new shop --arch ddd --framework gin --db postgres --data gorm
 # ddd/gin/postgres/gorm, explicit module and range floors
@@ -112,14 +160,26 @@ gobento new shop --module example.com/shop --arch ddd --framework gin --db postg
 gobento new shop --arch ddd --framework gin --db postgres --data gorm --frontend react
 # ddd/gin/postgres/gorm/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework gin --db postgres --data gorm --frontend react --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# ddd/gin/postgres/gorm/react/tailwind, defaults
+gobento new shop --arch ddd --framework gin --db postgres --data gorm --frontend react --css tailwind
+# ddd/gin/postgres/gorm/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework gin --db postgres --data gorm --frontend react --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # ddd/gin/postgres/gorm/svelte, defaults
 gobento new shop --arch ddd --framework gin --db postgres --data gorm --frontend svelte
 # ddd/gin/postgres/gorm/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework gin --db postgres --data gorm --frontend svelte --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# ddd/gin/postgres/gorm/svelte/tailwind, defaults
+gobento new shop --arch ddd --framework gin --db postgres --data gorm --frontend svelte --css tailwind
+# ddd/gin/postgres/gorm/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework gin --db postgres --data gorm --frontend svelte --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # ddd/gin/postgres/gorm/vue, defaults
 gobento new shop --arch ddd --framework gin --db postgres --data gorm --frontend vue
 # ddd/gin/postgres/gorm/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework gin --db postgres --data gorm --frontend vue --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# ddd/gin/postgres/gorm/vue/tailwind, defaults
+gobento new shop --arch ddd --framework gin --db postgres --data gorm --frontend vue --css tailwind
+# ddd/gin/postgres/gorm/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework gin --db postgres --data gorm --frontend vue --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # ddd/gin/postgres/sqlc, defaults
 gobento new shop --arch ddd --framework gin --db postgres --data sqlc
 # ddd/gin/postgres/sqlc, explicit module and range floors
@@ -136,14 +196,26 @@ gobento new shop --module example.com/shop --arch ddd --framework gin --db postg
 gobento new shop --arch ddd --framework gin --db postgres --data sqlc --frontend react
 # ddd/gin/postgres/sqlc/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework gin --db postgres --data sqlc --frontend react --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
+# ddd/gin/postgres/sqlc/react/tailwind, defaults
+gobento new shop --arch ddd --framework gin --db postgres --data sqlc --frontend react --css tailwind
+# ddd/gin/postgres/sqlc/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework gin --db postgres --data sqlc --frontend react --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
 # ddd/gin/postgres/sqlc/svelte, defaults
 gobento new shop --arch ddd --framework gin --db postgres --data sqlc --frontend svelte
 # ddd/gin/postgres/sqlc/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework gin --db postgres --data sqlc --frontend svelte --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
+# ddd/gin/postgres/sqlc/svelte/tailwind, defaults
+gobento new shop --arch ddd --framework gin --db postgres --data sqlc --frontend svelte --css tailwind
+# ddd/gin/postgres/sqlc/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework gin --db postgres --data sqlc --frontend svelte --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
 # ddd/gin/postgres/sqlc/vue, defaults
 gobento new shop --arch ddd --framework gin --db postgres --data sqlc --frontend vue
 # ddd/gin/postgres/sqlc/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework gin --db postgres --data sqlc --frontend vue --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
+# ddd/gin/postgres/sqlc/vue/tailwind, defaults
+gobento new shop --arch ddd --framework gin --db postgres --data sqlc --frontend vue --css tailwind
+# ddd/gin/postgres/sqlc/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework gin --db postgres --data sqlc --frontend vue --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
 # ddd/gin/sqlite/gorm, defaults
 gobento new shop --arch ddd --framework gin --db sqlite --data gorm
 # ddd/gin/sqlite/gorm, explicit module and range floors
@@ -160,14 +232,26 @@ gobento new shop --module example.com/shop --arch ddd --framework gin --db sqlit
 gobento new shop --arch ddd --framework gin --db sqlite --data gorm --frontend react
 # ddd/gin/sqlite/gorm/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework gin --db sqlite --data gorm --frontend react --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# ddd/gin/sqlite/gorm/react/tailwind, defaults
+gobento new shop --arch ddd --framework gin --db sqlite --data gorm --frontend react --css tailwind
+# ddd/gin/sqlite/gorm/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework gin --db sqlite --data gorm --frontend react --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # ddd/gin/sqlite/gorm/svelte, defaults
 gobento new shop --arch ddd --framework gin --db sqlite --data gorm --frontend svelte
 # ddd/gin/sqlite/gorm/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework gin --db sqlite --data gorm --frontend svelte --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# ddd/gin/sqlite/gorm/svelte/tailwind, defaults
+gobento new shop --arch ddd --framework gin --db sqlite --data gorm --frontend svelte --css tailwind
+# ddd/gin/sqlite/gorm/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework gin --db sqlite --data gorm --frontend svelte --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # ddd/gin/sqlite/gorm/vue, defaults
 gobento new shop --arch ddd --framework gin --db sqlite --data gorm --frontend vue
 # ddd/gin/sqlite/gorm/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework gin --db sqlite --data gorm --frontend vue --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# ddd/gin/sqlite/gorm/vue/tailwind, defaults
+gobento new shop --arch ddd --framework gin --db sqlite --data gorm --frontend vue --css tailwind
+# ddd/gin/sqlite/gorm/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework gin --db sqlite --data gorm --frontend vue --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # ddd/gin/sqlite/sqlc, defaults
 gobento new shop --arch ddd --framework gin --db sqlite --data sqlc
 # ddd/gin/sqlite/sqlc, explicit module and range floors
@@ -184,14 +268,26 @@ gobento new shop --module example.com/shop --arch ddd --framework gin --db sqlit
 gobento new shop --arch ddd --framework gin --db sqlite --data sqlc --frontend react
 # ddd/gin/sqlite/sqlc/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework gin --db sqlite --data sqlc --frontend react --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
+# ddd/gin/sqlite/sqlc/react/tailwind, defaults
+gobento new shop --arch ddd --framework gin --db sqlite --data sqlc --frontend react --css tailwind
+# ddd/gin/sqlite/sqlc/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework gin --db sqlite --data sqlc --frontend react --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
 # ddd/gin/sqlite/sqlc/svelte, defaults
 gobento new shop --arch ddd --framework gin --db sqlite --data sqlc --frontend svelte
 # ddd/gin/sqlite/sqlc/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework gin --db sqlite --data sqlc --frontend svelte --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
+# ddd/gin/sqlite/sqlc/svelte/tailwind, defaults
+gobento new shop --arch ddd --framework gin --db sqlite --data sqlc --frontend svelte --css tailwind
+# ddd/gin/sqlite/sqlc/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework gin --db sqlite --data sqlc --frontend svelte --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
 # ddd/gin/sqlite/sqlc/vue, defaults
 gobento new shop --arch ddd --framework gin --db sqlite --data sqlc --frontend vue
 # ddd/gin/sqlite/sqlc/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework gin --db sqlite --data sqlc --frontend vue --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
+# ddd/gin/sqlite/sqlc/vue/tailwind, defaults
+gobento new shop --arch ddd --framework gin --db sqlite --data sqlc --frontend vue --css tailwind
+# ddd/gin/sqlite/sqlc/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework gin --db sqlite --data sqlc --frontend vue --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
 # ddd/nethttp/postgres/gorm, defaults
 gobento new shop --arch ddd --framework nethttp --db postgres --data gorm
 # ddd/nethttp/postgres/gorm, explicit module and range floors
@@ -208,14 +304,26 @@ gobento new shop --module example.com/shop --arch ddd --framework nethttp --db p
 gobento new shop --arch ddd --framework nethttp --db postgres --data gorm --frontend react
 # ddd/nethttp/postgres/gorm/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework nethttp --db postgres --data gorm --frontend react --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# ddd/nethttp/postgres/gorm/react/tailwind, defaults
+gobento new shop --arch ddd --framework nethttp --db postgres --data gorm --frontend react --css tailwind
+# ddd/nethttp/postgres/gorm/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework nethttp --db postgres --data gorm --frontend react --css tailwind --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # ddd/nethttp/postgres/gorm/svelte, defaults
 gobento new shop --arch ddd --framework nethttp --db postgres --data gorm --frontend svelte
 # ddd/nethttp/postgres/gorm/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework nethttp --db postgres --data gorm --frontend svelte --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# ddd/nethttp/postgres/gorm/svelte/tailwind, defaults
+gobento new shop --arch ddd --framework nethttp --db postgres --data gorm --frontend svelte --css tailwind
+# ddd/nethttp/postgres/gorm/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework nethttp --db postgres --data gorm --frontend svelte --css tailwind --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # ddd/nethttp/postgres/gorm/vue, defaults
 gobento new shop --arch ddd --framework nethttp --db postgres --data gorm --frontend vue
 # ddd/nethttp/postgres/gorm/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework nethttp --db postgres --data gorm --frontend vue --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# ddd/nethttp/postgres/gorm/vue/tailwind, defaults
+gobento new shop --arch ddd --framework nethttp --db postgres --data gorm --frontend vue --css tailwind
+# ddd/nethttp/postgres/gorm/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework nethttp --db postgres --data gorm --frontend vue --css tailwind --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # ddd/nethttp/postgres/sqlc, defaults
 gobento new shop --arch ddd --framework nethttp --db postgres --data sqlc
 # ddd/nethttp/postgres/sqlc, explicit module and range floors
@@ -232,14 +340,26 @@ gobento new shop --module example.com/shop --arch ddd --framework nethttp --db p
 gobento new shop --arch ddd --framework nethttp --db postgres --data sqlc --frontend react
 # ddd/nethttp/postgres/sqlc/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework nethttp --db postgres --data sqlc --frontend react --go 1.26
+# ddd/nethttp/postgres/sqlc/react/tailwind, defaults
+gobento new shop --arch ddd --framework nethttp --db postgres --data sqlc --frontend react --css tailwind
+# ddd/nethttp/postgres/sqlc/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework nethttp --db postgres --data sqlc --frontend react --css tailwind --go 1.26
 # ddd/nethttp/postgres/sqlc/svelte, defaults
 gobento new shop --arch ddd --framework nethttp --db postgres --data sqlc --frontend svelte
 # ddd/nethttp/postgres/sqlc/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework nethttp --db postgres --data sqlc --frontend svelte --go 1.26
+# ddd/nethttp/postgres/sqlc/svelte/tailwind, defaults
+gobento new shop --arch ddd --framework nethttp --db postgres --data sqlc --frontend svelte --css tailwind
+# ddd/nethttp/postgres/sqlc/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework nethttp --db postgres --data sqlc --frontend svelte --css tailwind --go 1.26
 # ddd/nethttp/postgres/sqlc/vue, defaults
 gobento new shop --arch ddd --framework nethttp --db postgres --data sqlc --frontend vue
 # ddd/nethttp/postgres/sqlc/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework nethttp --db postgres --data sqlc --frontend vue --go 1.26
+# ddd/nethttp/postgres/sqlc/vue/tailwind, defaults
+gobento new shop --arch ddd --framework nethttp --db postgres --data sqlc --frontend vue --css tailwind
+# ddd/nethttp/postgres/sqlc/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework nethttp --db postgres --data sqlc --frontend vue --css tailwind --go 1.26
 # ddd/nethttp/sqlite/gorm, defaults
 gobento new shop --arch ddd --framework nethttp --db sqlite --data gorm
 # ddd/nethttp/sqlite/gorm, explicit module and range floors
@@ -256,14 +376,26 @@ gobento new shop --module example.com/shop --arch ddd --framework nethttp --db s
 gobento new shop --arch ddd --framework nethttp --db sqlite --data gorm --frontend react
 # ddd/nethttp/sqlite/gorm/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework nethttp --db sqlite --data gorm --frontend react --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# ddd/nethttp/sqlite/gorm/react/tailwind, defaults
+gobento new shop --arch ddd --framework nethttp --db sqlite --data gorm --frontend react --css tailwind
+# ddd/nethttp/sqlite/gorm/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework nethttp --db sqlite --data gorm --frontend react --css tailwind --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # ddd/nethttp/sqlite/gorm/svelte, defaults
 gobento new shop --arch ddd --framework nethttp --db sqlite --data gorm --frontend svelte
 # ddd/nethttp/sqlite/gorm/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework nethttp --db sqlite --data gorm --frontend svelte --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# ddd/nethttp/sqlite/gorm/svelte/tailwind, defaults
+gobento new shop --arch ddd --framework nethttp --db sqlite --data gorm --frontend svelte --css tailwind
+# ddd/nethttp/sqlite/gorm/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework nethttp --db sqlite --data gorm --frontend svelte --css tailwind --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # ddd/nethttp/sqlite/gorm/vue, defaults
 gobento new shop --arch ddd --framework nethttp --db sqlite --data gorm --frontend vue
 # ddd/nethttp/sqlite/gorm/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework nethttp --db sqlite --data gorm --frontend vue --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# ddd/nethttp/sqlite/gorm/vue/tailwind, defaults
+gobento new shop --arch ddd --framework nethttp --db sqlite --data gorm --frontend vue --css tailwind
+# ddd/nethttp/sqlite/gorm/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework nethttp --db sqlite --data gorm --frontend vue --css tailwind --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # ddd/nethttp/sqlite/sqlc, defaults
 gobento new shop --arch ddd --framework nethttp --db sqlite --data sqlc
 # ddd/nethttp/sqlite/sqlc, explicit module and range floors
@@ -280,14 +412,26 @@ gobento new shop --module example.com/shop --arch ddd --framework nethttp --db s
 gobento new shop --arch ddd --framework nethttp --db sqlite --data sqlc --frontend react
 # ddd/nethttp/sqlite/sqlc/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework nethttp --db sqlite --data sqlc --frontend react --go 1.26 --pin modernc.org/sqlite=v1.61.0
+# ddd/nethttp/sqlite/sqlc/react/tailwind, defaults
+gobento new shop --arch ddd --framework nethttp --db sqlite --data sqlc --frontend react --css tailwind
+# ddd/nethttp/sqlite/sqlc/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework nethttp --db sqlite --data sqlc --frontend react --css tailwind --go 1.26 --pin modernc.org/sqlite=v1.61.0
 # ddd/nethttp/sqlite/sqlc/svelte, defaults
 gobento new shop --arch ddd --framework nethttp --db sqlite --data sqlc --frontend svelte
 # ddd/nethttp/sqlite/sqlc/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework nethttp --db sqlite --data sqlc --frontend svelte --go 1.26 --pin modernc.org/sqlite=v1.61.0
+# ddd/nethttp/sqlite/sqlc/svelte/tailwind, defaults
+gobento new shop --arch ddd --framework nethttp --db sqlite --data sqlc --frontend svelte --css tailwind
+# ddd/nethttp/sqlite/sqlc/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework nethttp --db sqlite --data sqlc --frontend svelte --css tailwind --go 1.26 --pin modernc.org/sqlite=v1.61.0
 # ddd/nethttp/sqlite/sqlc/vue, defaults
 gobento new shop --arch ddd --framework nethttp --db sqlite --data sqlc --frontend vue
 # ddd/nethttp/sqlite/sqlc/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework nethttp --db sqlite --data sqlc --frontend vue --go 1.26 --pin modernc.org/sqlite=v1.61.0
+# ddd/nethttp/sqlite/sqlc/vue/tailwind, defaults
+gobento new shop --arch ddd --framework nethttp --db sqlite --data sqlc --frontend vue --css tailwind
+# ddd/nethttp/sqlite/sqlc/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework nethttp --db sqlite --data sqlc --frontend vue --css tailwind --go 1.26 --pin modernc.org/sqlite=v1.61.0
 # mvc/chi/postgres/gorm, defaults
 gobento new shop --arch mvc --framework chi --db postgres --data gorm
 # mvc/chi/postgres/gorm, explicit module and range floors
@@ -304,14 +448,26 @@ gobento new shop --module example.com/shop --arch mvc --framework chi --db postg
 gobento new shop --arch mvc --framework chi --db postgres --data gorm --frontend react
 # mvc/chi/postgres/gorm/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres --data gorm --frontend react --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# mvc/chi/postgres/gorm/react/tailwind, defaults
+gobento new shop --arch mvc --framework chi --db postgres --data gorm --frontend react --css tailwind
+# mvc/chi/postgres/gorm/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres --data gorm --frontend react --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # mvc/chi/postgres/gorm/svelte, defaults
 gobento new shop --arch mvc --framework chi --db postgres --data gorm --frontend svelte
 # mvc/chi/postgres/gorm/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres --data gorm --frontend svelte --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# mvc/chi/postgres/gorm/svelte/tailwind, defaults
+gobento new shop --arch mvc --framework chi --db postgres --data gorm --frontend svelte --css tailwind
+# mvc/chi/postgres/gorm/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres --data gorm --frontend svelte --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # mvc/chi/postgres/gorm/vue, defaults
 gobento new shop --arch mvc --framework chi --db postgres --data gorm --frontend vue
 # mvc/chi/postgres/gorm/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres --data gorm --frontend vue --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# mvc/chi/postgres/gorm/vue/tailwind, defaults
+gobento new shop --arch mvc --framework chi --db postgres --data gorm --frontend vue --css tailwind
+# mvc/chi/postgres/gorm/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres --data gorm --frontend vue --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # mvc/chi/postgres/sqlc, defaults
 gobento new shop --arch mvc --framework chi --db postgres --data sqlc
 # mvc/chi/postgres/sqlc, explicit module and range floors
@@ -328,14 +484,26 @@ gobento new shop --module example.com/shop --arch mvc --framework chi --db postg
 gobento new shop --arch mvc --framework chi --db postgres --data sqlc --frontend react
 # mvc/chi/postgres/sqlc/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres --data sqlc --frontend react --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
+# mvc/chi/postgres/sqlc/react/tailwind, defaults
+gobento new shop --arch mvc --framework chi --db postgres --data sqlc --frontend react --css tailwind
+# mvc/chi/postgres/sqlc/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres --data sqlc --frontend react --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
 # mvc/chi/postgres/sqlc/svelte, defaults
 gobento new shop --arch mvc --framework chi --db postgres --data sqlc --frontend svelte
 # mvc/chi/postgres/sqlc/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres --data sqlc --frontend svelte --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
+# mvc/chi/postgres/sqlc/svelte/tailwind, defaults
+gobento new shop --arch mvc --framework chi --db postgres --data sqlc --frontend svelte --css tailwind
+# mvc/chi/postgres/sqlc/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres --data sqlc --frontend svelte --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
 # mvc/chi/postgres/sqlc/vue, defaults
 gobento new shop --arch mvc --framework chi --db postgres --data sqlc --frontend vue
 # mvc/chi/postgres/sqlc/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres --data sqlc --frontend vue --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
+# mvc/chi/postgres/sqlc/vue/tailwind, defaults
+gobento new shop --arch mvc --framework chi --db postgres --data sqlc --frontend vue --css tailwind
+# mvc/chi/postgres/sqlc/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres --data sqlc --frontend vue --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
 # mvc/chi/sqlite/gorm, defaults
 gobento new shop --arch mvc --framework chi --db sqlite --data gorm
 # mvc/chi/sqlite/gorm, explicit module and range floors
@@ -352,14 +520,26 @@ gobento new shop --module example.com/shop --arch mvc --framework chi --db sqlit
 gobento new shop --arch mvc --framework chi --db sqlite --data gorm --frontend react
 # mvc/chi/sqlite/gorm/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework chi --db sqlite --data gorm --frontend react --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# mvc/chi/sqlite/gorm/react/tailwind, defaults
+gobento new shop --arch mvc --framework chi --db sqlite --data gorm --frontend react --css tailwind
+# mvc/chi/sqlite/gorm/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework chi --db sqlite --data gorm --frontend react --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # mvc/chi/sqlite/gorm/svelte, defaults
 gobento new shop --arch mvc --framework chi --db sqlite --data gorm --frontend svelte
 # mvc/chi/sqlite/gorm/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework chi --db sqlite --data gorm --frontend svelte --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# mvc/chi/sqlite/gorm/svelte/tailwind, defaults
+gobento new shop --arch mvc --framework chi --db sqlite --data gorm --frontend svelte --css tailwind
+# mvc/chi/sqlite/gorm/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework chi --db sqlite --data gorm --frontend svelte --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # mvc/chi/sqlite/gorm/vue, defaults
 gobento new shop --arch mvc --framework chi --db sqlite --data gorm --frontend vue
 # mvc/chi/sqlite/gorm/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework chi --db sqlite --data gorm --frontend vue --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# mvc/chi/sqlite/gorm/vue/tailwind, defaults
+gobento new shop --arch mvc --framework chi --db sqlite --data gorm --frontend vue --css tailwind
+# mvc/chi/sqlite/gorm/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework chi --db sqlite --data gorm --frontend vue --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # mvc/chi/sqlite/sqlc, defaults
 gobento new shop --arch mvc --framework chi --db sqlite --data sqlc
 # mvc/chi/sqlite/sqlc, explicit module and range floors
@@ -376,14 +556,26 @@ gobento new shop --module example.com/shop --arch mvc --framework chi --db sqlit
 gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend react
 # mvc/chi/sqlite/sqlc/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework chi --db sqlite --data sqlc --frontend react --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
+# mvc/chi/sqlite/sqlc/react/tailwind, defaults
+gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend react --css tailwind
+# mvc/chi/sqlite/sqlc/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework chi --db sqlite --data sqlc --frontend react --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
 # mvc/chi/sqlite/sqlc/svelte, defaults
 gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend svelte
 # mvc/chi/sqlite/sqlc/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework chi --db sqlite --data sqlc --frontend svelte --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
+# mvc/chi/sqlite/sqlc/svelte/tailwind, defaults
+gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend svelte --css tailwind
+# mvc/chi/sqlite/sqlc/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework chi --db sqlite --data sqlc --frontend svelte --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
 # mvc/chi/sqlite/sqlc/vue, defaults
 gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend vue
 # mvc/chi/sqlite/sqlc/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework chi --db sqlite --data sqlc --frontend vue --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
+# mvc/chi/sqlite/sqlc/vue/tailwind, defaults
+gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend vue --css tailwind
+# mvc/chi/sqlite/sqlc/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework chi --db sqlite --data sqlc --frontend vue --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
 # mvc/gin/postgres/gorm, defaults
 gobento new shop --arch mvc --framework gin --db postgres --data gorm
 # mvc/gin/postgres/gorm, explicit module and range floors
@@ -400,14 +592,26 @@ gobento new shop --module example.com/shop --arch mvc --framework gin --db postg
 gobento new shop --arch mvc --framework gin --db postgres --data gorm --frontend react
 # mvc/gin/postgres/gorm/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework gin --db postgres --data gorm --frontend react --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# mvc/gin/postgres/gorm/react/tailwind, defaults
+gobento new shop --arch mvc --framework gin --db postgres --data gorm --frontend react --css tailwind
+# mvc/gin/postgres/gorm/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework gin --db postgres --data gorm --frontend react --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # mvc/gin/postgres/gorm/svelte, defaults
 gobento new shop --arch mvc --framework gin --db postgres --data gorm --frontend svelte
 # mvc/gin/postgres/gorm/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework gin --db postgres --data gorm --frontend svelte --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# mvc/gin/postgres/gorm/svelte/tailwind, defaults
+gobento new shop --arch mvc --framework gin --db postgres --data gorm --frontend svelte --css tailwind
+# mvc/gin/postgres/gorm/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework gin --db postgres --data gorm --frontend svelte --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # mvc/gin/postgres/gorm/vue, defaults
 gobento new shop --arch mvc --framework gin --db postgres --data gorm --frontend vue
 # mvc/gin/postgres/gorm/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework gin --db postgres --data gorm --frontend vue --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# mvc/gin/postgres/gorm/vue/tailwind, defaults
+gobento new shop --arch mvc --framework gin --db postgres --data gorm --frontend vue --css tailwind
+# mvc/gin/postgres/gorm/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework gin --db postgres --data gorm --frontend vue --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # mvc/gin/postgres/sqlc, defaults
 gobento new shop --arch mvc --framework gin --db postgres --data sqlc
 # mvc/gin/postgres/sqlc, explicit module and range floors
@@ -424,14 +628,26 @@ gobento new shop --module example.com/shop --arch mvc --framework gin --db postg
 gobento new shop --arch mvc --framework gin --db postgres --data sqlc --frontend react
 # mvc/gin/postgres/sqlc/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework gin --db postgres --data sqlc --frontend react --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
+# mvc/gin/postgres/sqlc/react/tailwind, defaults
+gobento new shop --arch mvc --framework gin --db postgres --data sqlc --frontend react --css tailwind
+# mvc/gin/postgres/sqlc/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework gin --db postgres --data sqlc --frontend react --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
 # mvc/gin/postgres/sqlc/svelte, defaults
 gobento new shop --arch mvc --framework gin --db postgres --data sqlc --frontend svelte
 # mvc/gin/postgres/sqlc/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework gin --db postgres --data sqlc --frontend svelte --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
+# mvc/gin/postgres/sqlc/svelte/tailwind, defaults
+gobento new shop --arch mvc --framework gin --db postgres --data sqlc --frontend svelte --css tailwind
+# mvc/gin/postgres/sqlc/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework gin --db postgres --data sqlc --frontend svelte --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
 # mvc/gin/postgres/sqlc/vue, defaults
 gobento new shop --arch mvc --framework gin --db postgres --data sqlc --frontend vue
 # mvc/gin/postgres/sqlc/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework gin --db postgres --data sqlc --frontend vue --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
+# mvc/gin/postgres/sqlc/vue/tailwind, defaults
+gobento new shop --arch mvc --framework gin --db postgres --data sqlc --frontend vue --css tailwind
+# mvc/gin/postgres/sqlc/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework gin --db postgres --data sqlc --frontend vue --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
 # mvc/gin/sqlite/gorm, defaults
 gobento new shop --arch mvc --framework gin --db sqlite --data gorm
 # mvc/gin/sqlite/gorm, explicit module and range floors
@@ -448,14 +664,26 @@ gobento new shop --module example.com/shop --arch mvc --framework gin --db sqlit
 gobento new shop --arch mvc --framework gin --db sqlite --data gorm --frontend react
 # mvc/gin/sqlite/gorm/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework gin --db sqlite --data gorm --frontend react --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# mvc/gin/sqlite/gorm/react/tailwind, defaults
+gobento new shop --arch mvc --framework gin --db sqlite --data gorm --frontend react --css tailwind
+# mvc/gin/sqlite/gorm/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework gin --db sqlite --data gorm --frontend react --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # mvc/gin/sqlite/gorm/svelte, defaults
 gobento new shop --arch mvc --framework gin --db sqlite --data gorm --frontend svelte
 # mvc/gin/sqlite/gorm/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework gin --db sqlite --data gorm --frontend svelte --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# mvc/gin/sqlite/gorm/svelte/tailwind, defaults
+gobento new shop --arch mvc --framework gin --db sqlite --data gorm --frontend svelte --css tailwind
+# mvc/gin/sqlite/gorm/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework gin --db sqlite --data gorm --frontend svelte --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # mvc/gin/sqlite/gorm/vue, defaults
 gobento new shop --arch mvc --framework gin --db sqlite --data gorm --frontend vue
 # mvc/gin/sqlite/gorm/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework gin --db sqlite --data gorm --frontend vue --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# mvc/gin/sqlite/gorm/vue/tailwind, defaults
+gobento new shop --arch mvc --framework gin --db sqlite --data gorm --frontend vue --css tailwind
+# mvc/gin/sqlite/gorm/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework gin --db sqlite --data gorm --frontend vue --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # mvc/gin/sqlite/sqlc, defaults
 gobento new shop --arch mvc --framework gin --db sqlite --data sqlc
 # mvc/gin/sqlite/sqlc, explicit module and range floors
@@ -472,14 +700,26 @@ gobento new shop --module example.com/shop --arch mvc --framework gin --db sqlit
 gobento new shop --arch mvc --framework gin --db sqlite --data sqlc --frontend react
 # mvc/gin/sqlite/sqlc/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework gin --db sqlite --data sqlc --frontend react --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
+# mvc/gin/sqlite/sqlc/react/tailwind, defaults
+gobento new shop --arch mvc --framework gin --db sqlite --data sqlc --frontend react --css tailwind
+# mvc/gin/sqlite/sqlc/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework gin --db sqlite --data sqlc --frontend react --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
 # mvc/gin/sqlite/sqlc/svelte, defaults
 gobento new shop --arch mvc --framework gin --db sqlite --data sqlc --frontend svelte
 # mvc/gin/sqlite/sqlc/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework gin --db sqlite --data sqlc --frontend svelte --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
+# mvc/gin/sqlite/sqlc/svelte/tailwind, defaults
+gobento new shop --arch mvc --framework gin --db sqlite --data sqlc --frontend svelte --css tailwind
+# mvc/gin/sqlite/sqlc/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework gin --db sqlite --data sqlc --frontend svelte --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
 # mvc/gin/sqlite/sqlc/vue, defaults
 gobento new shop --arch mvc --framework gin --db sqlite --data sqlc --frontend vue
 # mvc/gin/sqlite/sqlc/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework gin --db sqlite --data sqlc --frontend vue --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
+# mvc/gin/sqlite/sqlc/vue/tailwind, defaults
+gobento new shop --arch mvc --framework gin --db sqlite --data sqlc --frontend vue --css tailwind
+# mvc/gin/sqlite/sqlc/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework gin --db sqlite --data sqlc --frontend vue --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
 # mvc/nethttp/postgres/gorm, defaults
 gobento new shop --arch mvc --framework nethttp --db postgres --data gorm
 # mvc/nethttp/postgres/gorm, explicit module and range floors
@@ -496,14 +736,26 @@ gobento new shop --module example.com/shop --arch mvc --framework nethttp --db p
 gobento new shop --arch mvc --framework nethttp --db postgres --data gorm --frontend react
 # mvc/nethttp/postgres/gorm/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db postgres --data gorm --frontend react --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# mvc/nethttp/postgres/gorm/react/tailwind, defaults
+gobento new shop --arch mvc --framework nethttp --db postgres --data gorm --frontend react --css tailwind
+# mvc/nethttp/postgres/gorm/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db postgres --data gorm --frontend react --css tailwind --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # mvc/nethttp/postgres/gorm/svelte, defaults
 gobento new shop --arch mvc --framework nethttp --db postgres --data gorm --frontend svelte
 # mvc/nethttp/postgres/gorm/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db postgres --data gorm --frontend svelte --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# mvc/nethttp/postgres/gorm/svelte/tailwind, defaults
+gobento new shop --arch mvc --framework nethttp --db postgres --data gorm --frontend svelte --css tailwind
+# mvc/nethttp/postgres/gorm/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db postgres --data gorm --frontend svelte --css tailwind --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # mvc/nethttp/postgres/gorm/vue, defaults
 gobento new shop --arch mvc --framework nethttp --db postgres --data gorm --frontend vue
 # mvc/nethttp/postgres/gorm/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db postgres --data gorm --frontend vue --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# mvc/nethttp/postgres/gorm/vue/tailwind, defaults
+gobento new shop --arch mvc --framework nethttp --db postgres --data gorm --frontend vue --css tailwind
+# mvc/nethttp/postgres/gorm/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db postgres --data gorm --frontend vue --css tailwind --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # mvc/nethttp/postgres/sqlc, defaults
 gobento new shop --arch mvc --framework nethttp --db postgres --data sqlc
 # mvc/nethttp/postgres/sqlc, explicit module and range floors
@@ -520,14 +772,26 @@ gobento new shop --module example.com/shop --arch mvc --framework nethttp --db p
 gobento new shop --arch mvc --framework nethttp --db postgres --data sqlc --frontend react
 # mvc/nethttp/postgres/sqlc/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db postgres --data sqlc --frontend react --go 1.26
+# mvc/nethttp/postgres/sqlc/react/tailwind, defaults
+gobento new shop --arch mvc --framework nethttp --db postgres --data sqlc --frontend react --css tailwind
+# mvc/nethttp/postgres/sqlc/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db postgres --data sqlc --frontend react --css tailwind --go 1.26
 # mvc/nethttp/postgres/sqlc/svelte, defaults
 gobento new shop --arch mvc --framework nethttp --db postgres --data sqlc --frontend svelte
 # mvc/nethttp/postgres/sqlc/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db postgres --data sqlc --frontend svelte --go 1.26
+# mvc/nethttp/postgres/sqlc/svelte/tailwind, defaults
+gobento new shop --arch mvc --framework nethttp --db postgres --data sqlc --frontend svelte --css tailwind
+# mvc/nethttp/postgres/sqlc/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db postgres --data sqlc --frontend svelte --css tailwind --go 1.26
 # mvc/nethttp/postgres/sqlc/vue, defaults
 gobento new shop --arch mvc --framework nethttp --db postgres --data sqlc --frontend vue
 # mvc/nethttp/postgres/sqlc/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db postgres --data sqlc --frontend vue --go 1.26
+# mvc/nethttp/postgres/sqlc/vue/tailwind, defaults
+gobento new shop --arch mvc --framework nethttp --db postgres --data sqlc --frontend vue --css tailwind
+# mvc/nethttp/postgres/sqlc/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db postgres --data sqlc --frontend vue --css tailwind --go 1.26
 # mvc/nethttp/sqlite/gorm, defaults
 gobento new shop --arch mvc --framework nethttp --db sqlite --data gorm
 # mvc/nethttp/sqlite/gorm, explicit module and range floors
@@ -544,14 +808,26 @@ gobento new shop --module example.com/shop --arch mvc --framework nethttp --db s
 gobento new shop --arch mvc --framework nethttp --db sqlite --data gorm --frontend react
 # mvc/nethttp/sqlite/gorm/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data gorm --frontend react --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# mvc/nethttp/sqlite/gorm/react/tailwind, defaults
+gobento new shop --arch mvc --framework nethttp --db sqlite --data gorm --frontend react --css tailwind
+# mvc/nethttp/sqlite/gorm/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data gorm --frontend react --css tailwind --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # mvc/nethttp/sqlite/gorm/svelte, defaults
 gobento new shop --arch mvc --framework nethttp --db sqlite --data gorm --frontend svelte
 # mvc/nethttp/sqlite/gorm/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data gorm --frontend svelte --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# mvc/nethttp/sqlite/gorm/svelte/tailwind, defaults
+gobento new shop --arch mvc --framework nethttp --db sqlite --data gorm --frontend svelte --css tailwind
+# mvc/nethttp/sqlite/gorm/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data gorm --frontend svelte --css tailwind --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # mvc/nethttp/sqlite/gorm/vue, defaults
 gobento new shop --arch mvc --framework nethttp --db sqlite --data gorm --frontend vue
 # mvc/nethttp/sqlite/gorm/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data gorm --frontend vue --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# mvc/nethttp/sqlite/gorm/vue/tailwind, defaults
+gobento new shop --arch mvc --framework nethttp --db sqlite --data gorm --frontend vue --css tailwind
+# mvc/nethttp/sqlite/gorm/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data gorm --frontend vue --css tailwind --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # mvc/nethttp/sqlite/sqlc, defaults
 gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc
 # mvc/nethttp/sqlite/sqlc, explicit module and range floors
@@ -568,14 +844,26 @@ gobento new shop --module example.com/shop --arch mvc --framework nethttp --db s
 gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend react
 # mvc/nethttp/sqlite/sqlc/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend react --go 1.26 --pin modernc.org/sqlite=v1.61.0
+# mvc/nethttp/sqlite/sqlc/react/tailwind, defaults
+gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend react --css tailwind
+# mvc/nethttp/sqlite/sqlc/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend react --css tailwind --go 1.26 --pin modernc.org/sqlite=v1.61.0
 # mvc/nethttp/sqlite/sqlc/svelte, defaults
 gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend svelte
 # mvc/nethttp/sqlite/sqlc/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend svelte --go 1.26 --pin modernc.org/sqlite=v1.61.0
+# mvc/nethttp/sqlite/sqlc/svelte/tailwind, defaults
+gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend svelte --css tailwind
+# mvc/nethttp/sqlite/sqlc/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend svelte --css tailwind --go 1.26 --pin modernc.org/sqlite=v1.61.0
 # mvc/nethttp/sqlite/sqlc/vue, defaults
 gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend vue
 # mvc/nethttp/sqlite/sqlc/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend vue --go 1.26 --pin modernc.org/sqlite=v1.61.0
+# mvc/nethttp/sqlite/sqlc/vue/tailwind, defaults
+gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend vue --css tailwind
+# mvc/nethttp/sqlite/sqlc/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend vue --css tailwind --go 1.26 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/chi/postgres/gorm, defaults
 gobento new shop --arch vertical-slice --framework chi --db postgres --data gorm
 # vertical-slice/chi/postgres/gorm, explicit module and range floors
@@ -592,14 +880,26 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework chi
 gobento new shop --arch vertical-slice --framework chi --db postgres --data gorm --frontend react
 # vertical-slice/chi/postgres/gorm/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db postgres --data gorm --frontend react --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# vertical-slice/chi/postgres/gorm/react/tailwind, defaults
+gobento new shop --arch vertical-slice --framework chi --db postgres --data gorm --frontend react --css tailwind
+# vertical-slice/chi/postgres/gorm/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db postgres --data gorm --frontend react --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # vertical-slice/chi/postgres/gorm/svelte, defaults
 gobento new shop --arch vertical-slice --framework chi --db postgres --data gorm --frontend svelte
 # vertical-slice/chi/postgres/gorm/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db postgres --data gorm --frontend svelte --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# vertical-slice/chi/postgres/gorm/svelte/tailwind, defaults
+gobento new shop --arch vertical-slice --framework chi --db postgres --data gorm --frontend svelte --css tailwind
+# vertical-slice/chi/postgres/gorm/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db postgres --data gorm --frontend svelte --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # vertical-slice/chi/postgres/gorm/vue, defaults
 gobento new shop --arch vertical-slice --framework chi --db postgres --data gorm --frontend vue
 # vertical-slice/chi/postgres/gorm/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db postgres --data gorm --frontend vue --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# vertical-slice/chi/postgres/gorm/vue/tailwind, defaults
+gobento new shop --arch vertical-slice --framework chi --db postgres --data gorm --frontend vue --css tailwind
+# vertical-slice/chi/postgres/gorm/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db postgres --data gorm --frontend vue --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # vertical-slice/chi/postgres/sqlc, defaults
 gobento new shop --arch vertical-slice --framework chi --db postgres --data sqlc
 # vertical-slice/chi/postgres/sqlc, explicit module and range floors
@@ -616,14 +916,26 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework chi
 gobento new shop --arch vertical-slice --framework chi --db postgres --data sqlc --frontend react
 # vertical-slice/chi/postgres/sqlc/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db postgres --data sqlc --frontend react --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
+# vertical-slice/chi/postgres/sqlc/react/tailwind, defaults
+gobento new shop --arch vertical-slice --framework chi --db postgres --data sqlc --frontend react --css tailwind
+# vertical-slice/chi/postgres/sqlc/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db postgres --data sqlc --frontend react --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
 # vertical-slice/chi/postgres/sqlc/svelte, defaults
 gobento new shop --arch vertical-slice --framework chi --db postgres --data sqlc --frontend svelte
 # vertical-slice/chi/postgres/sqlc/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db postgres --data sqlc --frontend svelte --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
+# vertical-slice/chi/postgres/sqlc/svelte/tailwind, defaults
+gobento new shop --arch vertical-slice --framework chi --db postgres --data sqlc --frontend svelte --css tailwind
+# vertical-slice/chi/postgres/sqlc/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db postgres --data sqlc --frontend svelte --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
 # vertical-slice/chi/postgres/sqlc/vue, defaults
 gobento new shop --arch vertical-slice --framework chi --db postgres --data sqlc --frontend vue
 # vertical-slice/chi/postgres/sqlc/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db postgres --data sqlc --frontend vue --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
+# vertical-slice/chi/postgres/sqlc/vue/tailwind, defaults
+gobento new shop --arch vertical-slice --framework chi --db postgres --data sqlc --frontend vue --css tailwind
+# vertical-slice/chi/postgres/sqlc/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db postgres --data sqlc --frontend vue --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
 # vertical-slice/chi/sqlite/gorm, defaults
 gobento new shop --arch vertical-slice --framework chi --db sqlite --data gorm
 # vertical-slice/chi/sqlite/gorm, explicit module and range floors
@@ -640,14 +952,26 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework chi
 gobento new shop --arch vertical-slice --framework chi --db sqlite --data gorm --frontend react
 # vertical-slice/chi/sqlite/gorm/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db sqlite --data gorm --frontend react --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/chi/sqlite/gorm/react/tailwind, defaults
+gobento new shop --arch vertical-slice --framework chi --db sqlite --data gorm --frontend react --css tailwind
+# vertical-slice/chi/sqlite/gorm/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db sqlite --data gorm --frontend react --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/chi/sqlite/gorm/svelte, defaults
 gobento new shop --arch vertical-slice --framework chi --db sqlite --data gorm --frontend svelte
 # vertical-slice/chi/sqlite/gorm/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db sqlite --data gorm --frontend svelte --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/chi/sqlite/gorm/svelte/tailwind, defaults
+gobento new shop --arch vertical-slice --framework chi --db sqlite --data gorm --frontend svelte --css tailwind
+# vertical-slice/chi/sqlite/gorm/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db sqlite --data gorm --frontend svelte --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/chi/sqlite/gorm/vue, defaults
 gobento new shop --arch vertical-slice --framework chi --db sqlite --data gorm --frontend vue
 # vertical-slice/chi/sqlite/gorm/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db sqlite --data gorm --frontend vue --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/chi/sqlite/gorm/vue/tailwind, defaults
+gobento new shop --arch vertical-slice --framework chi --db sqlite --data gorm --frontend vue --css tailwind
+# vertical-slice/chi/sqlite/gorm/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db sqlite --data gorm --frontend vue --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/chi/sqlite/sqlc, defaults
 gobento new shop --arch vertical-slice --framework chi --db sqlite --data sqlc
 # vertical-slice/chi/sqlite/sqlc, explicit module and range floors
@@ -664,14 +988,26 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework chi
 gobento new shop --arch vertical-slice --framework chi --db sqlite --data sqlc --frontend react
 # vertical-slice/chi/sqlite/sqlc/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db sqlite --data sqlc --frontend react --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/chi/sqlite/sqlc/react/tailwind, defaults
+gobento new shop --arch vertical-slice --framework chi --db sqlite --data sqlc --frontend react --css tailwind
+# vertical-slice/chi/sqlite/sqlc/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db sqlite --data sqlc --frontend react --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/chi/sqlite/sqlc/svelte, defaults
 gobento new shop --arch vertical-slice --framework chi --db sqlite --data sqlc --frontend svelte
 # vertical-slice/chi/sqlite/sqlc/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db sqlite --data sqlc --frontend svelte --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/chi/sqlite/sqlc/svelte/tailwind, defaults
+gobento new shop --arch vertical-slice --framework chi --db sqlite --data sqlc --frontend svelte --css tailwind
+# vertical-slice/chi/sqlite/sqlc/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db sqlite --data sqlc --frontend svelte --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/chi/sqlite/sqlc/vue, defaults
 gobento new shop --arch vertical-slice --framework chi --db sqlite --data sqlc --frontend vue
 # vertical-slice/chi/sqlite/sqlc/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db sqlite --data sqlc --frontend vue --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/chi/sqlite/sqlc/vue/tailwind, defaults
+gobento new shop --arch vertical-slice --framework chi --db sqlite --data sqlc --frontend vue --css tailwind
+# vertical-slice/chi/sqlite/sqlc/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db sqlite --data sqlc --frontend vue --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/gin/postgres/gorm, defaults
 gobento new shop --arch vertical-slice --framework gin --db postgres --data gorm
 # vertical-slice/gin/postgres/gorm, explicit module and range floors
@@ -688,14 +1024,26 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework gin
 gobento new shop --arch vertical-slice --framework gin --db postgres --data gorm --frontend react
 # vertical-slice/gin/postgres/gorm/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db postgres --data gorm --frontend react --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# vertical-slice/gin/postgres/gorm/react/tailwind, defaults
+gobento new shop --arch vertical-slice --framework gin --db postgres --data gorm --frontend react --css tailwind
+# vertical-slice/gin/postgres/gorm/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db postgres --data gorm --frontend react --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # vertical-slice/gin/postgres/gorm/svelte, defaults
 gobento new shop --arch vertical-slice --framework gin --db postgres --data gorm --frontend svelte
 # vertical-slice/gin/postgres/gorm/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db postgres --data gorm --frontend svelte --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# vertical-slice/gin/postgres/gorm/svelte/tailwind, defaults
+gobento new shop --arch vertical-slice --framework gin --db postgres --data gorm --frontend svelte --css tailwind
+# vertical-slice/gin/postgres/gorm/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db postgres --data gorm --frontend svelte --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # vertical-slice/gin/postgres/gorm/vue, defaults
 gobento new shop --arch vertical-slice --framework gin --db postgres --data gorm --frontend vue
 # vertical-slice/gin/postgres/gorm/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db postgres --data gorm --frontend vue --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# vertical-slice/gin/postgres/gorm/vue/tailwind, defaults
+gobento new shop --arch vertical-slice --framework gin --db postgres --data gorm --frontend vue --css tailwind
+# vertical-slice/gin/postgres/gorm/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db postgres --data gorm --frontend vue --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # vertical-slice/gin/postgres/sqlc, defaults
 gobento new shop --arch vertical-slice --framework gin --db postgres --data sqlc
 # vertical-slice/gin/postgres/sqlc, explicit module and range floors
@@ -712,14 +1060,26 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework gin
 gobento new shop --arch vertical-slice --framework gin --db postgres --data sqlc --frontend react
 # vertical-slice/gin/postgres/sqlc/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db postgres --data sqlc --frontend react --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
+# vertical-slice/gin/postgres/sqlc/react/tailwind, defaults
+gobento new shop --arch vertical-slice --framework gin --db postgres --data sqlc --frontend react --css tailwind
+# vertical-slice/gin/postgres/sqlc/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db postgres --data sqlc --frontend react --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
 # vertical-slice/gin/postgres/sqlc/svelte, defaults
 gobento new shop --arch vertical-slice --framework gin --db postgres --data sqlc --frontend svelte
 # vertical-slice/gin/postgres/sqlc/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db postgres --data sqlc --frontend svelte --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
+# vertical-slice/gin/postgres/sqlc/svelte/tailwind, defaults
+gobento new shop --arch vertical-slice --framework gin --db postgres --data sqlc --frontend svelte --css tailwind
+# vertical-slice/gin/postgres/sqlc/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db postgres --data sqlc --frontend svelte --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
 # vertical-slice/gin/postgres/sqlc/vue, defaults
 gobento new shop --arch vertical-slice --framework gin --db postgres --data sqlc --frontend vue
 # vertical-slice/gin/postgres/sqlc/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db postgres --data sqlc --frontend vue --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
+# vertical-slice/gin/postgres/sqlc/vue/tailwind, defaults
+gobento new shop --arch vertical-slice --framework gin --db postgres --data sqlc --frontend vue --css tailwind
+# vertical-slice/gin/postgres/sqlc/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db postgres --data sqlc --frontend vue --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
 # vertical-slice/gin/sqlite/gorm, defaults
 gobento new shop --arch vertical-slice --framework gin --db sqlite --data gorm
 # vertical-slice/gin/sqlite/gorm, explicit module and range floors
@@ -736,14 +1096,26 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework gin
 gobento new shop --arch vertical-slice --framework gin --db sqlite --data gorm --frontend react
 # vertical-slice/gin/sqlite/gorm/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db sqlite --data gorm --frontend react --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/gin/sqlite/gorm/react/tailwind, defaults
+gobento new shop --arch vertical-slice --framework gin --db sqlite --data gorm --frontend react --css tailwind
+# vertical-slice/gin/sqlite/gorm/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db sqlite --data gorm --frontend react --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/gin/sqlite/gorm/svelte, defaults
 gobento new shop --arch vertical-slice --framework gin --db sqlite --data gorm --frontend svelte
 # vertical-slice/gin/sqlite/gorm/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db sqlite --data gorm --frontend svelte --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/gin/sqlite/gorm/svelte/tailwind, defaults
+gobento new shop --arch vertical-slice --framework gin --db sqlite --data gorm --frontend svelte --css tailwind
+# vertical-slice/gin/sqlite/gorm/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db sqlite --data gorm --frontend svelte --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/gin/sqlite/gorm/vue, defaults
 gobento new shop --arch vertical-slice --framework gin --db sqlite --data gorm --frontend vue
 # vertical-slice/gin/sqlite/gorm/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db sqlite --data gorm --frontend vue --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/gin/sqlite/gorm/vue/tailwind, defaults
+gobento new shop --arch vertical-slice --framework gin --db sqlite --data gorm --frontend vue --css tailwind
+# vertical-slice/gin/sqlite/gorm/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db sqlite --data gorm --frontend vue --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/gin/sqlite/sqlc, defaults
 gobento new shop --arch vertical-slice --framework gin --db sqlite --data sqlc
 # vertical-slice/gin/sqlite/sqlc, explicit module and range floors
@@ -760,14 +1132,26 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework gin
 gobento new shop --arch vertical-slice --framework gin --db sqlite --data sqlc --frontend react
 # vertical-slice/gin/sqlite/sqlc/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db sqlite --data sqlc --frontend react --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/gin/sqlite/sqlc/react/tailwind, defaults
+gobento new shop --arch vertical-slice --framework gin --db sqlite --data sqlc --frontend react --css tailwind
+# vertical-slice/gin/sqlite/sqlc/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db sqlite --data sqlc --frontend react --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/gin/sqlite/sqlc/svelte, defaults
 gobento new shop --arch vertical-slice --framework gin --db sqlite --data sqlc --frontend svelte
 # vertical-slice/gin/sqlite/sqlc/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db sqlite --data sqlc --frontend svelte --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/gin/sqlite/sqlc/svelte/tailwind, defaults
+gobento new shop --arch vertical-slice --framework gin --db sqlite --data sqlc --frontend svelte --css tailwind
+# vertical-slice/gin/sqlite/sqlc/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db sqlite --data sqlc --frontend svelte --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/gin/sqlite/sqlc/vue, defaults
 gobento new shop --arch vertical-slice --framework gin --db sqlite --data sqlc --frontend vue
 # vertical-slice/gin/sqlite/sqlc/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db sqlite --data sqlc --frontend vue --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/gin/sqlite/sqlc/vue/tailwind, defaults
+gobento new shop --arch vertical-slice --framework gin --db sqlite --data sqlc --frontend vue --css tailwind
+# vertical-slice/gin/sqlite/sqlc/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db sqlite --data sqlc --frontend vue --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/nethttp/postgres/gorm, defaults
 gobento new shop --arch vertical-slice --framework nethttp --db postgres --data gorm
 # vertical-slice/nethttp/postgres/gorm, explicit module and range floors
@@ -784,14 +1168,26 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework net
 gobento new shop --arch vertical-slice --framework nethttp --db postgres --data gorm --frontend react
 # vertical-slice/nethttp/postgres/gorm/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db postgres --data gorm --frontend react --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# vertical-slice/nethttp/postgres/gorm/react/tailwind, defaults
+gobento new shop --arch vertical-slice --framework nethttp --db postgres --data gorm --frontend react --css tailwind
+# vertical-slice/nethttp/postgres/gorm/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db postgres --data gorm --frontend react --css tailwind --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # vertical-slice/nethttp/postgres/gorm/svelte, defaults
 gobento new shop --arch vertical-slice --framework nethttp --db postgres --data gorm --frontend svelte
 # vertical-slice/nethttp/postgres/gorm/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db postgres --data gorm --frontend svelte --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# vertical-slice/nethttp/postgres/gorm/svelte/tailwind, defaults
+gobento new shop --arch vertical-slice --framework nethttp --db postgres --data gorm --frontend svelte --css tailwind
+# vertical-slice/nethttp/postgres/gorm/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db postgres --data gorm --frontend svelte --css tailwind --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # vertical-slice/nethttp/postgres/gorm/vue, defaults
 gobento new shop --arch vertical-slice --framework nethttp --db postgres --data gorm --frontend vue
 # vertical-slice/nethttp/postgres/gorm/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db postgres --data gorm --frontend vue --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# vertical-slice/nethttp/postgres/gorm/vue/tailwind, defaults
+gobento new shop --arch vertical-slice --framework nethttp --db postgres --data gorm --frontend vue --css tailwind
+# vertical-slice/nethttp/postgres/gorm/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db postgres --data gorm --frontend vue --css tailwind --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # vertical-slice/nethttp/postgres/sqlc, defaults
 gobento new shop --arch vertical-slice --framework nethttp --db postgres --data sqlc
 # vertical-slice/nethttp/postgres/sqlc, explicit module and range floors
@@ -808,14 +1204,26 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework net
 gobento new shop --arch vertical-slice --framework nethttp --db postgres --data sqlc --frontend react
 # vertical-slice/nethttp/postgres/sqlc/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db postgres --data sqlc --frontend react --go 1.26
+# vertical-slice/nethttp/postgres/sqlc/react/tailwind, defaults
+gobento new shop --arch vertical-slice --framework nethttp --db postgres --data sqlc --frontend react --css tailwind
+# vertical-slice/nethttp/postgres/sqlc/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db postgres --data sqlc --frontend react --css tailwind --go 1.26
 # vertical-slice/nethttp/postgres/sqlc/svelte, defaults
 gobento new shop --arch vertical-slice --framework nethttp --db postgres --data sqlc --frontend svelte
 # vertical-slice/nethttp/postgres/sqlc/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db postgres --data sqlc --frontend svelte --go 1.26
+# vertical-slice/nethttp/postgres/sqlc/svelte/tailwind, defaults
+gobento new shop --arch vertical-slice --framework nethttp --db postgres --data sqlc --frontend svelte --css tailwind
+# vertical-slice/nethttp/postgres/sqlc/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db postgres --data sqlc --frontend svelte --css tailwind --go 1.26
 # vertical-slice/nethttp/postgres/sqlc/vue, defaults
 gobento new shop --arch vertical-slice --framework nethttp --db postgres --data sqlc --frontend vue
 # vertical-slice/nethttp/postgres/sqlc/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db postgres --data sqlc --frontend vue --go 1.26
+# vertical-slice/nethttp/postgres/sqlc/vue/tailwind, defaults
+gobento new shop --arch vertical-slice --framework nethttp --db postgres --data sqlc --frontend vue --css tailwind
+# vertical-slice/nethttp/postgres/sqlc/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db postgres --data sqlc --frontend vue --css tailwind --go 1.26
 # vertical-slice/nethttp/sqlite/gorm, defaults
 gobento new shop --arch vertical-slice --framework nethttp --db sqlite --data gorm
 # vertical-slice/nethttp/sqlite/gorm, explicit module and range floors
@@ -832,14 +1240,26 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework net
 gobento new shop --arch vertical-slice --framework nethttp --db sqlite --data gorm --frontend react
 # vertical-slice/nethttp/sqlite/gorm/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db sqlite --data gorm --frontend react --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/nethttp/sqlite/gorm/react/tailwind, defaults
+gobento new shop --arch vertical-slice --framework nethttp --db sqlite --data gorm --frontend react --css tailwind
+# vertical-slice/nethttp/sqlite/gorm/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db sqlite --data gorm --frontend react --css tailwind --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/nethttp/sqlite/gorm/svelte, defaults
 gobento new shop --arch vertical-slice --framework nethttp --db sqlite --data gorm --frontend svelte
 # vertical-slice/nethttp/sqlite/gorm/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db sqlite --data gorm --frontend svelte --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/nethttp/sqlite/gorm/svelte/tailwind, defaults
+gobento new shop --arch vertical-slice --framework nethttp --db sqlite --data gorm --frontend svelte --css tailwind
+# vertical-slice/nethttp/sqlite/gorm/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db sqlite --data gorm --frontend svelte --css tailwind --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/nethttp/sqlite/gorm/vue, defaults
 gobento new shop --arch vertical-slice --framework nethttp --db sqlite --data gorm --frontend vue
 # vertical-slice/nethttp/sqlite/gorm/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db sqlite --data gorm --frontend vue --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/nethttp/sqlite/gorm/vue/tailwind, defaults
+gobento new shop --arch vertical-slice --framework nethttp --db sqlite --data gorm --frontend vue --css tailwind
+# vertical-slice/nethttp/sqlite/gorm/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db sqlite --data gorm --frontend vue --css tailwind --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/nethttp/sqlite/sqlc, defaults
 gobento new shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc
 # vertical-slice/nethttp/sqlite/sqlc, explicit module and range floors
@@ -856,11 +1276,23 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework net
 gobento new shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc --frontend react
 # vertical-slice/nethttp/sqlite/sqlc/react, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc --frontend react --go 1.26 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/nethttp/sqlite/sqlc/react/tailwind, defaults
+gobento new shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc --frontend react --css tailwind
+# vertical-slice/nethttp/sqlite/sqlc/react/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc --frontend react --css tailwind --go 1.26 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/nethttp/sqlite/sqlc/svelte, defaults
 gobento new shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc --frontend svelte
 # vertical-slice/nethttp/sqlite/sqlc/svelte, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc --frontend svelte --go 1.26 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/nethttp/sqlite/sqlc/svelte/tailwind, defaults
+gobento new shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc --frontend svelte --css tailwind
+# vertical-slice/nethttp/sqlite/sqlc/svelte/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc --frontend svelte --css tailwind --go 1.26 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/nethttp/sqlite/sqlc/vue, defaults
 gobento new shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc --frontend vue
 # vertical-slice/nethttp/sqlite/sqlc/vue, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc --frontend vue --go 1.26 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/nethttp/sqlite/sqlc/vue/tailwind, defaults
+gobento new shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc --frontend vue --css tailwind
+# vertical-slice/nethttp/sqlite/sqlc/vue/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc --frontend vue --css tailwind --go 1.26 --pin modernc.org/sqlite=v1.61.0

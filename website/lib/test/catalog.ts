@@ -18,7 +18,9 @@ export type CatalogData = z.input<typeof catalogSchema>;
 
 /** Returns a fresh, mutable copy of the fixture data. */
 export function fixtureData(): CatalogData {
-  return structuredClone(fixture) as CatalogData;
+  // The JSON's inferred type is too wide to compare with the schema's input
+  // (optional keys of heterogeneous records); the schema validates it.
+  return structuredClone(fixture) as unknown as CatalogData;
 }
 
 /** Returns the validated fixture, optionally changed by `edit` first. */
@@ -81,4 +83,30 @@ export function addViteFrontend(data: CatalogData, name: keyof typeof VITE_TITLE
     data.npm.push({ name: 'create-vite', components: [id], role: 'scaffolder', version: '9.3.3' });
   const backends = data.supported.filter((selection) => selection.frontend === undefined);
   data.supported.push(...backends.map((selection) => ({ ...selection, frontend: name })));
+}
+
+/**
+ * Tailwind CSS for the Vite frontends already added with `addViteFrontend`,
+ * the way catalog.json lists it: its npm packages (used only with
+ * `frontend-build: vite`) and a supported selection with Tailwind for every
+ * selection with a Vite frontend.
+ */
+export function addViteTailwind(data: CatalogData): void {
+  data.npm ??= [];
+  for (const name of ['@tailwindcss/vite', 'tailwindcss']) {
+    data.npm.push({
+      name,
+      components: ['css/tailwind'],
+      traits: { 'frontend-build': ['vite'] },
+      role: 'dev-dependency',
+      version: '4.3.4',
+    });
+  }
+  const vite = new Set(
+    data.components.filter((c) => c.provides?.['frontend-build'] === 'vite').map((c) => c.name),
+  );
+  const withVite = data.supported.filter(
+    (selection) => selection.frontend !== undefined && vite.has(selection.frontend),
+  );
+  data.supported.push(...withVite.map((selection) => ({ ...selection, css: 'tailwind' })));
 }

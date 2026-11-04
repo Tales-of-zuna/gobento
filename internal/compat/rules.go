@@ -128,19 +128,7 @@ type Requirement struct {
 // condition holds. Nil traits mean the traits are not known yet, and the
 // conditions are not checked.
 func (m Module) usedBy(components []string, traits map[string]string) bool {
-	if !slices.ContainsFunc(m.Components, func(c string) bool { return slices.Contains(components, c) }) {
-		return false
-	}
-	if traits == nil {
-		return true
-	}
-	for trait, allowed := range m.Traits {
-		v, ok := traits[trait]
-		if !ok || !slices.Contains(allowed, v) {
-			return false
-		}
-	}
-	return true
+	return usedBy(m.Components, m.Traits, components, traits)
 }
 
 // traitCondition describes the module's trait conditions, for example
@@ -151,6 +139,41 @@ func (m Module) traitCondition() string {
 		parts = append(parts, trait+" "+strings.Join(m.Traits[trait], " or "))
 	}
 	return strings.Join(parts, " and ")
+}
+
+// usedBy reports whether a selection with the given component identifiers
+// and traits uses an entry of the rules file listed for owners with the
+// trait conditions conds: one of the owners is selected and every condition
+// holds. Nil traits mean the traits are not known yet, and the conditions
+// are not checked.
+func usedBy(owners []string, conds map[string][]string, components []string, traits map[string]string) bool {
+	if !slices.ContainsFunc(owners, func(c string) bool { return slices.Contains(components, c) }) {
+		return false
+	}
+	if traits == nil {
+		return true
+	}
+	for trait, allowed := range conds {
+		v, ok := traits[trait]
+		if !ok || !slices.Contains(allowed, v) {
+			return false
+		}
+	}
+	return true
+}
+
+// checkTraitConditions reports malformed trait conditions with fail.
+func checkTraitConditions(conds map[string][]string, fail func(format string, args ...any)) {
+	for _, trait := range slices.Sorted(maps.Keys(conds)) {
+		switch values := conds[trait]; {
+		case trait == "":
+			fail("traits: empty trait name")
+		case len(values) == 0:
+			fail("traits: %s lists no values", trait)
+		case slices.Contains(values, ""):
+			fail("traits: %s lists an empty value", trait)
+		}
+	}
 }
 
 // rulesFile mirrors the YAML layout of the rules file.
@@ -294,16 +317,7 @@ func parseModule(path string, mf moduleFile, known map[string]moduleFile) (Modul
 	}
 
 	m := Module{Path: path, Components: mf.Components, Traits: mf.Traits, Role: mf.Role, Default: mf.Default}
-	for _, trait := range slices.Sorted(maps.Keys(mf.Traits)) {
-		switch values := mf.Traits[trait]; {
-		case trait == "":
-			fail("traits: empty trait name")
-		case len(values) == 0:
-			fail("traits: %s lists no values", trait)
-		case slices.Contains(values, ""):
-			fail("traits: %s lists an empty value", trait)
-		}
-	}
+	checkTraitConditions(mf.Traits, fail)
 
 	rng, rangeErr := ParseRange(mf.Range)
 	if rangeErr != nil {
@@ -453,16 +467,26 @@ func (r *Rules) Asset(name string) (Asset, bool) {
 	return r.Assets[i], true
 }
 
-// CheckTraits reports every trait named in a module's trait conditions for
-// which known returns false, naming the module and the trait.
+// CheckTraits reports every trait named in the trait conditions of a
+// module, a binary, or an npm package for which known returns false,
+// naming the entry and the trait.
 func (r *Rules) CheckTraits(known func(trait string) bool) error {
 	var errs []error
-	for _, m := range r.Modules {
-		for _, trait := range slices.Sorted(maps.Keys(m.Traits)) {
+	check := func(entry string, conds map[string][]string) {
+		for _, trait := range slices.Sorted(maps.Keys(conds)) {
 			if !known(trait) {
-				errs = append(errs, fmt.Errorf("module %s: trait condition on %q, which no component provides", m.Path, trait))
+				errs = append(errs, fmt.Errorf("%s: trait condition on %q, which no component provides", entry, trait))
 			}
 		}
+	}
+	for _, m := range r.Modules {
+		check("module "+m.Path, m.Traits)
+	}
+	for _, b := range r.Binaries {
+		check("binary "+b.Name, b.Traits)
+	}
+	for _, p := range r.NPM {
+		check("npm "+p.Name, p.Traits)
 	}
 	return errors.Join(errs...)
 }

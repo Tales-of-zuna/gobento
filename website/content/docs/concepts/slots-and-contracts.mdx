@@ -258,13 +258,12 @@ frontend kind declares **contribution points** in
 uses. A frontend includes a point in its templates, and the selected CSS
 framework fills it:
 
-| Point                  | Build (`frontend-build`) | Filled with                                                                    |
-| ---------------------- | ------------------------ | ------------------------------------------------------------------------------ |
-| `stylesheet`           | `go`                     | The complete stylesheet served as `/static/styles.css`                         |
-| `vite-config-imports`  | `vite`                   | Import lines at the top of the Vite configuration                              |
-| `vite-plugins`         | `vite`                   | Entries of the Vite configuration's `plugins` array                            |
-| `css-imports`          | `vite`                   | Lines at the top of the app's main stylesheet, such as `@import "tailwindcss"` |
-| `npm-dev-dependencies` | `vite`                   | npm packages with exact versions, installed as development dependencies        |
+| Point                 | Build (`frontend-build`) | Filled with                                                                    |
+| --------------------- | ------------------------ | ------------------------------------------------------------------------------ |
+| `stylesheet`          | `go`                     | The complete stylesheet served as `/static/styles.css`                         |
+| `vite-config-imports` | `vite`                   | Import lines at the top of the Vite configuration                              |
+| `vite-plugins`        | `vite`                   | Entries of the Vite configuration's `plugins` array                            |
+| `css-imports`         | `vite`                   | Lines at the top of the app's main stylesheet, such as `@import "tailwindcss"` |
 
 The frontend's markup is the same for every CSS choice. htmx renders its
 stylesheet as the `stylesheet` contribution, or its plain CSS when there is
@@ -278,12 +277,22 @@ none:
 
 A CSS framework contributes only to the points of the frontend's build
 system, guarded by the trait, and ships the files that only one build needs
-the same way: a template that renders nothing produces no file. Tailwind CSS
-ships `tailwind.css`, the compiled stylesheet, and a Go program that runs the
-standalone Tailwind CLI for `go`, and the `@tailwindcss/vite` plugin for
-`vite`. If a contribution reaches no template, because the selected frontend
-does not include that point, composition fails, so the combination is not
-supported instead of silently unstyled.
+the same way: a template that renders nothing produces no file. For `go`,
+Tailwind CSS ships `tailwind.css`, the compiled stylesheet, and a Go program
+that runs the standalone Tailwind CLI. For `vite`, it adds
+`import tailwindcss from '@tailwindcss/vite'` with `vite-config-imports`,
+`tailwindcss(),` with `vite-plugins`, and `@import "tailwindcss";` with
+`css-imports`. The npm packages a framework needs are not a point: they are
+data in the `npm` section of the
+[rules file](/docs/concepts/version-rules#nodejs-and-npm) (role
+`dev-dependency`), and generation installs them into the scaffolded
+frontend's `package.json` and `package-lock.json`.
+
+A component may include only the points of the base layer and of its own
+kind, so a frontend template that names a point of another kind fails
+composition. If a non-empty contribution reaches no template, because the
+selected frontend does not include that point, composition fails too, so the
+combination is not supported instead of silently unstyled.
 
 ## Why there are no per-combination templates
 

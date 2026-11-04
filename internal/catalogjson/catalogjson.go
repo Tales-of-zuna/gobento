@@ -55,7 +55,10 @@ type Asset struct {
 type Binary struct {
 	Name       string   `json:"name"`
 	Components []string `json:"components"`
-	Version    string   `json:"version"`
+	// Traits restricts the binary to selections whose traits have one of
+	// the listed values; empty means no restriction.
+	Traits  map[string][]string `json:"traits"`
+	Version string              `json:"version"`
 	// Platforms lists the supported platforms as "<GOOS>/<GOARCH>",
 	// sorted.
 	Platforms []string `json:"platforms"`
@@ -73,8 +76,11 @@ type NodeRule struct {
 type NPMPackage struct {
 	Name       string   `json:"name"`
 	Components []string `json:"components"`
-	Role       string   `json:"role"`
-	Version    string   `json:"version"`
+	// Traits restricts the package to selections whose traits have one of
+	// the listed values; empty means no restriction.
+	Traits  map[string][]string `json:"traits"`
+	Role    string              `json:"role"`
+	Version string              `json:"version"`
 }
 
 // Tooling lists the versions of the project tooling that are not Go modules,
@@ -251,7 +257,7 @@ func FromCatalog(cat *catalog.Catalog) (*Document, error) {
 	}
 
 	for _, b := range rules.Binaries {
-		eb := Binary{Name: b.Name, Components: b.Components, Version: b.Version, Platforms: []string{}}
+		eb := Binary{Name: b.Name, Components: b.Components, Traits: traitsOrEmpty(b.Traits), Version: b.Version, Platforms: []string{}}
 		for _, p := range b.Platforms {
 			eb.Platforms = append(eb.Platforms, p.Key())
 		}
@@ -262,7 +268,7 @@ func FromCatalog(cat *catalog.Catalog) (*Document, error) {
 		out.Node = NodeRule{Range: rules.Node.Range.String(), Default: rules.Node.Default}
 	}
 	for _, p := range rules.NPM {
-		out.NPM = append(out.NPM, NPMPackage{Name: p.Name, Components: p.Components, Role: string(p.Role), Version: p.Version})
+		out.NPM = append(out.NPM, NPMPackage{Name: p.Name, Components: p.Components, Traits: traitsOrEmpty(p.Traits), Role: string(p.Role), Version: p.Version})
 	}
 
 	for _, key := range slices.Sorted(maps.Keys(rules.Tooling.Images)) {
@@ -331,4 +337,12 @@ func Encode(w io.Writer, v any) error {
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
 	return enc.Encode(v)
+}
+
+// traitsOrEmpty returns a copy of traits, or an empty map, so the document
+// never holds null for a trait condition.
+func traitsOrEmpty(traits map[string][]string) map[string][]string {
+	out := make(map[string][]string, len(traits))
+	maps.Copy(out, traits)
+	return out
 }

@@ -23,8 +23,8 @@ htmx.org  2.0.11   frontend/htmx  https://registry.npmjs.org/htmx.org/-/htmx.org
 
 Downloaded binaries (fixed per gobento release):
 
-BINARY       VERSION  USED BY       PLATFORMS
-tailwindcss  4.3.4    css/tailwind  darwin/amd64, darwin/arm64, linux/amd64, linux/arm64, windows/amd64, windows/arm64
+BINARY       VERSION  USED BY       ONLY WHEN  PLATFORMS
+tailwindcss  4.3.4    css/tailwind  -          darwin/amd64, darwin/arm64, linux/amd64, linux/arm64, windows/amd64, windows/arm64
 
 Project tooling (fixed per gobento release; {go} is the selected Go version, {node} the Node.js line):
 

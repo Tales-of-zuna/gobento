@@ -515,7 +515,8 @@ func TestNewFrontend(t *testing.T) {
 }
 
 // TestNewViteFrontend covers the spec scenarios "Dry run of a React
-// project", "Next steps", and "Scaffolder version from the rules".
+// project", "Dry run with Tailwind", "Next steps", and "Scaffolder version
+// from the rules".
 func TestNewViteFrontend(t *testing.T) {
 	t.Parallel()
 
@@ -534,8 +535,20 @@ func TestNewViteFrontend(t *testing.T) {
 			t.Errorf("dry-run output does not contain %q:\n%s", w, out)
 		}
 	}
+	if strings.Contains(out, "development dependencies") {
+		t.Errorf("dry-run output without a CSS framework names development dependencies:\n%s", out)
+	}
 	if len(gen.calls) != 0 {
 		t.Fatal("generate called during a dry run")
+	}
+
+	// Spec scenario "Dry run with Tailwind".
+	out, _, err = run(t, components.FS(), gen, append(slices.Clone(args), "--css", "tailwind", "--dry-run")...)
+	if err != nil {
+		t.Fatalf("--css tailwind --dry-run error = %v", err)
+	}
+	if w := "npm adds the development dependencies @tailwindcss/vite@4.3.4, tailwindcss@4.3.4 to frontend/package.json"; !strings.Contains(out, w) {
+		t.Errorf("dry-run output does not contain %q:\n%s", w, out)
 	}
 
 	dir := t.TempDir()

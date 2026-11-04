@@ -143,13 +143,13 @@ func (r *Rules) Resolve(req Request) (Resolved, error) {
 	}
 
 	for _, b := range r.Binaries {
-		if slices.ContainsFunc(b.Components, func(c string) bool { return slices.Contains(req.Components, c) }) {
+		if usedBy(b.Components, b.Traits, req.Components, req.Traits) {
 			res.Binaries = append(res.Binaries, b)
 		}
 	}
 
 	for _, p := range r.NPM {
-		if slices.ContainsFunc(p.Components, func(c string) bool { return slices.Contains(req.Components, c) }) {
+		if usedBy(p.Components, p.Traits, req.Components, req.Traits) {
 			res.NPM = append(res.NPM, NPMVersion{Name: p.Name, Role: p.Role, Version: p.Version})
 		}
 	}

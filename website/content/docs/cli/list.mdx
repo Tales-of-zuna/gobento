@@ -96,7 +96,8 @@ which the Go toolchain alone builds, and `vite` for React, Vue, and Svelte,
 which [need Node.js](/docs/getting-started/installation#nodejs-for-react-vue-and-svelte)
 to generate and build. A CSS framework, such as `tailwind`
 (`gobento list components --kind css`), requires it, so it can only be
-selected together with a frontend.
+selected together with a frontend; `tailwind` requires
+`frontend-build=go|vite`, so it works with every frontend.
 
 ## Selections
 
@@ -119,7 +120,7 @@ mvc           gin        postgres  sqlc  none      none
 mvc           nethttp    postgres  gorm  none      none
 mvc           nethttp    postgres  sqlc  none      none
 
-6 of 216 supported selections.
+6 of 324 supported selections.
 ```
 
 Any row is a valid `gobento new` command: for the first one,
@@ -137,13 +138,17 @@ Constraints between versions follow the table, and then the files components
 vendor from an upstream release, such as htmx; the programs generated
 projects download on demand, such as the Tailwind CSS CLI, with the platforms
 they are available for; the npm packages components use, such as the
-scaffolder `create-vite` of the React, Vue, and Svelte frontends, with the
+scaffolder `create-vite` of the React, Vue, and Svelte frontends and the
+Tailwind CSS packages added to them as development dependencies, with the
 Node.js range generation needs and the Node.js release line of the generated
 tooling; and the [project tooling](/docs/concepts/project-tooling) versions:
 the container images (`{go}` in a tag is the selected Go version, `{node}`
 the Node.js line) with their digest when pinned, the GitHub Actions with
 their commit SHA, and the tools. Assets, binaries, npm packages, and tooling
-are fixed per gobento release and cannot be pinned. For example (the
+are fixed per gobento release and cannot be pinned. Binaries and npm
+packages also show the trait values they are limited to: the Tailwind CSS
+CLI is used only with `frontend-build=go` (htmx), its npm packages only with
+`frontend-build=vite`. For example (the
 values are today's rules):
 
 ```text
@@ -170,13 +175,15 @@ htmx.org  2.0.11   frontend/htmx  https://registry.npmjs.org/htmx.org/-/htmx.org
 
 Downloaded binaries (fixed per gobento release):
 
-BINARY       VERSION  USED BY       PLATFORMS
-tailwindcss  4.3.4    css/tailwind  darwin/amd64, darwin/arm64, linux/amd64, linux/arm64, windows/amd64, windows/arm64
+BINARY       VERSION  USED BY       ONLY WHEN          PLATFORMS
+tailwindcss  4.3.4    css/tailwind  frontend-build=go  darwin/amd64, darwin/arm64, linux/amd64, linux/arm64, windows/amd64, windows/arm64
 
 npm packages (fixed per gobento release; generation needs Node.js >=v22.12.0, the tooling uses Node.js 26):
 
-PACKAGE      ROLE        VERSION  USED BY
-create-vite  scaffolder  9.3.3    frontend/react, frontend/svelte, frontend/vue
+PACKAGE            ROLE            VERSION  USED BY                                        ONLY WHEN
+@tailwindcss/vite  dev-dependency  4.3.4    css/tailwind                                   frontend-build=vite
+create-vite        scaffolder      9.3.3    frontend/react, frontend/svelte, frontend/vue  -
+tailwindcss        dev-dependency  4.3.4    css/tailwind                                   frontend-build=vite
 
 Project tooling (fixed per gobento release; {go} is the selected Go version, {node} the Node.js line):
 

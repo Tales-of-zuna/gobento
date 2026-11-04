@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { KIND_IDS } from '@/lib/catalog/kinds';
 import { buildCommand } from '@/lib/command/build';
 import { defaultState } from '@/lib/command/url-state';
-import { addPostgres, addViteFrontend, catalogWith, moduleOf } from '@/lib/test/catalog';
+import {
+  addPostgres,
+  addViteFrontend,
+  addViteTailwind,
+  catalogWith,
+  moduleOf,
+} from '@/lib/test/catalog';
 import {
   blockedMessage,
   errorsByField,
@@ -518,5 +524,25 @@ describe('optional CSS framework (spec: CSS framework needs a frontend)', () => 
     expect(labels).toContain('tailwind.css');
     expect(labels).toContain('tools/tailwindcss/');
     expect(fileTree(catalog, htmx(mvc), true).map((l) => l.label)).not.toContain('tailwind.css');
+    expect(moduleFields(catalog, state, new Map()).map((f) => f.path)).not.toContain(
+      '@tailwindcss/vite',
+    );
+  });
+
+  it('lists the npm packages and no Tailwind files with a Vite frontend', () => {
+    const withVite = catalogWith((data) => {
+      addViteFrontend(data, 'react');
+      addViteTailwind(data);
+    });
+    const state = tailwind({ ...mvc, components: { ...mvc.components, frontend: 'react' } });
+    const fields = moduleFields(withVite, state, new Map());
+    expect(fields.filter((f) => f.usedBy === 'Tailwind CSS').map((f) => [f.path, f.tag])).toEqual([
+      ['@tailwindcss/vite', 'npm (dev)'],
+      ['tailwindcss', 'npm (dev)'],
+    ]);
+    const labels = fileTree(withVite, state, true).map((l) => l.label);
+    expect(labels).not.toContain('tailwind.css');
+    expect(labels).not.toContain('tools/tailwindcss/');
+    expect(labels).toContain('vite.config.ts');
   });
 });

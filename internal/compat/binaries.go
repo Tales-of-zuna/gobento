@@ -18,6 +18,9 @@ type Binary struct {
 	// Components lists the components that use the binary, as
 	// "<kind>/<name>" identifiers.
 	Components []string
+	// Traits optionally restricts the binary to selections whose traits
+	// have one of the listed values, as for modules.
+	Traits map[string][]string
 	// Version is the upstream release, for example 4.3.4.
 	Version string
 	// Checksums is the https URL of the release's checksum file, which
@@ -56,6 +59,7 @@ func (p Platform) FileName() string {
 
 type binaryFile struct {
 	Components []string                `yaml:"components"`
+	Traits     map[string][]string     `yaml:"traits"`
 	Version    string                  `yaml:"version"`
 	Checksums  string                  `yaml:"checksums"`
 	Platforms  map[string]platformFile `yaml:"platforms"`
@@ -81,6 +85,7 @@ func parseBinary(name string, bf binaryFile) (Binary, []error) {
 	if len(bf.Components) == 0 {
 		fail("no components listed")
 	}
+	checkTraitConditions(bf.Traits, fail)
 	if !assetVersionPattern.MatchString(bf.Version) {
 		fail("version %q must be a release such as 4.3.4", bf.Version)
 	}
@@ -90,7 +95,7 @@ func parseBinary(name string, bf binaryFile) (Binary, []error) {
 	if len(bf.Platforms) == 0 {
 		fail("no platforms listed")
 	}
-	b := Binary{Name: name, Components: bf.Components, Version: bf.Version, Checksums: bf.Checksums}
+	b := Binary{Name: name, Components: bf.Components, Traits: bf.Traits, Version: bf.Version, Checksums: bf.Checksums}
 	for _, key := range slices.Sorted(maps.Keys(bf.Platforms)) {
 		pf := bf.Platforms[key]
 		if !platformPattern.MatchString(key) {

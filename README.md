@@ -81,10 +81,11 @@ an application service), the HTTP framework with
 `gorm`). A frontend is optional: without `--frontend` the project is an
 HTTP API; `--frontend htmx` adds server-rendered pages (htmx + templ) at
 `/`, and `--frontend react`, `vue`, or `svelte` a TypeScript single-page app
-built with Vite and embedded in the binary, with the API under `/api`. With
-htmx, `--css tailwind` styles the pages with Tailwind CSS, using the
-standalone Tailwind CLI, so no Node.js is needed; without `--css`, the
-frontend keeps its plain CSS. A component kind with a single option is
+built with Vite and embedded in the binary, with the API under `/api`.
+`--css tailwind` styles the frontend with Tailwind CSS: with htmx through the
+standalone Tailwind CLI, so no Node.js is needed, and with React, Vue, or
+Svelte through Tailwind's Vite plugin; without `--css`, the frontend keeps its
+plain CSS. A component kind with a single option is
 chosen automatically, and versions come from gobento's compatibility rules. In
 a terminal, gobento asks for anything it still needs: run `gobento new` to be
 asked for the name, module path, and each component kind with several
@@ -123,6 +124,9 @@ gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --fronte
 
 # Add a React single-page app built with Vite (or vue, svelte); needs Node.js
 gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend react
+
+# Style the React app with Tailwind CSS through its Vite plugin
+gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend react --css tailwind
 
 # See the files gobento would create, without writing anything
 gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --dry-run
@@ -288,6 +292,12 @@ serves `index.html` for client-side routes; until the frontend is built, it
 serves a page that names the build commands, so `go build` and `go test`
 work without Node.js. The CI workflow and the Dockerfile build the frontend
 too.
+
+With `--css tailwind` as well, gobento adds Tailwind CSS 4 and its Vite plugin,
+`@tailwindcss/vite`, to the frontend's development dependencies, adds the
+plugin to `frontend/vite.config.ts`, and starts the app's stylesheet with
+`@import "tailwindcss";`. Vite compiles the utility classes on every build, so
+there is no separate step and no committed stylesheet.
 
 ```text
 shop/

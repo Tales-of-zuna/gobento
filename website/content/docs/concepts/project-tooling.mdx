@@ -35,7 +35,7 @@ selected components.
 | `make fmt`           | `golangci-lint fmt`                                                                                                                     |
 | `make tidy`          | `go mod tidy`                                                                                                                           |
 | `make check`         | `vet`, `lint`, and `test`                                                                                                               |
-| `make generate`      | Regenerates generated code; only with a component that has some (sqlc, htmx, Tailwind CSS)                                              |
+| `make generate`      | Regenerates generated code; only with a component that has some (sqlc, htmx, Tailwind CSS with htmx)                                    |
 | `make docker-build`  | `docker build --tag <name> .`                                                                                                           |
 | `make docker-run`    | `docker run --rm --publish 8080:8080 <name>`, with the database's options                                                               |
 | `make clean`         | Removes `bin/` and `coverage.out`                                                                                                       |
@@ -76,15 +76,17 @@ into the binary (`go:embed`), so the image needs nothing else: the pages are
 at `/`, and the API, its health check included, under `/api/`. With
 **Tailwind CSS**, the compiled stylesheet is one of those static files, so
 the image build needs neither Node.js nor the Tailwind CLI. With a
-**React, Vue, or Svelte** frontend, a `frontend` stage builds the app first;
-see [Frontend tooling](#frontend-tooling).
+**React, Vue, or Svelte** frontend, a `frontend` stage builds the app first
+(with Tailwind CSS, Vite compiles the stylesheet in that build); see
+[Frontend tooling](#frontend-tooling).
 
 ## Continuous integration
 
 The workflow has two jobs. `check` sets up Go from `go.mod`, runs the steps
 the components add (with sqlc, `sqlc diff` fails when the committed code is
 stale; with htmx, `go generate` runs the pinned templ and the step fails when
-the committed `pages_templ.go` changes; with Tailwind CSS, the step runs the
+the committed `pages_templ.go` changes; with htmx and Tailwind CSS, the step
+runs the
 pinned standalone Tailwind CLI and fails when the committed `styles.css`
 changes), and then `go mod tidy -diff`, `go build`, `go vet`, golangci-lint,
 and `go test -race ./...`. `docker` builds the image. With PostgreSQL, the
@@ -139,34 +141,35 @@ only they know about through **contribution points** that the base layer
 declares in `components/base/base.yaml`, with a template
 `contrib/<point>.tmpl` in the component's directory:
 
-| Point            | Where it goes                                                         | Used by                                                                                                                            |
-| ---------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `make`           | Makefile variables or extra targets                                   | sqlite (data volume), postgres (host mapping), Vite frontends (`NPM`, `make dev`)                                                  |
-| `make-build`     | The recipe of `make build`, before `go build`                         | Vite frontends (`npm ci`, `npm run build`)                                                                                         |
-| `make-generate`  | The recipe of `make generate`                                         | sqlc, htmx (`go generate` of the web package), tailwind (Tailwind CLI)                                                             |
-| `ci-services`    | Service containers of the CI job                                      | postgres                                                                                                                           |
-| `ci-env`         | Environment of the CI job                                             | postgres (`TEST_DATABASE_URL`)                                                                                                     |
-| `ci-steps`       | CI steps before the tidy check, build, and tests                      | sqlc (`sqlc diff`), htmx (templ output check), tailwind (stylesheet check), Vite frontends (Node.js setup, install, checks, build) |
-| `docker-stages`  | Whole stages before the Go build stage                                | Vite frontends (the `frontend` stage)                                                                                              |
-| `docker-build`   | Build stage, after the sources are copied                             | sqlite (`/out/data`), Vite frontends (copy the build)                                                                              |
-| `docker-runtime` | Runtime stage, before `USER` and `ENTRYPOINT`                         | sqlite (`/data` volume, `DATABASE_URL`)                                                                                            |
-| `dockerignore`   | `.dockerignore` patterns                                              | sqlite (`*.db`), htmx (`*_templ.txt`), Vite frontends (`frontend/node_modules`, the build)                                         |
-| `dependabot`     | Entries of the `updates:` list of Dependabot                          | Vite frontends (`npm` for `/frontend`)                                                                                             |
-| `gitignore`      | `.gitignore` patterns (the architectures' `.gitignore` includes them) | htmx (`*_templ.txt`)                                                                                                               |
-| `readme-docker`  | The README's Docker section                                           | sqlite, postgres, htmx, Vite frontends                                                                                             |
+| Point            | Where it goes                                                         | Used by                                                                                                                                      |
+| ---------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `make`           | Makefile variables or extra targets                                   | sqlite (data volume), postgres (host mapping), Vite frontends (`NPM`, `make dev`)                                                            |
+| `make-build`     | The recipe of `make build`, before `go build`                         | Vite frontends (`npm ci`, `npm run build`)                                                                                                   |
+| `make-generate`  | The recipe of `make generate`                                         | sqlc, htmx (`go generate` of the web package), tailwind with htmx (Tailwind CLI)                                                             |
+| `ci-services`    | Service containers of the CI job                                      | postgres                                                                                                                                     |
+| `ci-env`         | Environment of the CI job                                             | postgres (`TEST_DATABASE_URL`)                                                                                                               |
+| `ci-steps`       | CI steps before the tidy check, build, and tests                      | sqlc (`sqlc diff`), htmx (templ output check), tailwind with htmx (stylesheet check), Vite frontends (Node.js setup, install, checks, build) |
+| `docker-stages`  | Whole stages before the Go build stage                                | Vite frontends (the `frontend` stage)                                                                                                        |
+| `docker-build`   | Build stage, after the sources are copied                             | sqlite (`/out/data`), Vite frontends (copy the build)                                                                                        |
+| `docker-runtime` | Runtime stage, before `USER` and `ENTRYPOINT`                         | sqlite (`/data` volume, `DATABASE_URL`)                                                                                                      |
+| `dockerignore`   | `.dockerignore` patterns                                              | sqlite (`*.db`), htmx (`*_templ.txt`), Vite frontends (`frontend/node_modules`, the build)                                                   |
+| `dependabot`     | Entries of the `updates:` list of Dependabot                          | Vite frontends (`npm` for `/frontend`)                                                                                                       |
+| `gitignore`      | `.gitignore` patterns (the architectures' `.gitignore` includes them) | htmx (`*_templ.txt`)                                                                                                                         |
+| `readme-docker`  | The README's Docker section                                           | sqlite, postgres, htmx, Vite frontends                                                                                                       |
 
-Three more points are not in a tooling file but in the Vite frontends' own
-files, for a CSS component that extends any of them: `vite-imports` (import
-lines of `frontend/vite.config.ts`), `vite-plugins` (entries of its
-`plugins` array), and `vite-styles` (CSS at the top of the stylesheet). They
-are declared in `base.yaml` like the others; see
+The frontend kind declares more points, in
+`components/frontend/kind.yaml`, that are not in a tooling file but in the
+frontends' own files, for a CSS framework: `stylesheet` for htmx, and
+`vite-config-imports`, `vite-plugins`, and `css-imports` for the Vite
+frontends (see
+[CSS frameworks](/docs/concepts/slots-and-contracts#css-frameworks)). A
+component may only contribute to the base layer's points and its own kind's,
+and a contribution that no selected template includes fails composition. See
 [Adding a component](/docs/contributing/adding-a-component#contribution-points-in-component-files).
 
 A contribution depends only on traits and the template data, never on which
 other component is selected, so a component of a kind added later, such as
 the htmx frontend, which runs `templ generate`, or the Tailwind CSS framework,
-contributes in the same way. A kind can declare points of its own as well:
-the frontend kind declares the points a CSS framework fills (see
-[CSS frameworks](/docs/concepts/slots-and-contracts#css-frameworks)). See
+contributes in the same way. See
 [Adding a component](/docs/contributing/adding-a-component#contributing-to-the-tooling)
 for how to write one.

@@ -222,18 +222,25 @@ release:
 
 The `binaries` section of
 [components/versions.yaml](../components/versions.yaml) (today the
-standalone Tailwind CSS CLI) is not updated by Dependabot either. Check it at
-least once per release:
+standalone Tailwind CSS CLI) is not updated by Dependabot either. Tailwind
+releases the CLI and the npm packages `tailwindcss` and `@tailwindcss/vite`
+together, and Vite frontends with Tailwind CSS install those packages from the
+`npm` section of the same file, so the three always move together
+(`TestTailwindReleasedTogether` in `internal/catalog` fails otherwise). Check
+them at least once per release:
 
 1. Look up the latest release with
    `gh api repos/tailwindlabs/tailwindcss/releases/latest --jq .tag_name` and
    its advisories with
    `gh api '/advisories?ecosystem=npm&affects=tailwindcss'`.
-2. Change `version`, `checksums`, and every platform's `url` and `sha256`,
-   taking the checksums from the release's `sha256sums.txt`, and update the
-   "Last checked" date.
+2. In `binaries.tailwindcss`, change `version`, `checksums`, and every
+   platform's `url` and `sha256`, taking the checksums from the release's
+   `sha256sums.txt`; set the `version` of the `npm` entries `tailwindcss` and
+   `@tailwindcss/vite` to the same release, checking them with
+   `npm audit` in a scratch project; and update the "Last checked" date.
 3. Regenerate the shipped stylesheet as described in
    [Adding a component](../website/content/docs/contributing/adding-a-component.mdx#generated-code-tailwind-css),
    then run `go test -count=1 -run 'TestBinaryChecksums|TestIntegration' ./internal/generate/`,
-   which compares every checksum with the release and rebuilds the stylesheet
-   in every covered Tailwind project.
+   which compares every checksum with the release, rebuilds the stylesheet
+   in every covered htmx project with Tailwind, and builds every covered Vite
+   frontend with Tailwind (this needs Node.js and the npm registry).

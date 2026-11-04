@@ -4,14 +4,16 @@
 title: Project tooling
 description: Makefile, Dockerfile, CI workflow, Dependabot, and golangci-lint configuration.
 
-# Contribution points. A component of any kind contributes to a point with
-# contrib/<point>.tmpl in its directory. Contributions are rendered with the
-# usual template data, trimmed of leading and trailing newlines, and joined
-# with newlines in kind order. Write them at column zero; the including
-# templates indent them. A new point needs an entry here and one
-# {{contrib "<point>"}} in a template: usually a base template, or a
-# component's own file that other components extend (the vite-* points of
-# the Vite frontends). Contribution templates cannot include points.
+# Contribution points of the project-wide files. A component of any kind
+# contributes to a point with contrib/<point>.tmpl in its directory.
+# Contributions are rendered with the usual template data, trimmed of
+# leading and trailing newlines, and joined with newlines in kind order.
+# Write them at column zero; the including templates indent them. A new
+# point needs an entry here and one {{contrib "<point>"}} in a template of
+# the base layer or of any component (the architectures' .gitignore
+# includes gitignore). Points that only one kind's files include, such as
+# the Vite points of the frontends, are declared in that kind's kind.yaml
+# instead. Contribution templates cannot include points.
 contributions:
   make: >-
     Makefile lines after the variables (GO, BINARY, IMAGE, GOLANGCI_LINT,
@@ -57,16 +59,6 @@ contributions:
     .gitignore patterns, one per line, for files the component's tools
     write that must not be committed. The architectures' .gitignore
     includes them.
-  vite-imports: >-
-    Import lines of frontend/vite.config.ts in the Vite frontends (React,
-    Vue, Svelte), for example a Vite plugin of a CSS component.
-  vite-plugins: >-
-    Entries of the plugins array of frontend/vite.config.ts in the Vite
-    frontends, one per line with a trailing comma, for example
-    "tailwindcss(),".
-  vite-styles: >-
-    CSS at the top of the stylesheet the Vite frontends' entry imports (for
-    example `@import "tailwindcss";`).
   readme-docker: >-
     Markdown paragraphs for the README's Docker section, separated from
     other components' paragraphs by a blank line: what the component

@@ -75,7 +75,9 @@ with templ, while `react`, `vue`, and `svelte` are TypeScript single-page
 apps that Vite's official scaffolder creates in `frontend/` and that the Go
 binary embeds once built (they need
 [Node.js](/docs/getting-started/installation#nodejs-for-react-vue-and-svelte)).
-With htmx, `--css tailwind` styles the pages with Tailwind CSS. The
+`--css tailwind` styles any frontend with Tailwind CSS: htmx through the
+standalone Tailwind CLI, without Node.js, and the Vite apps through
+Tailwind's Vite plugin. The
 [Components](/docs/components) reference always lists exactly what the
 catalog supports, and [`gobento list`](/docs/cli/list) shows the same from the
 command line.

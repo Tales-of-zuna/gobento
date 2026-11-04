@@ -669,7 +669,8 @@ func TestListVersionsNPM(t *testing.T) {
 	}
 	for _, w := range []string{
 		"npm packages (fixed per gobento release; generation needs Node.js >=v22.12.0, the tooling uses Node.js 26)",
-		"create-vite  scaffolder  9.3.3    frontend/react, frontend/svelte, frontend/vue",
+		"create-vite        scaffolder      9.3.3    frontend/react, frontend/svelte, frontend/vue  -",
+		"tailwindcss        dev-dependency  4.3.4    css/tailwind                                   frontend-build=vite",
 		"node:{node}-alpine",
 	} {
 		if !strings.Contains(b.String(), w) {

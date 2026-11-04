@@ -475,11 +475,7 @@ func writeVersions(w io.Writer, d *catalogjson.Document) error {
 	}
 	rows := [][]string{{"MODULE", "ROLE", "RANGE", "DEFAULT", "USED BY", "ONLY WHEN"}}
 	for _, m := range d.Modules {
-		when := requiredTraits(m.Traits)
-		if when == "" {
-			when = "-"
-		}
-		rows = append(rows, []string{m.Path, m.Role, m.Range, m.Default, strings.Join(m.Components, ", "), when})
+		rows = append(rows, []string{m.Path, m.Role, m.Range, m.Default, strings.Join(m.Components, ", "), whenOrDash(m.Traits)})
 	}
 	if err := writeTable(w, rows); err != nil {
 		return err
@@ -512,9 +508,9 @@ func writeVersions(w io.Writer, d *catalogjson.Document) error {
 		if _, err := fmt.Fprint(w, "\nDownloaded binaries (fixed per gobento release):\n\n"); err != nil {
 			return err
 		}
-		rows = [][]string{{"BINARY", "VERSION", "USED BY", "PLATFORMS"}}
+		rows = [][]string{{"BINARY", "VERSION", "USED BY", "ONLY WHEN", "PLATFORMS"}}
 		for _, b := range d.Binaries {
-			rows = append(rows, []string{b.Name, b.Version, strings.Join(b.Components, ", "), strings.Join(b.Platforms, ", ")})
+			rows = append(rows, []string{b.Name, b.Version, strings.Join(b.Components, ", "), whenOrDash(b.Traits), strings.Join(b.Platforms, ", ")})
 		}
 		if err := writeTable(w, rows); err != nil {
 			return err
@@ -525,9 +521,9 @@ func writeVersions(w io.Writer, d *catalogjson.Document) error {
 			d.Node.Range, d.Node.Default); err != nil {
 			return err
 		}
-		rows = [][]string{{"PACKAGE", "ROLE", "VERSION", "USED BY"}}
+		rows = [][]string{{"PACKAGE", "ROLE", "VERSION", "USED BY", "ONLY WHEN"}}
 		for _, p := range d.NPM {
-			rows = append(rows, []string{p.Name, p.Role, p.Version, strings.Join(p.Components, ", ")})
+			rows = append(rows, []string{p.Name, p.Role, p.Version, strings.Join(p.Components, ", "), whenOrDash(p.Traits)})
 		}
 		if err := writeTable(w, rows); err != nil {
 			return err
@@ -571,4 +567,13 @@ func inSentence(title string) string {
 		return title
 	}
 	return strings.ToLower(title[:1]) + title[1:]
+}
+
+// whenOrDash describes a trait condition for the ONLY WHEN column, or
+// returns "-" for none.
+func whenOrDash(traits map[string][]string) string {
+	if when := requiredTraits(traits); when != "" {
+		return when
+	}
+	return "-"
 }

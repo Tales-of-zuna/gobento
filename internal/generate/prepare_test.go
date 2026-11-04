@@ -372,6 +372,43 @@ func TestPrepareFrontend(t *testing.T) {
 	if len(req.Scaffolds) != 1 || req.Node.Range.String() != ">=v22.12.0" {
 		t.Errorf("Request() scaffolds = %+v, node = %v", req.Scaffolds, req.Node)
 	}
+	// Spec scenario "Tailwind's npm packages from the rules": with a Vite
+	// frontend, the scaffold step adds them; with htmx, nothing is
+	// scaffolded.
+	withCSS := func(frontend string) Spec {
+		s := spec(frontend, nil)
+		s.Components[catalog.KindCSS] = "tailwind"
+		return s
+	}
+	tw := cat.Rules().Binaries[0].Version
+	for _, frontend := range []string{"react", "svelte", "vue"} {
+		p, err := Prepare(cat, withCSS(frontend))
+		if err != nil {
+			t.Fatalf("Prepare(%s, tailwind) error = %v", frontend, err)
+		}
+		want := []string{"@tailwindcss/vite@" + tw, "tailwindcss@" + tw}
+		if len(p.Scaffolds) != 1 || !slices.Equal(p.Scaffolds[0].DevDependencies, want) {
+			t.Errorf("Prepare(%s, tailwind) scaffolds = %+v, want dev dependencies %v", frontend, p.Scaffolds, want)
+		}
+		// Spec scenario "Tailwind CLI only for htmx".
+		if _, ok := p.Versions.BinaryVersions()["tailwindcss"]; ok {
+			t.Errorf("Prepare(%s, tailwind) uses the tailwindcss binary", frontend)
+		}
+	}
+	p, err = Prepare(cat, withCSS("htmx"))
+	if err != nil {
+		t.Fatalf("Prepare(htmx, tailwind) error = %v", err)
+	}
+	if len(p.Scaffolds) != 0 {
+		t.Errorf("htmx with Tailwind has scaffold steps: %+v", p.Scaffolds)
+	}
+	if _, ok := p.Versions.BinaryVersions()["tailwindcss"]; !ok {
+		t.Error("Prepare(htmx, tailwind) does not use the tailwindcss binary")
+	}
+	if npm := p.Versions.NPMVersions(); npm["tailwindcss"] != "" || npm["@tailwindcss/vite"] != "" {
+		t.Errorf("Prepare(htmx, tailwind) uses Tailwind's npm packages: %v", npm)
+	}
+
 	_, err = Prepare(cat, spec("react", map[string]string{"create-vite": "9.0.0"}))
 	if !errors.Is(err, compat.ErrNotPinnable) {
 		t.Errorf("Prepare(pin create-vite) error = %v, want ErrNotPinnable", err)

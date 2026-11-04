@@ -27,7 +27,11 @@ the release has no build, set `TAILWINDCSS` to its path. The CI workflow
 fails when the committed stylesheet is not what Tailwind compiles.
 {{- else}}
 The frontend is styled with [Tailwind CSS](https://tailwindcss.com)
-{{.Binaries.tailwindcss.Version}} through its Vite plugin, `@tailwindcss/vite`: the Vite build compiles
-every utility class the frontend's sources use. The app's main stylesheet
-starts with `@import "tailwindcss";`.
+{{index .NPM "tailwindcss"}} through its Vite plugin, `@tailwindcss/vite`, which
+`frontend/vite.config.ts` adds: `npm run build` and `npm run dev` compile
+every utility class the frontend's sources use, so there is no separate
+step. The app's main stylesheet starts with `@import "tailwindcss";`, before
+the example page's own rules; use utility classes in the components, or
+replace those rules. Both packages are development dependencies in
+`frontend/package.json`.
 {{- end}}

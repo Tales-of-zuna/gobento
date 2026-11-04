@@ -1,0 +1,12 @@
+# sqlc generates Go code from SQL: https://docs.sqlc.dev/
+# Regenerate after changing the schema or the queries; see README.md.
+version: "2"
+sql:
+  - engine: sqlite
+    schema: internal/database/schema.sql
+    queries: internal/store/queries.sql
+    gen:
+      go:
+        package: sqlcgen
+        out: internal/store/sqlcgen
+        omit_sqlc_version: true

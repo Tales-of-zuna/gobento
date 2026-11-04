@@ -22,10 +22,10 @@ each release's notes list what changed.
 - **Node.js only for React, Vue, and Svelte.** API-only projects and the
   htmx frontend need no Node.js: htmx ships htmx and the Go code templ
   generates, so neither Node.js nor the templ command is needed to generate,
-  build, or run them. With Tailwind CSS, the compiled stylesheet is shipped
-  too; rebuilding it after a change downloads the standalone Tailwind CLI,
-  which needs no Node.js either. The React, Vue, and Svelte frontends do
-  need it; see [Node.js for React, Vue, and Svelte](#nodejs-for-react-vue-and-svelte).
+  build, or run them. With htmx and Tailwind CSS, the compiled stylesheet is
+  shipped too; rebuilding it after a change downloads the standalone
+  Tailwind CLI, which needs no Node.js either. The React, Vue, and Svelte
+  frontends do need it, with or without Tailwind CSS; see [Node.js for React, Vue, and Svelte](#nodejs-for-react-vue-and-svelte).
 
 ### Node.js for React, Vue, and Svelte
 
@@ -38,8 +38,9 @@ frontends only, gobento also needs:
   must be on your `PATH`. The generated CI workflow and Dockerfile use
   Node.js 26.
 - **Network access to the npm registry.** The scaffolder is downloaded, and
-  npm resolves the frontend's dependencies into `frontend/package-lock.json`.
-  It does not install them: there is no `node_modules` until you run
+  npm resolves the frontend's dependencies into `frontend/package-lock.json`
+  (with `--css tailwind`, also `tailwindcss` and `@tailwindcss/vite`, which
+  it adds to `frontend/package.json`). It does not install them: there is no `node_modules` until you run
   `npm --prefix frontend ci`.
 
 gobento checks `node` and `npm` before it writes anything, and stops with a

@@ -11,6 +11,8 @@
 # one of its components is selected and the selection provides one of the
 # listed values for every listed trait, for example a driver needed only for
 # one SQL dialect. Otherwise it is not added to go.mod and cannot be pinned.
+# Binaries and npm packages take the same traits condition, for example
+# Tailwind's CLI for frontends built by Go and its npm packages for Vite.
 #
 # Assets are files that components vendor unmodified from an upstream
 # release, such as a JavaScript library the generated project serves from
@@ -152,13 +154,15 @@ assets:
 binaries:
   # The standalone Tailwind CSS CLI, which needs no Node.js. MIT license.
   # Tailwind releases the CLI and the npm packages tailwindcss and
-  # @tailwindcss/vite together, so Vite frontends install the npm packages
-  # of this version (css/tailwind's npm-dev-dependencies contribution). The
+  # @tailwindcss/vite together, so the npm section lists those packages at
+  # this version for Vite frontends (a test keeps the three equal). The
   # release has no build for Windows on ARM, which runs the x64 build under
   # emulation, or for musl-based Linux; the generated runner explains how
   # to use another binary there.
   tailwindcss:
     components: [css/tailwind]
+    # Only frontends built by the Go toolchain use the CLI.
+    traits: {frontend-build: [go]}
     version: 4.3.4
     checksums: https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.4/sha256sums.txt
     platforms:
@@ -200,6 +204,20 @@ npm:
     components: [frontend/react, frontend/svelte, frontend/vue]
     role: scaffolder
     version: 9.3.3
+  # Tailwind CSS for the Vite frontends: the compiler and its Vite plugin,
+  # added to the scaffolded frontend's devDependencies. Always the version
+  # of the standalone CLI in binaries (released together); htmx uses the
+  # CLI instead. MIT license; npm audit reports nothing for either.
+  "@tailwindcss/vite":
+    components: [css/tailwind]
+    traits: {frontend-build: [vite]}
+    role: dev-dependency
+    version: 4.3.4
+  tailwindcss:
+    components: [css/tailwind]
+    traits: {frontend-build: [vite]}
+    role: dev-dependency
+    version: 4.3.4
 
 # Versions of the project tooling that are not Go module requirements: the
 # images of the generated Dockerfile and CI workflow, the GitHub Actions the

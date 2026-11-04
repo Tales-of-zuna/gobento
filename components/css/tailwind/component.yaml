@@ -1,10 +1,11 @@
 name: tailwind
 title: Tailwind CSS
-description: Utility-first CSS compiled by Tailwind CSS; for htmx with the standalone CLI and a committed stylesheet, so no Node.js is needed.
+description: Utility-first CSS compiled by Tailwind CSS; for htmx with the standalone CLI and a committed stylesheet (no Node.js needed), for React, Vue, and Svelte with its Vite plugin.
 requires:
   # The frontend's build system decides what this component contributes:
   # for go, a Tailwind source, the compiled stylesheet, and a runner for the
-  # standalone CLI; for vite, the @tailwindcss/vite plugin.
+  # standalone CLI; for vite, the @tailwindcss/vite plugin and the stylesheet
+  # import (its npm packages are in the npm: section of versions.yaml).
   frontend-build: [go, vite]
 provides:
   css: tailwind

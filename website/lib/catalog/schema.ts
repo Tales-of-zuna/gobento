@@ -89,6 +89,8 @@ const binarySchema = z.object({
   name: text,
   /** Ids of the components that download this binary. */
   components: z.array(text).min(1),
+  /** Trait conditions, as for modules: used only when the selection meets them. */
+  traits: z.record(text, z.array(text).min(1)).default({}),
   version: text,
   /** Supported platforms as `<GOOS>/<GOARCH>`, sorted. */
   platforms: z.array(z.string().regex(/^[a-z0-9]+\/[a-z0-9]+$/)).min(1),
@@ -103,6 +105,8 @@ const npmPackageSchema = z.object({
   name: text,
   /** Ids of the components that use this package. */
   components: z.array(text).min(1),
+  /** Trait conditions, as for modules: used only when the selection meets them. */
+  traits: z.record(text, z.array(text).min(1)).default({}),
   /** A scaffolder runs once at generation time; the others land in package.json. */
   role: z.enum(['scaffolder', 'dependency', 'dev-dependency']),
   version: text,

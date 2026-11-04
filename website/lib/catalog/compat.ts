@@ -51,6 +51,18 @@ export function selectedComponents(catalog: Catalog, selection: Selection): Comp
  * trait no chosen component provides fails its condition.
  */
 export function selectedModules(catalog: Catalog, selection: Selection): Module[] {
+  return catalog.modules.filter(usedBy(catalog, selection));
+}
+
+/**
+ * Returns a filter for rules-file entries (modules, binaries, npm packages)
+ * that the chosen components use: an entry of a chosen component whose trait
+ * conditions, if any, the chosen components meet.
+ */
+function usedBy(
+  catalog: Catalog,
+  selection: Selection,
+): (entry: { components: string[]; traits: Record<string, string[]> }) => boolean {
   const components = selectedComponents(catalog, selection);
   const ids = new Set(components.map((c) => c.id));
   const provided = new Map<string, string>();
@@ -59,14 +71,12 @@ export function selectedModules(catalog: Catalog, selection: Selection): Module[
       if (!provided.has(trait)) provided.set(trait, value);
     }
   }
-  return catalog.modules.filter(
-    (m) =>
-      m.components.some((id) => ids.has(id)) &&
-      Object.entries(m.traits).every(([trait, allowed]) => {
-        const value = provided.get(trait);
-        return value !== undefined && allowed.includes(value);
-      }),
-  );
+  return (entry) =>
+    entry.components.some((id) => ids.has(id)) &&
+    Object.entries(entry.traits).every(([trait, allowed]) => {
+      const value = provided.get(trait);
+      return value !== undefined && allowed.includes(value);
+    });
 }
 
 /** Returns the vendored assets of the chosen components, whose versions are fixed per release. */
@@ -76,18 +86,20 @@ export function selectedAssets(catalog: Catalog, selection: Selection): Asset[] 
 }
 
 /**
- * Returns the platform binaries the chosen components download on demand,
- * whose versions are fixed per release.
+ * Returns the platform binaries the chosen components download on demand
+ * (meeting their trait conditions, as for modules), whose versions are fixed
+ * per release.
  */
 export function selectedBinaries(catalog: Catalog, selection: Selection): Binary[] {
-  const ids = new Set(selectedComponents(catalog, selection).map((c) => c.id));
-  return catalog.binaries.filter((b) => b.components.some((id) => ids.has(id)));
+  return catalog.binaries.filter(usedBy(catalog, selection));
 }
 
-/** Returns the npm packages of the chosen components, whose versions are fixed per release. */
+/**
+ * Returns the npm packages of the chosen components (meeting their trait
+ * conditions, as for modules), whose versions are fixed per release.
+ */
 export function selectedNpmPackages(catalog: Catalog, selection: Selection): NpmPackage[] {
-  const ids = new Set(selectedComponents(catalog, selection).map((c) => c.id));
-  return catalog.npm.filter((p) => p.components.some((id) => ids.has(id)));
+  return catalog.npm.filter(usedBy(catalog, selection));
 }
 
 /** Returns the version each selected module gets: its override, or else its default. */

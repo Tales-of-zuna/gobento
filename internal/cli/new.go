@@ -322,6 +322,12 @@ func (a *app) printDryRun(p *generate.Prepared, target string) error {
 	for _, s := range p.Scaffolds {
 		fmt.Fprintf(&b, "During generation, %s adds more files to %s/ (template %s) and npm writes %s/package-lock.json;\n",
 			s.Command(), s.Dir, s.Template, s.Dir)
+		if len(s.Dependencies) > 0 {
+			fmt.Fprintf(&b, "npm adds the dependencies %s to %s/package.json;\n", strings.Join(s.Dependencies, ", "), s.Dir)
+		}
+		if len(s.DevDependencies) > 0 {
+			fmt.Fprintf(&b, "npm adds the development dependencies %s to %s/package.json;\n", strings.Join(s.DevDependencies, ", "), s.Dir)
+		}
 		fmt.Fprintf(&b, "this needs Node.js %s, npm, and network access to the npm registry.\n", p.Node.Range)
 	}
 	_, err := io.WriteString(a.stdout, b.String())

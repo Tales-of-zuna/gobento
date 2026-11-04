@@ -66,7 +66,8 @@ commands, so you can always run them directly.
 generates every supported selection without a frontend or CSS framework,
 plus a pairwise covering set of those with one (`compose.Coverage`), and runs
 `go test ./...` inside each project. The selections with React, Vue, or
-Svelte run `npm create vite` during generation, so the integration test needs
+Svelte run `npm create vite` during generation (and, with Tailwind CSS,
+`npm install` of its packages), so the integration test needs
 Node.js v22.12.0 or newer, npm, and access to the npm registry; with the
 default versions it also builds each of these frontends (`npm ci`, the
 frontend's lint and check scripts, and `npm run build`) before the Go checks.
@@ -93,8 +94,8 @@ a few minutes more), runs actionlint on the generated workflow and
 golangci-lint on the code, and, where `make` is installed, runs `make`,
 `make build`, and `make lint`; with htmx, it also runs
 `go generate` in the web package and checks that the shipped templ code is
-unchanged, and with Tailwind CSS, it rebuilds the stylesheet with the pinned
-standalone Tailwind CLI (downloaded once into your user cache directory,
+unchanged, and with Tailwind CSS too, it rebuilds the stylesheet with the
+pinned standalone Tailwind CLI (downloaded once into your user cache directory,
 about 100 MB) and checks that the shipped stylesheet is unchanged.
 `TestIntegrationTailwindProjectName` does the same for a project named
 `container`, a Tailwind utility. `TestIntegrationDocker` (matched by the same `-run

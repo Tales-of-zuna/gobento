@@ -65,7 +65,9 @@ copy of its templates. During generation, `npm create vite` creates
 configuration, the example page, the API client, the stylesheet, and the Go
 web package that serves the build. gobento's files win where both write the
 same path, and npm records the dependency tree in
-`frontend/package-lock.json`.
+`frontend/package-lock.json`. The npm packages another component adds, such
+as Tailwind CSS and its Vite plugin with `--css tailwind`, are installed by
+the same step, after the scaffolder.
 
 Such a component names its scaffolder in its manifest, and the scaffolder's
 version is in the [version rules](/docs/concepts/version-rules#nodejs-and-npm),

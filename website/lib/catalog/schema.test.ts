@@ -91,6 +91,7 @@ describe('catalog schema', () => {
       {
         name: 'create-vite',
         components: ['frontend/react', 'frontend/vue'],
+        traits: {},
         role: 'scaffolder',
         version: '9.3.3',
       },

@@ -3,13 +3,19 @@ package generate
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
+	"maps"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Tales-of-zuna/gobento/internal/catalog"
@@ -187,22 +193,75 @@ func scaffoldOne(ctx context.Context, n node, dir string, req Request, s Scaffol
 
 	install := []string{"install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--no-fund"}
 	if len(s.Dependencies) > 0 {
-		if err := runNPM(ctx, n.npm, target, req.Env, append(append(install, "--save-prod"), s.Dependencies...)...); err != nil {
+		if err := lockOnly(ctx, n.npm, target, req.Env, append(append(install, "--save-prod"), s.Dependencies...)); err != nil {
 			return err
 		}
 	}
 	if len(s.DevDependencies) > 0 {
-		if err := runNPM(ctx, n.npm, target, req.Env, append(append(install, "--save-dev"), s.DevDependencies...)...); err != nil {
+		if err := lockOnly(ctx, n.npm, target, req.Env, append(append(install, "--save-dev"), s.DevDependencies...)); err != nil {
 			return err
 		}
 	}
 	if len(s.Dependencies) == 0 && len(s.DevDependencies) == 0 {
-		if err := runNPM(ctx, n.npm, target, req.Env, install...); err != nil {
+		if err := lockOnly(ctx, n.npm, target, req.Env, install); err != nil {
 			return err
 		}
 	}
 	if _, err := os.Stat(filepath.Join(target, lockFile)); err != nil {
 		return fmt.Errorf("npm install did not write %s", lockFile)
+	}
+	return nil
+}
+
+// lockOnly runs the npm install command args, which writes only the lock
+// file, in dir. npm 12, whose allow-remote defaults to none, refuses in this
+// mode the registry tarballs of a package with bundleDependencies (such as
+// @tailwindcss/oxide-wasm32-wasi, an optional dependency of Tailwind CSS),
+// although it installs them (npm/cli#9800). Then lockOnly runs the command
+// again with --allow-remote=all and checks what npm 12 is meant to ensure:
+// that every tarball in the lock file comes from the configured registry's
+// host.
+func lockOnly(ctx context.Context, npmPath, dir string, env, args []string) error {
+	err := runNPM(ctx, npmPath, dir, env, args...)
+	if err == nil || !strings.Contains(err.Error(), "EALLOWREMOTE") {
+		return err
+	}
+	out, rerr := npmOutput(ctx, npmPath, dir, env, "config", "get", "registry")
+	if rerr != nil {
+		return errors.Join(err, rerr)
+	}
+	registry, perr := url.Parse(strings.TrimSpace(out))
+	if perr != nil || registry.Host == "" {
+		return errors.Join(err, fmt.Errorf("npm config get registry printed %q, not a URL", strings.TrimSpace(out)))
+	}
+	if err := runNPM(ctx, npmPath, dir, env, append(slices.Clone(args), "--allow-remote=all")...); err != nil {
+		return err
+	}
+	return checkLockHosts(filepath.Join(dir, lockFile), registry.Host)
+}
+
+// checkLockHosts reports a package of the npm lock file at path whose
+// tarball URL is not on host.
+func checkLockHosts(path, host string) error {
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the lock file npm just wrote in the project directory
+	if err != nil {
+		return err
+	}
+	var lock struct {
+		Packages map[string]struct {
+			Resolved string `json:"resolved"`
+		} `json:"packages"`
+	}
+	if err := json.Unmarshal(data, &lock); err != nil {
+		return fmt.Errorf("%s: %w", lockFile, err)
+	}
+	for _, name := range slices.Sorted(maps.Keys(lock.Packages)) {
+		resolved := lock.Packages[name].Resolved
+		u, err := url.Parse(resolved)
+		if resolved == "" || (err == nil && u.Host == host && (u.Scheme == "https" || u.Scheme == "http")) {
+			continue
+		}
+		return fmt.Errorf("%w: %s resolves %s to %s, which is not on the npm registry %s", ErrNPMCommand, lockFile, name, resolved, host)
 	}
 	return nil
 }
@@ -235,20 +294,41 @@ func merge(src, dst string) error {
 // when ctx is cancelled. Questions are impossible: standard input is
 // empty and npm's own prompt is answered by --yes.
 func runNPM(ctx context.Context, npmPath, dir string, env []string, args ...string) error {
+	_, err := npmOutput(ctx, npmPath, dir, env, args...)
+	return err
+}
+
+// npmOutput is runNPM, returning npm's output.
+func npmOutput(ctx context.Context, npmPath, dir string, env []string, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, npmPath, args...) //nolint:gosec // G204: npmPath is the npm command found on PATH and args come from the rules
 	cmd.Dir = dir
 	cmd.Env = append(append([]string{}, env...),
 		"npm_config_yes=true", "npm_config_fund=false", "npm_config_audit=false", "npm_config_update_notifier=false")
 	cmd.WaitDelay = 5 * time.Second
 	killTree(cmd)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
+	// The error shows both streams in order; the result is stdout only,
+	// without npm's warnings.
+	var all, stdout bytes.Buffer
+	shared := &lockedWriter{w: &all}
+	cmd.Stdout = io.MultiWriter(shared, &stdout)
+	cmd.Stderr = shared
 	if err := cmd.Run(); err != nil {
 		if ctxErr := ctx.Err(); ctxErr != nil {
-			return fmt.Errorf("npm %s: %w", strings.Join(args, " "), ctxErr)
+			return "", fmt.Errorf("npm %s: %w", strings.Join(args, " "), ctxErr)
 		}
-		return fmt.Errorf("%w: npm %s: %w\n%s", ErrNPMCommand, strings.Join(args, " "), err, strings.TrimSpace(out.String()))
+		return "", fmt.Errorf("%w: npm %s: %w\n%s", ErrNPMCommand, strings.Join(args, " "), err, strings.TrimSpace(all.String()))
 	}
-	return nil
+	return stdout.String(), nil
+}
+
+// lockedWriter serializes writes to w from npm's stdout and stderr.
+type lockedWriter struct {
+	mu sync.Mutex
+	w  io.Writer
+}
+
+func (l *lockedWriter) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.w.Write(p)
 }

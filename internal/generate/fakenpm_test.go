@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 )
@@ -19,6 +20,10 @@ import (
 //	                     FAKE_NPM_STARTED, and blocks; the child creates
 //	                     FAKE_NPM_LATE after two seconds unless killed
 //	FAKE_NPM_NO_REMOVE=1 npm create does not create src/App.css
+//	FAKE_NPM=allowremote npm install fails with EALLOWREMOTE, as npm 12
+//	                     does, unless given --allow-remote=all; then the
+//	                     lock file resolves a package to FAKE_NPM_RESOLVED
+//	                     (default a registry.npmjs.org tarball)
 //
 // npm create writes a small project with package.json, src/App.tsx,
 // src/App.css, and src/assets/logo.svg; npm install writes
@@ -49,6 +54,22 @@ func fakeNPM(args []string) int {
 	switch {
 	case len(args) > 0 && args[0] == "create":
 		return fakeCreate(args[1:])
+	case len(args) == 3 && args[0] == "config" && args[1] == "get" && args[2] == "registry":
+		fmt.Fprintln(os.Stderr, "npm warn some warning")
+		fmt.Println("https://registry.npmjs.org/")
+		return 0
+	case len(args) > 0 && args[0] == "install" && os.Getenv("FAKE_NPM") == "allowremote":
+		if !slices.Contains(args, "--allow-remote=all") {
+			fmt.Fprintln(os.Stderr, "npm error code EALLOWREMOTE\nnpm error Fetching packages of type \"remote\" have been disabled")
+			return 1
+		}
+		resolved := envOr("FAKE_NPM_RESOLVED", "https://registry.npmjs.org/a/-/a-1.0.0.tgz")
+		data := `{"packages": {"": {}, "node_modules/a": {"resolved": "` + resolved + `"}}, "fake": "` + strings.Join(args[1:], " ") + "\"}\n"
+		if err := os.WriteFile("package-lock.json", []byte(data), 0o600); err != nil { //nolint:gosec // G703: fixed file name in the fake's working directory
+			fmt.Fprintln(os.Stderr, "fake npm:", err)
+			return 1
+		}
+		return 0
 	case len(args) > 0 && args[0] == "install":
 		data := "{\"fake\": \"" + strings.Join(args[1:], " ") + "\"}\n"
 		if err := os.WriteFile("package-lock.json", []byte(data), 0o600); err != nil { //nolint:gosec // G703: fixed file name in the fake's working directory

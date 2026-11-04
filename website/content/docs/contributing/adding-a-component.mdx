@@ -386,33 +386,37 @@ them, so a contribution never includes another.
 A kind can declare points too, for the templates of its components, in
 `components/<kind>/kind.yaml` (same format as `base.yaml`'s
 `contributions:`). Components of other kinds contribute to them like to the
-base layer's. The frontend kind declares the points a
-[CSS framework](/docs/concepts/slots-and-contracts#css-frameworks) fills:
-`stylesheet` for frontends built by Go, and `vite-config-imports`,
-`vite-plugins`, `css-imports`, and `npm-dev-dependencies` for Vite builds. A
-component's templates may call `contrib` only for its kind's points, and the
-base layer's only for its own. No two kinds, and no kind and the base layer,
-may declare the same point.
+base layer's. No two kinds, and no kind and the base layer, may declare the
+same point.
 
 ### Contribution points in component files
 
 The point is usually in a base template, but a component's own files and
 notes may include one too, so that one component can extend a file another
-component owns without producing it. `base.yaml` still declares every point.
-The React, Vue, and Svelte frontends include three in their files, for a CSS
-component to fill:
+component owns without producing it. A component's templates and notes may
+include the points of the base layer and of its own kind (its
+`kind.yaml`); naming another kind's point fails composition, and the base
+layer's templates include only its own points.
 
-| Point          | Inserted                                                                             | Format                                                             |
-| -------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
-| `vite-imports` | In `frontend/vite.config.ts`, after the imports                                      | Import lines                                                       |
-| `vite-plugins` | In the `plugins` array of `frontend/vite.config.ts`                                  | One entry per line with a trailing comma, such as `tailwindcss(),` |
-| `vite-styles`  | At the top of the stylesheet the entry imports (`index.css`, `style.css`, `app.css`) | CSS, such as `@import "tailwindcss";`                              |
+The frontend kind declares the points a
+[CSS framework](/docs/concepts/slots-and-contracts#css-frameworks) fills,
+one set per build system (the [trait](/docs/concepts/traits)
+`frontend-build`):
 
-A contribution to them appears only when a Vite frontend is selected, so
-such a component requires the [trait](/docs/concepts/traits)
-`frontend-build: [go, vite]` and contributes for both kinds of frontend
-without naming any of them. Its npm packages go in the rules file with the
-role `dev-dependency` (see [Scaffolded components](#scaffolded-components)).
+| Point                 | Build  | Inserted                                                                                               | Format                                                              |
+| --------------------- | ------ | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| `stylesheet`          | `go`   | As htmx's `static/styles.css`, in place of its plain CSS                                               | The complete stylesheet                                             |
+| `vite-config-imports` | `vite` | In `frontend/vite.config.ts`, after the frontend's own imports                                         | Import lines, such as `import tailwindcss from '@tailwindcss/vite'` |
+| `vite-plugins`        | `vite` | In the `plugins` array of `frontend/vite.config.ts`, after the framework's plugin                      | One entry per line with a trailing comma, such as `tailwindcss(),`  |
+| `css-imports`         | `vite` | At the top of the stylesheet the entry imports (`index.css`, `style.css`, `app.css`), before its rules | CSS, such as `@import "tailwindcss";`                               |
+
+A CSS framework requires `frontend-build` with every build it supports
+(Tailwind CSS: `[go, vite]`) and guards each contribution with the same
+trait, so a contribution to a point of the other build renders empty and is
+ignored. The npm packages it needs in a Vite frontend are not a point: list
+them in the rules file with the role `dev-dependency` (see
+[Scaffolded components](#scaffolded-components)), and generation installs
+them into the scaffolded frontend.
 
 ### Composition errors
 
@@ -482,8 +486,10 @@ such as the standalone Tailwind CLI, goes under `binaries`, with its
 every checksum from the release's checksum file; the tests compare them with
 it.
 
-An npm package your component uses, such as a scaffolder, goes under `npm`
-with its `components`, its `role`, and one exact `version`; see
+An npm package your component uses, such as a scaffolder or a package a CSS
+framework adds to a Vite frontend, goes under `npm` with its `components`,
+its `role` (`scaffolder`, `dependency`, or `dev-dependency`), and one exact
+`version`; see
 [Scaffolded components](#scaffolded-components) and
 [Node.js and npm](/docs/concepts/version-rules#nodejs-and-npm).
 
@@ -698,7 +704,9 @@ output too (next section).
 `css/tailwind` ships, as its `stylesheet` contribution
 (`contrib/stylesheet.tmpl`), the stylesheet the pinned Tailwind CLI compiles
 from `tailwind.css.tmpl` and htmx's `pages.templ`. After changing either, or
-the Tailwind version in `versions.yaml`, generate a project with
+the Tailwind version in `versions.yaml` (`binaries.tailwindcss`, which moves
+together with the `npm` entries `tailwindcss` and `@tailwindcss/vite`),
+generate a project with
 `--frontend htmx --css tailwind`, run
 `go run ./internal/tools/tailwindcss --input tailwind.css --output internal/views/static/styles.css --minify`
 in it, and copy `internal/views/static/styles.css` into
@@ -768,18 +776,18 @@ Every frontend provides the trait `frontend-build`: `go` when the Go
 toolchain alone builds its assets, as with htmx, or `vite` when Vite builds
 it from Node.js sources. CSS frameworks require it, so they are offered with
 your frontend only if it provides a value they support, and they contribute
-only to the points of that build system. Include those points of `components/frontend/kind.yaml` where they
-belong: a `go` frontend serves the `stylesheet` contribution as its
-stylesheet, or its own CSS when there is none; a `vite` frontend inserts
-`vite-config-imports` at the top of its Vite configuration, `vite-plugins` in
-its `plugins` array, `css-imports` at the top of its main stylesheet, and
-installs `npm-dev-dependencies` as development dependencies. A frontend that
-leaves out a point makes the CSS framework's selections with it unsupported,
+only to the points of that build system. Include the points of
+`components/frontend/kind.yaml` for your build where they belong: a `go`
+frontend serves the `stylesheet` contribution as its stylesheet, or its own
+CSS when there is none; a `vite` frontend inserts `vite-config-imports` at
+the top of its Vite configuration, `vite-plugins` in its `plugins` array,
+and `css-imports` at the top of its main stylesheet. A frontend that leaves
+out a point makes the CSS framework's selections with it unsupported,
 because a contribution that reaches no template fails composition.
 
-`internal/compose/testdata/vite-frontend` is a fixture of a Vite frontend
-that includes these Vite points, and `TestViteHook` checks what Tailwind CSS
-contributes to it.
+`TestViteHook` in `internal/compose` checks what Tailwind CSS contributes to
+the shipped React, Vue, and Svelte frontends, and `TestViteHookWithoutPoints`
+that a Vite frontend without the points fails composition with Tailwind CSS.
 
 ### A Vite frontend
 
@@ -803,7 +811,8 @@ and change only what is the framework's:
 - **`vite.config.ts`** differs only in the framework plugin's import and
   call. It writes the build to `../{{.Slots.web.Dir}}/dist/app` with
   `emptyOutDir: true`, proxies `{{.APIPrefix}}` to `http://localhost:8080`,
-  and includes the `vite-imports` and `vite-plugins` points.
+  and includes the `vite-config-imports` and `vite-plugins` points. The
+  stylesheet includes `css-imports` at its top.
 
 Everything else is the same text in every Vite frontend: `src/api.ts`, the
 web package (`files/web/handler.go.tmpl`, its test, and
@@ -826,7 +835,11 @@ only one build needs, such as `tailwind.css` and the Tailwind runner, are
 root files wrapped in the same condition, so they render empty, and are left
 out, for the other one. Like every component, it may contribute to the base
 layer's points, for example a `make generate` command and a CI step that
-checks its generated output.
+checks its generated output. Tailwind CSS does both only for htmx; with a
+Vite frontend, it contributes the plugin and the stylesheet's import, and
+its npm packages `tailwindcss` and `@tailwindcss/vite` are `dev-dependency`
+entries in `versions.yaml`, at the version of the standalone CLI in
+`binaries` (`TestTailwindReleasedTogether` keeps the three equal).
 
 ## Scaffolded components
 
@@ -877,8 +890,11 @@ the temporary directory, the scaffold step:
    wrote the same path: the component's root templates under `dir`, its
    **overlays**, win;
 4. runs `npm install --package-lock-only`, adding the npm packages with the
-   role `dependency` or `dev-dependency` that the selection uses, to write
-   `<dir>/package-lock.json` without `node_modules`.
+   role `dependency` or `dev-dependency` that the selection uses to
+   `<dir>/package.json` (`--save-prod` or `--save-dev`), to write
+   `<dir>/package-lock.json` without `node_modules`. With
+   `--css tailwind`, that adds `tailwindcss` and `@tailwindcss/vite`. A
+   selection without a scaffolded component installs nothing.
 
 So keep the overlays few: only what must be gobento's. Preflight checks
 `node`, `npm`, and the Node.js range only for selections with a scaffolded

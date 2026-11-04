@@ -66,6 +66,9 @@ type NPMPackage struct {
 	// Components lists the components that use the package, as
 	// "<kind>/<name>" identifiers.
 	Components []string
+	// Traits optionally restricts the package to selections whose traits
+	// have one of the listed values, as for modules.
+	Traits map[string][]string
 	// Role says how the package is used.
 	Role NPMRole
 	// Version is the exact version, for example 9.3.3.
@@ -91,9 +94,10 @@ type nodeFile struct {
 }
 
 type npmFile struct {
-	Components []string `yaml:"components"`
-	Role       NPMRole  `yaml:"role"`
-	Version    string   `yaml:"version"`
+	Components []string            `yaml:"components"`
+	Traits     map[string][]string `yaml:"traits"`
+	Role       NPMRole             `yaml:"role"`
+	Version    string              `yaml:"version"`
 }
 
 // parseNode converts and validates the node section. An absent section is
@@ -141,6 +145,7 @@ func parseNPM(files map[string]npmFile) ([]NPMPackage, []error) {
 		if len(f.Components) == 0 {
 			fail("no components listed")
 		}
+		checkTraitConditions(f.Traits, fail)
 		switch f.Role {
 		case NPMScaffolder:
 			if !strings.HasPrefix(name, scaffolderPrefix) || name == scaffolderPrefix {
@@ -153,7 +158,7 @@ func parseNPM(files map[string]npmFile) ([]NPMPackage, []error) {
 		if !npmVersionPattern.MatchString(f.Version) {
 			fail("version %q must be an exact version such as 9.3.3", f.Version)
 		}
-		out = append(out, NPMPackage{Name: name, Components: f.Components, Role: f.Role, Version: f.Version})
+		out = append(out, NPMPackage{Name: name, Components: f.Components, Traits: f.Traits, Role: f.Role, Version: f.Version})
 	}
 	return out, errs
 }
