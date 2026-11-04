@@ -121,19 +121,26 @@ export function Configurator({ catalog, released = false }: ConfiguratorProps) {
   const groups = useMemo(() => kindGroups(catalog, state, errors), [catalog, state, errors]);
   const goCards = useMemo(() => goOptions(catalog, state), [catalog, state]);
   const modules = useMemo(() => moduleFields(catalog, state, errors), [catalog, state, errors]);
-  const cells = useMemo(() => trayCells(catalog, state), [catalog, state]);
+  // Keyed on the chosen components only, so typing a name or module path
+  // leaves the packing stage and its 3D scene untouched.
+  const { components } = state;
+  const cells = useMemo(() => trayCells(catalog, { components }), [catalog, components]);
   const nameError = errors.get('name');
   const moduleError = errors.get('module');
   const tree = fileTree(catalog, state, nameError === undefined);
   const command = result.ok ? result.command : undefined;
   const blocked = blockedMessage(catalog, result);
 
-  const packed = [0, 1, 2, 3].map((i) => i < packCount && cells[i]?.value !== undefined) as [
-    boolean,
-    boolean,
-    boolean,
-    boolean,
-  ];
+  const packed = useMemo(
+    () =>
+      [0, 1, 2, 3].map((i) => i < packCount && cells[i]?.value !== undefined) as [
+        boolean,
+        boolean,
+        boolean,
+        boolean,
+      ],
+    [packCount, cells],
+  );
 
   const update = (patch: Partial<ConfigState>) => setState((s) => ({ ...s, ...patch }));
   const choose = (kind: KindId, name: string) =>

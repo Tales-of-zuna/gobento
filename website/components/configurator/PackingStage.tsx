@@ -7,10 +7,12 @@
  * first paint, so nothing shifts, and the 3D scene is downloaded only on the
  * client, after the first interaction, when WebGL works and reduced motion is
  * off. The tray is the text alternative, so the mascot is decorative here.
+ * It is memoized, so typing in the configurator re-renders neither the tray
+ * nor the scene.
  */
 import { useReducedMotion as useMotionReduced } from 'motion/react';
 import * as m from 'motion/react-m';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { MascotHero } from '@/components/mascot/MascotHero';
 import styles from './configurator.module.css';
 import type { CellView } from './view-model';
@@ -26,7 +28,11 @@ export interface PackingStageProps {
 
 const pop = { type: 'spring', stiffness: 420, damping: 14 } as const;
 
-export function PackingStage({ cells, packed, onRepack }: PackingStageProps) {
+export const PackingStage = memo(function PackingStage({
+  cells,
+  packed,
+  onRepack,
+}: PackingStageProps) {
   const [scene, setScene] = useState(false);
   const still = useMotionReduced();
 
@@ -88,4 +94,4 @@ export function PackingStage({ cells, packed, onRepack }: PackingStageProps) {
       </div>
     </div>
   );
-}
+});
