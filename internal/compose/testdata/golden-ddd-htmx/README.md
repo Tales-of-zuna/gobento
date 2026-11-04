@@ -158,9 +158,10 @@ The `//go:generate` line in `internal/adapters/web/handler.go` runs
 The CI workflow runs it too and fails when the committed `pages_templ.go` is
 not what templ generates from `pages.templ`.
 
-htmx 2.0.11 is in `internal/adapters/web/static/htmx.min.js`, and the
-styles are plain CSS in `internal/adapters/web/static/styles.css`. To update htmx,
+htmx 2.0.11 is in `internal/adapters/web/static/htmx.min.js`; to update it,
 replace the file with `dist/htmx.min.js` of a newer release.
+The styles are plain CSS in `internal/adapters/web/static/styles.css`, for the
+elements and the classes the pages use: `row`, `empty`, `problem`, and `name`.
 
 ## Development
 

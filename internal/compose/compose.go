@@ -64,6 +64,9 @@ type Input struct {
 	// Assets maps the names of the selected components' vendored assets
 	// to their versions.
 	Assets map[string]string
+	// Binaries maps the names of the selected components' platform
+	// binaries to their rules.
+	Binaries map[string]compat.Binary
 	// Base is the base layer composed into every selection, or nil for
 	// none (catalog.Catalog.Base).
 	Base *catalog.Component
@@ -79,8 +82,8 @@ type Plan struct {
 	// Slots locates every slot of the architecture, as given to templates.
 	Slots map[string]SlotData
 	// Contributions lists the rendered contributions of the selected
-	// components to the base layer's points, in kind order and then by
-	// point. It is empty without a base layer.
+	// components to the points of the base layer and of the selected
+	// components, in kind order and then by point.
 	Contributions []Contribution
 }
 
@@ -128,8 +131,8 @@ func (p *Plan) File(path string) (File, bool) {
 }
 
 // Compose checks the selection and renders every template of every selected
-// component, and of the base layer with the components' contributions, into
-// a Plan. It reports every problem it finds, joined with
+// component, and of the base layer, with the contributions to their points,
+// into a Plan. A template that renders to whitespace produces no file. It reports every problem it finds, joined with
 // errors.Join: an incomplete selection, unmet traits, unknown or unfilled
 // slots, slots with more than one owner, path conflicts, and templates that
 // fail to render or, for .go files, to format. Nothing is written to disk.
@@ -153,6 +156,9 @@ type composer struct {
 	owner map[string]string
 	// contribs holds the rendered contributions, in kind order.
 	contribs []Contribution
+	// included records the points whose contributions a template asked
+	// for.
+	included map[string]bool
 }
 
 // components returns the selected components in kind order, followed by
@@ -185,6 +191,7 @@ func (c *composer) run() {
 		Traits:   sel.Traits(),
 		Versions: orEmpty(c.in.Versions),
 		Assets:   orEmpty(c.in.Assets),
+		Binaries: c.in.Binaries,
 		Images:   orEmpty(c.in.Tooling.Images),
 		Actions:  orEmpty(c.in.Tooling.Actions),
 		Tools:    orEmpty(c.in.Tooling.Tools),
@@ -195,15 +202,33 @@ func (c *composer) run() {
 	c.resolveSlots()
 	c.checkOwnership()
 	c.checkRootFiles()
+	if c.data.Binaries == nil {
+		c.data.Binaries = map[string]compat.Binary{}
+	}
 	c.renderContributions()
 
 	c.owner = make(map[string]string)
+	c.included = make(map[string]bool)
 	for _, comp := range c.components() {
 		for _, f := range comp.Files {
 			c.render(comp, f)
 		}
 	}
 	c.appendNotes()
+	c.checkIncluded()
+}
+
+// checkIncluded reports every contribution to a point that no rendered
+// template of the selection included, which would otherwise be lost: for
+// example a CSS framework's contribution to a point of the frontend kind
+// that the selected frontend does not use.
+func (c *composer) checkIncluded() {
+	for _, k := range c.contribs {
+		if !c.included[k.Point] {
+			c.fail("%w: %s/%s/%s%s: %s includes no contributions to the point %q",
+				ErrTemplate, k.Component, catalog.ContribDir, k.Point, catalog.TemplateSuffix, c.declarer(k.Point).ID(), k.Point)
+		}
+	}
 }
 
 // orEmpty returns m, or an empty map if m is nil, so that templates report
@@ -216,20 +241,14 @@ func orEmpty(m map[string]string) map[string]string {
 }
 
 // renderContributions renders every selected component's contributions to
-// the base layer's points, in kind order and then by point. Without a base
-// layer nothing would include them, so none are rendered.
+// the points of the base layer and of the selected components, in kind
+// order and then by point. A contribution that renders to whitespace is
+// left out before its point is checked, so a contribution guarded by a
+// trait may name a point that only other selections declare.
 func (c *composer) renderContributions() {
-	base := c.in.Base
-	if base == nil {
-		return
-	}
 	for _, comp := range c.in.Selection.Components() {
 		for _, point := range slices.Sorted(maps.Keys(comp.Contributions)) {
 			source := comp.ID() + "/" + catalog.ContribDir + "/" + point + catalog.TemplateSuffix
-			if _, ok := base.Point(point); !ok {
-				c.fail("%w: %s: the base layer declares no contribution point %q", ErrTemplate, source, point)
-				continue
-			}
 			content, err := c.execute(source, comp.Contributions[point], nil)
 			if err != nil {
 				c.fail("%w: %s: %w", ErrTemplate, source, err)
@@ -239,34 +258,56 @@ func (c *composer) renderContributions() {
 			if strings.TrimSpace(text) == "" {
 				continue
 			}
+			if c.declarer(point) == nil {
+				c.fail("%w: %s: no part of the selection %s declares the contribution point %q", ErrTemplate, source, c.in.Selection, point)
+				continue
+			}
 			c.contribs = append(c.contribs, Contribution{Component: comp.ID(), Point: point, Content: text})
 		}
 	}
 }
 
-// contrib returns the contributions to point, joined with newlines, or ""
-// if no selected component contributes. It is the template function
-// "contrib" of the base layer's templates.
-func (c *composer) contrib(point string) (string, error) {
-	if _, ok := c.in.Base.Point(point); !ok {
-		return "", fmt.Errorf("the base layer declares no contribution point %q in %s", point, catalog.BaseManifestFile)
-	}
-	var parts []string
-	for _, k := range c.contribs {
-		if k.Point == point {
-			parts = append(parts, k.Content)
+// declarer returns the base layer or the selected component that declares
+// point, or nil if none does.
+func (c *composer) declarer(point string) *catalog.Component {
+	for _, comp := range c.components() {
+		if _, ok := comp.Point(point); ok {
+			return comp
 		}
 	}
-	return strings.Join(parts, "\n"), nil
+	return nil
+}
+
+// contribFunc returns the template function "contrib" of owner's
+// templates: it returns the contributions to one of owner's points, joined
+// with newlines, or "" if no selected component contributes.
+func (c *composer) contribFunc(owner *catalog.Component) func(string) (string, error) {
+	return func(point string) (string, error) {
+		if _, ok := owner.Point(point); !ok {
+			if owner.IsBase() {
+				return "", fmt.Errorf("the base layer declares no contribution point %q in %s", point, catalog.BaseManifestFile)
+			}
+			return "", fmt.Errorf("%s declares no contribution point %q in its %s", owner.ID(), point, catalog.ManifestFile)
+		}
+		c.included[point] = true
+		var parts []string
+		for _, k := range c.contribs {
+			if k.Point == point {
+				parts = append(parts, k.Content)
+			}
+		}
+		return strings.Join(parts, "\n"), nil
+	}
 }
 
 // funcsFor returns the extra template functions of comp's templates: the
-// base layer's templates may include contributions.
+// base layer's templates, and those of a component that declares points,
+// may include the contributions to their own points.
 func (c *composer) funcsFor(comp *catalog.Component) template.FuncMap {
-	if comp != c.in.Base {
+	if len(comp.Points) == 0 && comp != c.in.Base {
 		return nil
 	}
-	return template.FuncMap{"contrib": c.contrib}
+	return template.FuncMap{"contrib": c.contribFunc(comp)}
 }
 
 // checkSelection reports required kinds without a component and components
@@ -410,6 +451,11 @@ func (c *composer) render(comp *catalog.Component, f catalog.File) {
 	content, err := c.execute(f.Source, f.Template, c.funcsFor(comp))
 	if err != nil {
 		c.fail("%w: %s: %s: %w", ErrTemplate, comp.ID(), f.Source, err)
+		return
+	}
+	if len(bytes.TrimSpace(content)) == 0 {
+		// A template that renders nothing, for example one guarded by a
+		// trait, produces no file.
 		return
 	}
 	if strings.HasSuffix(out, ".go") {

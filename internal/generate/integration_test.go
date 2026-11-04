@@ -143,6 +143,61 @@ func checkTemplFresh(t *testing.T, dir string, p *Prepared, webDir string, tools
 	}
 }
 
+// tailwindArgs are the arguments of the Tailwind runner that rebuild the
+// stylesheet of a project with a go frontend build, as in its Makefile.
+func tailwindArgs(webDir string) []string {
+	return []string{"run", "./internal/tools/tailwindcss", "--input", "tailwind.css", "--output", webDir + "/static/styles.css", "--minify"}
+}
+
+// checkTailwindFresh covers the spec scenario "Regeneration changes
+// nothing" for Tailwind CSS: rebuilding the stylesheet with the pinned
+// standalone CLI, which the runner downloads and verifies, changes no
+// planned file, and make generate runs the same command.
+func checkTailwindFresh(t *testing.T, dir string, p *Prepared, tools lintTools) {
+	t.Helper()
+	webDir := p.Plan.Slots["web"].Dir
+	runIn(t, dir, "go", tailwindArgs(webDir)...)
+	for _, f := range p.Plan.Files {
+		got, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(f.Path))) //nolint:gosec // G304: a planned path in the generated project
+		if err != nil {
+			t.Errorf("after the Tailwind CLI: %v", err)
+			continue
+		}
+		if string(got) != string(f.Content) {
+			t.Errorf("the Tailwind CLI changed %s: the shipped Tailwind output is stale", f.Path)
+		}
+	}
+	if tools.make == "" {
+		return
+	}
+	want := "go run ./internal/tools/tailwindcss --input tailwind.css --output " + webDir + "/static/styles.css --minify"
+	if out := runIn(t, dir, tools.make, "--dry-run", "generate"); !strings.Contains(out, want) {
+		t.Errorf("make generate does not run %s:\n%s", want, out)
+	}
+}
+
+// TestIntegrationTailwindProjectName covers the spec scenario "Project name
+// is a utility": a project whose name and module path are Tailwind
+// utilities gets the same shipped stylesheet, and rebuilding it changes
+// nothing, because Tailwind scans only the pages, which hold neither.
+func TestIntegrationTailwindProjectName(t *testing.T) {
+	skipIntegration(t)
+	cat := shippedCatalog(t)
+	p, err := Prepare(cat, Spec{Name: "container", Module: "grid", Components: map[catalog.Kind]string{
+		catalog.KindArchitecture: "vertical-slice", catalog.KindFramework: "chi", catalog.KindDatabase: "sqlite",
+		catalog.KindData: "sqlc", catalog.KindFrontend: "htmx", catalog.KindCSS: "tailwind",
+	}})
+	if err != nil {
+		t.Fatalf("Prepare() error = %v", err)
+	}
+	dir := filepath.Join(t.TempDir(), "container")
+	if err := Generate(context.Background(), p.Request(dir)); err != nil {
+		t.Fatalf("Generate() error = %v", err)
+	}
+	checkTailwindFresh(t, dir, p, lintTools{})
+	runIn(t, dir, "go", "test", "-count=1", "./internal/web/...", "./internal/tools/...")
+}
+
 func skipIntegration(t *testing.T) {
 	t.Helper()
 	if testing.Short() {
@@ -196,6 +251,9 @@ func checkSelection(t *testing.T, cat *catalog.Catalog, sel catalog.Selection, t
 				checkTooling(t, dir, tools)
 				if web := p.Plan.Slots["web"]; web.Filled {
 					checkTemplFresh(t, dir, p, web.Dir, tools)
+				}
+				if p.Selection.CSS != nil && p.Selection.Traits()["frontend-build"] == "go" {
+					checkTailwindFresh(t, dir, p, tools)
 				}
 			}
 		})

@@ -105,6 +105,7 @@ func TestListSnapshots(t *testing.T) {
 		{"components-kind-database.json", []string{"list", "components", "--kind", "database", "--json"}},
 		{"selections.txt", []string{"list", "selections"}},
 		{"selections-data-gorm.txt", []string{"list", "selections", "--data", "gorm"}},
+		{"selections-css-tailwind.txt", []string{"list", "selections", "--css", "tailwind"}},
 		{"selections-arch-mvc-db-postgres.json", []string{"list", "selections", "--arch", "mvc", "--db", "postgres", "--json"}},
 		{"versions.txt", []string{"list", "versions"}},
 		{"versions.json", []string{"list", "versions", "--json"}},
@@ -230,11 +231,15 @@ func selectionRows(t *testing.T, out string) []string {
 // names of its components joined by slashes, with catalog.None for a
 // missing frontend.
 func selectionRow(sel catalog.Selection) string {
-	row := sel.String()
-	if sel.Component(catalog.KindFrontend) == nil {
-		row += "/" + catalog.None
+	var names []string
+	for _, k := range catalog.Kinds() {
+		if c := sel.Component(k); c != nil {
+			names = append(names, c.Name)
+		} else {
+			names = append(names, catalog.None)
+		}
 	}
-	return row
+	return strings.Join(names, "/")
 }
 
 // TestListSelectionsShipped checks that the listed selections are exactly
@@ -438,7 +443,7 @@ func TestListJSON(t *testing.T) {
 	fields := map[string][]string{
 		"components": {"components", "kinds"},
 		"selections": {"supported"},
-		"versions":   {"assets", "go", "modules", "tooling"},
+		"versions":   {"assets", "binaries", "go", "modules", "tooling"},
 	}
 	for sub, want := range fields {
 		out, _, err := runList(t, shippedDocument(t), "list", sub, "--json")
@@ -572,13 +577,17 @@ func TestListSelectionsFrontend(t *testing.T) {
 
 	d := loadListFixture(t)
 	for _, tt := range []struct {
-		value string
-		want  func(map[string]string) bool
+		kind, value string
+		want        func(map[string]string) bool
 	}{
-		{"htmx", func(s map[string]string) bool { return s["frontend"] == "htmx" }},
-		{catalog.None, func(s map[string]string) bool { _, ok := s["frontend"]; return !ok }},
+		{"frontend", "htmx", func(s map[string]string) bool { return s["frontend"] == "htmx" }},
+		{"frontend", catalog.None, func(s map[string]string) bool { _, ok := s["frontend"]; return !ok }},
+		// Spec: Narrowed by CSS framework.
+		{"css", "tailwind", func(s map[string]string) bool { return s["css"] == "tailwind" && s["frontend"] != "" }},
+		{"css", catalog.None, func(s map[string]string) bool { _, ok := s["css"]; return !ok }},
 	} {
-		out, _, err := runList(t, d, "list", "selections", "--frontend", tt.value, "--json")
+		flag := "--" + tt.kind
+		out, _, err := runList(t, d, "list", "selections", flag, tt.value, "--json")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -593,16 +602,17 @@ func TestListSelectionsFrontend(t *testing.T) {
 			}
 		}
 		if len(want) == 0 || !slices.EqualFunc(got.Supported, want, maps.Equal) {
-			t.Errorf("--frontend %s = %v, want %v", tt.value, got.Supported, want)
+			t.Errorf("%s %s = %v, want %v", flag, tt.value, got.Supported, want)
 		}
 
-		text, _, err := runList(t, d, "list", "selections", "--frontend", tt.value)
+		text, _, err := runList(t, d, "list", "selections", flag, tt.value)
 		if err != nil {
 			t.Fatal(err)
 		}
+		column := slices.Index(catalog.Kinds(), catalog.Kind(tt.kind))
 		for _, row := range selectionRows(t, text) {
-			if !strings.HasSuffix(row, "/"+tt.value) {
-				t.Errorf("--frontend %s lists %s", tt.value, row)
+			if strings.Split(row, "/")[column] != tt.value {
+				t.Errorf("%s %s lists %s", flag, tt.value, row)
 			}
 		}
 	}

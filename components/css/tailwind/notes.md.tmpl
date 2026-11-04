@@ -1,0 +1,33 @@
+## Tailwind CSS
+{{if eq (index .Traits "frontend-build") "go"}}
+The pages are styled with [Tailwind CSS](https://tailwindcss.com)
+{{.Binaries.tailwindcss.Version}}. `tailwind.css` is the source: it styles the pages' markup and its
+classes `row`, `empty`, `problem`, and `name` with `@apply`, and Tailwind
+compiles every utility class used in the `.templ` files of
+`{{.Slots.web.Dir}}`. The compiled stylesheet, `{{.Slots.web.Dir}}/static/styles.css`,
+is committed and embedded in the binary, so building the project needs
+neither Node.js nor Tailwind.
+
+After changing `tailwind.css` or the classes in a `.templ` file, rebuild the
+stylesheet with `make generate`, or without make:
+
+```sh
+go run ./internal/tools/tailwindcss --input tailwind.css --output {{.Slots.web.Dir}}/static/styles.css --minify
+```
+
+While you work on the pages, run it with `--watch` instead of `--minify` to
+rebuild the stylesheet on every change, and run `make generate` before
+committing.
+
+`internal/tools/tailwindcss` runs the standalone Tailwind CSS CLI: on first
+use it downloads the release for your platform (about 100 MB), checks its
+SHA-256, and caches it in your user cache directory. To use another
+`tailwindcss` {{.Binaries.tailwindcss.Version}} binary, for example on musl-based Linux, for which
+the release has no build, set `TAILWINDCSS` to its path. The CI workflow
+fails when the committed stylesheet is not what Tailwind compiles.
+{{- else}}
+The frontend is styled with [Tailwind CSS](https://tailwindcss.com)
+{{.Binaries.tailwindcss.Version}} through its Vite plugin, `@tailwindcss/vite`: the Vite build compiles
+every utility class the frontend's sources use. The app's main stylesheet
+starts with `@import "tailwindcss";`.
+{{- end}}

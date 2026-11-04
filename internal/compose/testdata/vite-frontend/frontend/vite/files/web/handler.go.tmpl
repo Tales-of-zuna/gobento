@@ -1,0 +1,13 @@
+// Package {{.Slots.web.Package}} serves the built single-page app.
+package {{.Slots.web.Package}}
+
+import (
+	"net/http"
+
+	"{{.Slots.models.Import}}"
+)
+
+// NewHandler serves the app; the fixture serves nothing.
+func NewHandler({{.Slots.models.Package}}.ItemStore) http.Handler {
+	return http.NotFoundHandler()
+}

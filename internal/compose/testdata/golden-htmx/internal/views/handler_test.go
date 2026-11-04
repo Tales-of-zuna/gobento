@@ -185,13 +185,16 @@ func TestStoreErrors(t *testing.T) {
 
 func TestStaticFiles(t *testing.T) {
 	h := NewHandler(&fakeStore{})
-	for target, want := range map[string]string{
-		"/static/htmx.min.js": "htmx",
-		"/static/styles.css":  "--accent",
+	// The stylesheet styles the classes the pages use.
+	for target, wants := range map[string][]string{
+		"/static/htmx.min.js": {"htmx"},
+		"/static/styles.css":  {".row", ".empty", ".problem"},
 	} {
 		rec := serve(t, h, http.MethodGet, target, nil, nil)
-		if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), want) {
-			t.Errorf("GET %s = %d, want 200 with %q", target, rec.Code, want)
+		for _, want := range wants {
+			if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), want) {
+				t.Errorf("GET %s = %d, want 200 with %q", target, rec.Code, want)
+			}
 		}
 	}
 }

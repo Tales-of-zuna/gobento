@@ -164,11 +164,17 @@ jobs:
           fi
 
   templ-fresh:
-    # The htmx frontend ships the Go code templ generates from pages.templ.
-    # Regenerate it with the pinned templ in a generated project and fail if
+    # The htmx frontend ships the Go code templ generates from pages.templ,
+    # and css/tailwind the stylesheet the standalone Tailwind CLI compiles.
+    # Regenerate both with the pinned versions in a reference project, with
+    # and without Tailwind CSS (the pages are the same in both), and fail if
     # anything changes.
-    name: templ output is current
+    name: generated frontend code is current (css ${{ matrix.css }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        css: [none, tailwind]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -177,8 +183,10 @@ jobs:
         with:
           go-version: "1.27" # newest Go in versions.yaml: the reference project defaults to it
       - name: Generate the reference project
-        run: go run ./cmd/gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx --dir "$RUNNER_TEMP/shop"
-      - name: Regenerate with the pinned templ and compare
+        env:
+          CSS: ${{ matrix.css }}
+        run: go run ./cmd/gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx --css "$CSS" --dir "$RUNNER_TEMP/shop"
+      - name: Regenerate with the pinned templ and Tailwind CSS and compare
         working-directory: ${{ runner.temp }}/shop
         run: |
           git init --quiet
@@ -186,8 +194,13 @@ jobs:
           git -c user.name=ci -c user.email=ci@example.invalid commit --quiet --message generated
           # The //go:generate line in the web package runs the pinned templ.
           go generate ./...
+          # The runner downloads and verifies the pinned Tailwind CLI.
+          if [ -f tailwind.css ]; then
+            go run ./internal/tools/tailwindcss --input tailwind.css --output internal/views/static/styles.css --minify
+          fi
           if [ -n "$(git status --porcelain)" ]; then
-            git diff
-            echo "::error::the shipped templ output is stale; regenerate it as described in website/content/docs/contributing/adding-a-component.mdx"
+            git diff --stat
+            git diff -- '*.go' '*.templ'
+            echo "::error::the shipped templ or Tailwind output is stale; regenerate it as described in website/content/docs/contributing/adding-a-component.mdx"
             exit 1
           fi

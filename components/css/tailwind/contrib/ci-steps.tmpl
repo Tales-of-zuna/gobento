@@ -1,0 +1,10 @@
+{{- if eq (index .Traits "frontend-build") "go"}}
+- name: Check that the Tailwind CSS is current
+  run: |
+    go run ./internal/tools/tailwindcss --input tailwind.css --output {{.Slots.web.Dir}}/static/styles.css --minify
+    if [ -n "$(git status --porcelain -- {{.Slots.web.Dir}}/static/styles.css)" ]; then
+      git diff --stat -- {{.Slots.web.Dir}}/static/styles.css
+      echo "::error::{{.Slots.web.Dir}}/static/styles.css is stale; run make generate and commit the result"
+      exit 1
+    fi
+{{- end}}

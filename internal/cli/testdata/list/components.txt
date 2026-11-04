@@ -42,3 +42,13 @@ Web pages served next to the API, which then moves under /api.
   none  No frontend (the default)
   htmx  htmx + templ
         Server-rendered pages written as templ components, made interactive with htmx, and served by the Go binary with no build step.
+        provides: frontend-build=go
+
+CSS framework (--css, optional)
+Styles the frontend's pages; offered with a frontend that supports it.
+
+  none      No CSS framework (the default)
+  tailwind  Tailwind CSS
+            Utility-first CSS compiled by Tailwind CSS; for htmx with the standalone CLI and a committed stylesheet, so no Node.js is needed.
+            provides: css=tailwind
+            requires: frontend-build=go|vite

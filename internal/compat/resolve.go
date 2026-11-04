@@ -15,8 +15,8 @@ var (
 	// ErrNotSelected reports a pin for a module that no selected component
 	// uses.
 	ErrNotSelected = errors.New("module not used by the selection")
-	// ErrNotPinnable reports a pin for a tool module or a vendored asset,
-	// whose version is fixed per gobento release.
+	// ErrNotPinnable reports a pin for a tool module, a vendored asset, or
+	// a platform binary, whose version is fixed per gobento release.
 	ErrNotPinnable = errors.New("version is fixed")
 	// ErrConstraint reports a violated constraint between chosen versions.
 	ErrConstraint = errors.New("incompatible versions")
@@ -49,6 +49,9 @@ type Resolved struct {
 	// Assets lists every asset the selected components ship, sorted by
 	// name.
 	Assets []AssetVersion
+	// Binaries lists every platform binary the selected components use,
+	// sorted by name.
+	Binaries []Binary
 	// Tooling holds the tooling versions for the chosen Go version.
 	Tooling ToolingVersions
 }
@@ -124,12 +127,22 @@ func (r *Rules) Resolve(req Request) (Resolved, error) {
 		}
 	}
 
+	for _, b := range r.Binaries {
+		if slices.ContainsFunc(b.Components, func(c string) bool { return slices.Contains(req.Components, c) }) {
+			res.Binaries = append(res.Binaries, b)
+		}
+	}
+
 	for _, path := range sortedKeys(req.Pins) {
 		version := req.Pins[path]
 		m, known := r.Module(path)
 		i, used := chosen[path]
 		if a, ok := r.Asset(path); ok && !known {
 			errs = append(errs, fmt.Errorf("%w: cannot pin %s, vendored asset versions are fixed per gobento release (this release ships %s)", ErrNotPinnable, path, a.Version))
+			continue
+		}
+		if b, ok := r.Binary(path); ok && !known {
+			errs = append(errs, fmt.Errorf("%w: cannot pin %s, binary versions are fixed per gobento release (this release uses %s)", ErrNotPinnable, path, b.Version))
 			continue
 		}
 		switch {

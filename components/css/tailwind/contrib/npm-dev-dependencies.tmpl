@@ -1,0 +1,4 @@
+{{- if eq (index .Traits "frontend-build") "vite"}}
+tailwindcss@{{.Binaries.tailwindcss.Version}}
+@tailwindcss/vite@{{.Binaries.tailwindcss.Version}}
+{{- end}}

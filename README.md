@@ -24,7 +24,8 @@
 ## Why gobento?
 
 - **Your stack, your choice.** Pick the architecture, HTTP framework, database,
-  and data access library for a new project, and optionally a frontend.
+  and data access library for a new project, and optionally a frontend and a
+  CSS framework.
 - **Versions you can trust.** Choose the Go and module versions you want. They
   are checked against compatibility rules kept as data, and gobento rejects
   combinations that do not work instead of silently changing them.
@@ -33,8 +34,8 @@
   per combination, so adding a component does not multiply the work.
 - **Proven builds.** Every supported backend combination is generated, built,
   and tested in CI on Linux, macOS, and Windows, and the combinations with a
-  frontend are covered pairwise: every two components that can be used
-  together with a frontend are built together.
+  frontend or a CSS framework are covered pairwise: every two components that
+  can be used together with one are built together.
 - **Built to stay current.** All versions live in one rules file, so keeping
   up with upstream releases is a one-line, reviewed change instead of a hunt
   through templates.
@@ -76,13 +77,17 @@ an application service), the HTTP framework with
 (`sqlite` or `postgres`), and the data access with `--data` (`sqlc` or
 `gorm`). A frontend is optional: without `--frontend` the project is an
 HTTP API, and `--frontend htmx` adds server-rendered pages (htmx + templ) at
-`/`, with the API under `/api`. A component kind with a single option is
+`/`, with the API under `/api`. With a frontend, `--css tailwind` styles the
+pages with Tailwind CSS, using the standalone Tailwind CLI, so no Node.js is
+needed; without `--css`, the frontend keeps its plain CSS. A component kind
+with a single option is
 chosen automatically, and versions come from gobento's compatibility rules. In
 a terminal, gobento asks for anything it still needs: run `gobento new` to be
 asked for the name, module path, and each component kind with several
-options, including the frontend ("None (API only)" first). Flags skip their
+options, including the frontend ("None (API only)" first) and, with a
+frontend, the CSS framework ("None (plain CSS)" first). Flags skip their
 questions; in scripts and CI, name every kind with several options, and add
-`--frontend` only to get one.
+`--frontend` and `--css` only to get one.
 
 ```sh
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
@@ -108,6 +113,9 @@ gobento new shop --arch mvc --framework chi --db postgres --data sqlc
 
 # Add web pages with htmx and templ; open http://localhost:8080/ after go run
 gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx
+
+# Style those pages with Tailwind CSS (no Node.js needed)
+gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx --css tailwind
 
 # See the files gobento would create, without writing anything
 gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --dry-run
@@ -160,8 +168,9 @@ multi-stage `Dockerfile` that builds a static binary into a distroless,
 non-root image, a GitHub Actions workflow that checks, lints, and tests every
 pull request (with a PostgreSQL service when you choose PostgreSQL), and
 Dependabot and golangci-lint configuration. With htmx, `make generate`
-regenerates the templ code and CI fails when it is stale. Image versions and
-action SHAs come from gobento's rules file, like every other version.
+regenerates the templ code (and, with Tailwind CSS, the stylesheet) and CI
+fails when it is stale. Image versions, action SHAs, and the Tailwind CLI's
+checksums come from gobento's rules file, like every other version.
 
 The reference stack (`mvc`, `nethttp`, `sqlite`, `sqlc`) generates a project
 like this, with a health endpoint and one example resource that builds and
@@ -250,6 +259,14 @@ shop/
 └── ...
 ```
 
+With `--css tailwind` as well, the pages keep their markup, and the
+stylesheet is compiled by [Tailwind CSS](https://tailwindcss.com) 4 from
+`tailwind.css` at the project root. The compiled `styles.css` is committed,
+so building needs neither Node.js nor Tailwind; `make generate` rebuilds it
+with `internal/tools/tailwindcss`, a small Go program that downloads the
+pinned standalone Tailwind CLI for your platform, checks its SHA-256, and
+caches it.
+
 ## How it works
 
 ```mermaid
@@ -282,7 +299,7 @@ flowchart LR
 - [x] GORM
 - [x] Frontends: htmx + templ
 - [ ] Frontends: React, Vue, and Svelte via Vite
-- [ ] Tailwind CSS
+- [x] Tailwind CSS
 - [x] More architectures: vertical slice
 - [x] More architectures: DDD
 - [x] Releases with prebuilt binaries via GoReleaser (v0.1.0)

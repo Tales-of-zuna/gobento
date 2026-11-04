@@ -1,5 +1,7 @@
 package compose
 
+import "github.com/Tales-of-zuna/gobento/internal/compat"
+
 // Data is the value every template is executed with. Its shape is part of
 // the contributor API for writing components and is documented in
 // website/content/docs/contributing/adding-a-component.mdx; change it only
@@ -20,6 +22,12 @@ type Data struct {
 	// components to their versions, for example
 	// {{index .Assets "htmx.org"}}.
 	Assets map[string]string
+	// Binaries maps the names of the platform binaries of the selected
+	// components to their version and downloads, for example
+	// {{.Binaries.tailwindcss.Version}}, or
+	// {{range .Binaries.tailwindcss.Platforms}}{{.OS}}/{{.Arch}} {{.URL}}
+	// {{.SHA256}}{{end}}.
+	Binaries map[string]compat.Binary
 	// APIPrefix is the path prefix the API router is served under: "" when
 	// no frontend is selected, so the API is at the root, and "/api" when
 	// one is, so the frontend serves every other path. Write API paths as

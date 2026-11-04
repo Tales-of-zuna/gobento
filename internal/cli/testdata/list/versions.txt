@@ -21,6 +21,11 @@ Vendored assets (fixed per gobento release):
 ASSET     VERSION  USED BY        SOURCE
 htmx.org  2.0.11   frontend/htmx  https://registry.npmjs.org/htmx.org/-/htmx.org-2.0.11.tgz
 
+Downloaded binaries (fixed per gobento release):
+
+BINARY       VERSION  USED BY       PLATFORMS
+tailwindcss  4.3.4    css/tailwind  darwin/amd64, darwin/arm64, linux/amd64, linux/arm64, windows/amd64, windows/arm64
+
 Project tooling (fixed per gobento release; {go} is the selected Go version):
 
 TYPE    NAME                           VERSION                                    PINNED BY

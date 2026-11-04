@@ -1,0 +1,10 @@
+name: tailwind
+title: Tailwind CSS
+description: Utility-first CSS compiled by Tailwind CSS; for htmx with the standalone CLI and a committed stylesheet, so no Node.js is needed.
+requires:
+  # The frontend's build system decides what this component contributes:
+  # for go, a Tailwind source, the compiled stylesheet, and a runner for the
+  # standalone CLI; for vite, the @tailwindcss/vite plugin.
+  frontend-build: [go, vite]
+provides:
+  css: tailwind

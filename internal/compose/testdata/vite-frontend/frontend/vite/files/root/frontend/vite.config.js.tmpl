@@ -1,0 +1,12 @@
+import { defineConfig } from "vite";
+{{- with contrib "vite-config-imports"}}
+{{.}}
+{{- end}}
+
+export default defineConfig({
+  plugins: [
+{{- with contrib "vite-plugins"}}
+{{indent 4 .}}
+{{- end}}
+  ],
+});

@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"slices"
 	"testing"
 	"testing/fstest"
 
@@ -26,15 +27,15 @@ func TestLoadShipped(t *testing.T) {
 	for _, k := range o.Kinds {
 		kinds = append(kinds, k.ID)
 	}
-	if want := []string{"architecture", "framework", "database", "data", "frontend"}; !reflect.DeepEqual(kinds, want) {
+	if want := []string{"architecture", "framework", "database", "data", "frontend", "css"}; !reflect.DeepEqual(kinds, want) {
 		t.Errorf("kinds = %v, want %v", kinds, want)
 	}
 	optional := make(map[string]bool)
 	for _, k := range o.Kinds {
 		optional[k.ID] = k.Optional
 	}
-	if !optional["frontend"] || optional["database"] {
-		t.Errorf("optional kinds = %v, want only frontend", optional)
+	if !optional["frontend"] || !optional["css"] || optional["database"] {
+		t.Errorf("optional kinds = %v, want only frontend and css", optional)
 	}
 
 	ids := make(map[string]bool)
@@ -80,6 +81,10 @@ func TestLoadShipped(t *testing.T) {
 
 	if withoutFrontend == 0 || withoutFrontend == len(o.Supported) {
 		t.Errorf("%d of %d supported selections have no frontend, want some with and some without", withoutFrontend, len(o.Supported))
+	}
+	if len(o.Binaries) != 1 || o.Binaries[0].Name != "tailwindcss" || len(o.Binaries[0].Platforms) == 0 ||
+		o.Binaries[0].Components[0] != "css/tailwind" || !slices.Contains(o.Binaries[0].Platforms, "linux/amd64") {
+		t.Errorf("binaries = %+v, want tailwindcss of css/tailwind with its platforms", o.Binaries)
 	}
 	if o.Assets == nil {
 		t.Error("assets must be an empty list, not null")

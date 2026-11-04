@@ -173,6 +173,15 @@ func TestComposeBaseLayerErrors(t *testing.T) {
 			want:    []string{"data/query/files/root/query.yaml.tmpl", `"contrib" not defined`},
 		},
 		{
+			name: "component template names a point of the base layer",
+			changes: map[string]string{
+				"data/kind.yaml":                        "contributions:\n  queries: Queries.\n",
+				"data/query/files/root/query.yaml.tmpl": "{{contrib \"make\"}}\n",
+			},
+			wantErr: ErrTemplate,
+			want:    []string{"data/query/files/root/query.yaml.tmpl", `data/query declares no contribution point "make"`},
+		},
+		{
 			name:    "contribution fails to render",
 			changes: map[string]string{"database/lite/contrib/ci-steps.tmpl": "{{.Images.missing}}\n"},
 			wantErr: ErrTemplate,
@@ -220,5 +229,47 @@ func TestComposeContributionOfAnyKind(t *testing.T) {
 	ci, _ := plan.File(".github/workflows/ci.yml")
 	if !strings.Contains(string(ci.Content), "      - run: web generate\n") {
 		t.Errorf("workflow lacks the framework's step:\n%s", ci.Content)
+	}
+}
+
+// TestComposeKindPoints covers the spec scenarios "Point of an unselected
+// component" and "File for one build system only" with the fixture
+// catalog: a contribution to a point of a kind without a selected
+// component fails unless it renders empty, and an empty template produces
+// no file.
+func TestComposeKindPoints(t *testing.T) {
+	t.Parallel()
+
+	points := map[string]string{
+		"frontend/kind.yaml":            "contributions:\n  stylesheet: The stylesheet.\n",
+		"frontend/pages/component.yaml": "name: pages\ntitle: Pages\n",
+	}
+	with := func(changes map[string]string) map[string]string {
+		out := map[string]string{}
+		for k, v := range points {
+			out[k] = v
+		}
+		for k, v := range changes {
+			out[k] = v
+		}
+		return withBase(out)
+	}
+
+	cat := loadCatalog(t, with(map[string]string{"database/lite/contrib/stylesheet.tmpl": "body {}\n"}))
+	_, err := Compose(baseInput(cat, pick(t, cat, "layered", "web", "lite", "orm")))
+	if !errors.Is(err, ErrTemplate) || !strings.Contains(err.Error(), `declares the contribution point "stylesheet"`) {
+		t.Errorf("Compose() error = %v, want the undeclared point named", err)
+	}
+
+	cat = loadCatalog(t, with(map[string]string{
+		"database/lite/contrib/stylesheet.tmpl": `{{if eq (index .Traits "sql-dialect") "postgresql"}}body {}{{end}}`,
+		"data/orm/files/root/orm.yaml.tmpl":     "{{if eq (index .Traits \"sql-dialect\") \"postgresql\"}}engine: pg{{end}}\n  \n",
+	}))
+	plan, err := Compose(baseInput(cat, pick(t, cat, "layered", "web", "lite", "orm")))
+	if err != nil {
+		t.Fatalf("Compose() error = %v, want a contribution that renders empty ignored", err)
+	}
+	if _, ok := plan.File("orm.yaml"); ok {
+		t.Error("orm.yaml is planned, but its template renders only whitespace")
 	}
 }

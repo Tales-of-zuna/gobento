@@ -124,6 +124,51 @@ assets:
     path: package/dist/htmx.min.js
     sha256: d6fdc75f204e6bdefa99b69bf1e6d4ac69b8a364f77929f45c13476b4000f717
 
+# Programs that generated projects download on demand, one file per platform
+# (GOOS/GOARCH), instead of requiring them to build. Like assets, they are
+# fixed per gobento release and cannot be pinned. Every url must contain the
+# version, so a bump cannot leave one behind; sha256 is the file's checksum,
+# which the generated project checks before running it. checksums is the
+# release's checksum file ("<sha256>  <file>" lines), which gobento's tests
+# compare every sha256 with when they have network access.
+#
+# Templates read them as {{.Binaries.<name>.Version}} and range over
+# {{.Binaries.<name>.Platforms}} (.OS, .Arch, .URL, .SHA256).
+#
+# Last checked against GitHub releases and the GitHub advisory database:
+# 2026-11-04 (no advisories for tailwindcss or @tailwindcss/vite).
+binaries:
+  # The standalone Tailwind CSS CLI, which needs no Node.js. MIT license.
+  # Tailwind releases the CLI and the npm packages tailwindcss and
+  # @tailwindcss/vite together, so Vite frontends install the npm packages
+  # of this version (css/tailwind's npm-dev-dependencies contribution). The
+  # release has no build for Windows on ARM, which runs the x64 build under
+  # emulation, or for musl-based Linux; the generated runner explains how
+  # to use another binary there.
+  tailwindcss:
+    components: [css/tailwind]
+    version: 4.3.4
+    checksums: https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.4/sha256sums.txt
+    platforms:
+      darwin/amd64:
+        url: https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.4/tailwindcss-macos-x64
+        sha256: 7ec771593a1fb8bbd204f70429361b0158f7989e4136bc68d04513bf543a15ba
+      darwin/arm64:
+        url: https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.4/tailwindcss-macos-arm64
+        sha256: a516a11b439bfbb5ecd4a2d13b75e6cdcc284dc710aed8731e31d2e5c03895a4
+      linux/amd64:
+        url: https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.4/tailwindcss-linux-x64
+        sha256: 149a8ece5b855587a9c10de6da9dcbcfad0e47c4ed5dca219f721b3eae39d817
+      linux/arm64:
+        url: https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.4/tailwindcss-linux-arm64
+        sha256: f6d7baae1d350ed3a2defe98d0b5cc58e37400c0173b2e38d42f690ccc4bbfe1
+      windows/amd64:
+        url: https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.4/tailwindcss-windows-x64.exe
+        sha256: ad84612696f3be102fa005d4827f0df84c7b4570d31c06865ce5fde0311478af
+      windows/arm64:
+        url: https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.4/tailwindcss-windows-x64.exe
+        sha256: ad84612696f3be102fa005d4827f0df84c7b4570d31c06865ce5fde0311478af
+
 # Versions of the project tooling that are not Go module requirements: the
 # images of the generated Dockerfile and CI workflow, the GitHub Actions the
 # workflow uses, and tools the Makefile and the workflow run. They are fixed
