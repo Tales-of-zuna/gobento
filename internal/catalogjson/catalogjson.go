@@ -24,6 +24,7 @@ type Document struct {
 	Go         GoRule              `json:"go"`
 	Modules    []Module            `json:"modules"`
 	Assets     []Asset             `json:"assets"`
+	Binaries   []Binary            `json:"binaries"`
 	Tooling    Tooling             `json:"tooling"`
 	Supported  []map[string]string `json:"supported"`
 	Rules      Rules               `json:"rules"`
@@ -45,6 +46,17 @@ type Asset struct {
 	Components []string `json:"components"`
 	Version    string   `json:"version"`
 	Source     string   `json:"source"`
+}
+
+// Binary is a program that generated projects download on demand, one
+// file per platform, with a version fixed per gobento release.
+type Binary struct {
+	Name       string   `json:"name"`
+	Components []string `json:"components"`
+	Version    string   `json:"version"`
+	// Platforms lists the supported platforms as "<GOOS>/<GOARCH>",
+	// sorted.
+	Platforms []string `json:"platforms"`
 }
 
 // Tooling lists the versions of the project tooling that are not Go modules,
@@ -153,6 +165,7 @@ var kindInfo = map[catalog.Kind]Kind{
 	catalog.KindDatabase:     {Title: "Database", Description: "Where the project stores its data."},
 	catalog.KindData:         {Title: "Data access", Description: "How the code reads and writes the database."},
 	catalog.KindFrontend:     {Title: "Frontend", Description: "Web pages served next to the API, which then moves under /api."},
+	catalog.KindCSS:          {Title: "CSS framework", Description: "Styles the frontend's pages; offered with a frontend that supports it."},
 }
 
 // Load loads the catalog in fsys and converts it with FromCatalog.
@@ -172,6 +185,7 @@ func FromCatalog(cat *catalog.Catalog) (*Document, error) {
 		Components: []Component{},
 		Modules:    []Module{},
 		Assets:     []Asset{},
+		Binaries:   []Binary{},
 		Tooling:    Tooling{Images: []Image{}, Actions: []Action{}, Tools: []Tool{}},
 		Supported:  []map[string]string{},
 	}
@@ -215,6 +229,14 @@ func FromCatalog(cat *catalog.Catalog) (*Document, error) {
 
 	for _, a := range rules.Assets {
 		out.Assets = append(out.Assets, Asset{Name: a.Name, Components: a.Components, Version: a.Version, Source: a.Source})
+	}
+
+	for _, b := range rules.Binaries {
+		eb := Binary{Name: b.Name, Components: b.Components, Version: b.Version, Platforms: []string{}}
+		for _, p := range b.Platforms {
+			eb.Platforms = append(eb.Platforms, p.Key())
+		}
+		out.Binaries = append(out.Binaries, eb)
 	}
 
 	for _, key := range slices.Sorted(maps.Keys(rules.Tooling.Images)) {

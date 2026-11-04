@@ -21,6 +21,6 @@ export const ROADMAP: Readonly<Record<KindId, readonly PlannedComponent[]>> = {
     { name: 'react', title: 'React via Vite' },
     { name: 'vue', title: 'Vue via Vite' },
     { name: 'svelte', title: 'Svelte via Vite' },
-    { name: 'tailwind', title: 'Tailwind CSS' },
   ],
+  css: [],
 };

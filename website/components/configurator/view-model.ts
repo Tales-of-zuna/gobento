@@ -8,6 +8,7 @@ import {
   componentReasons,
   goVersionReasons,
   selectedAssets,
+  selectedBinaries,
   selectedModules,
   type Selection,
 } from '@/lib/catalog/compat';
@@ -64,11 +65,13 @@ export const NONE = 'none';
 /** Title of the "None" card, by kind. */
 const NONE_TITLES: Readonly<Partial<Record<KindId, string>>> = {
   frontend: 'None (API only)',
+  css: 'None (plain CSS)',
 };
 
 /** Description of the "None" card, by kind. */
 const NONE_DESCRIPTIONS: Readonly<Partial<Record<KindId, string>>> = {
   frontend: 'No web pages; the project serves only its API.',
+  css: 'No CSS framework; the frontend keeps its own plain stylesheet.',
 };
 
 /**
@@ -185,14 +188,20 @@ export function goOptions(catalog: Catalog, state: Selection): OptionView[] {
   });
 }
 
-/** A module version field in the Advanced section, or a vendored asset's fixed version. */
+/**
+ * A module version field in the Advanced section, or the fixed version of a
+ * vendored asset or of a binary downloaded on demand.
+ */
 export interface ModuleFieldView {
-  /** The module path, or the asset name. */
+  /** The module path, or the asset or binary name. */
   readonly path: string;
   /** The component titles using the module, for the label. */
   readonly usedBy: string;
   readonly fixed: boolean;
-  /** Tag shown next to a fixed version: a tool's `Fixed` or an asset's `Vendored`. */
+  /**
+   * Tag shown next to a fixed version: a tool's `Fixed`, an asset's
+   * `Vendored`, or a binary's `On demand`.
+   */
   readonly tag?: string;
   /** What the input shows: the override, or else the default. */
   readonly value: string;
@@ -213,7 +222,8 @@ function titlesOf(catalog: Catalog, ids: readonly string[]): string {
 
 /**
  * The version fields for the modules the chosen components use, followed by
- * the files they vendor (shown with their fixed version, never pinnable).
+ * the files they vendor and the binaries they download on demand (shown with
+ * their fixed version, never pinnable).
  */
 export function moduleFields(
   catalog: Catalog,
@@ -248,7 +258,15 @@ export function moduleFields(
       (needs ? ` · this version needs Go ${needs}` : '');
     return { path: module.path, usedBy, fixed: false, value, hint, error };
   });
-  return [...modules, ...assets];
+  const binaries = selectedBinaries(catalog, state).map((binary): ModuleFieldView => ({
+    path: binary.name,
+    usedBy: titlesOf(catalog, binary.components),
+    fixed: true,
+    tag: 'On demand',
+    value: binary.version,
+    hint: 'Downloaded on demand by the project, never needed to build; its version is fixed per gobento release.',
+  }));
+  return [...modules, ...assets, ...binaries];
 }
 
 /** Returns the pins after the visitor typed `value` for `path`: a default clears the pin. */
@@ -271,6 +289,7 @@ export const COMPARTMENTS: Readonly<Record<KindId, { food: string; piece: string
   database: { food: 'omelette', piece: 'tamago' },
   data: { food: 'edamame', piece: 'eda' },
   frontend: { food: 'cucumber roll', piece: 'kappa' },
+  css: { food: 'purple pickles', piece: 'shiba' },
 };
 
 /** One compartment of the bento tray. */
@@ -349,6 +368,7 @@ const COMPONENT_FILES: Readonly<Record<string, readonly string[]>> = {
     'internal/platform/database/',
   ],
   'data/sqlc': ['sqlc.yaml'],
+  'css/tailwind': ['tailwind.css', 'internal/tools/tailwindcss/'],
 };
 
 /**

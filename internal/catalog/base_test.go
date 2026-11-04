@@ -84,6 +84,37 @@ func TestLoadBaseLayer(t *testing.T) {
 	}
 }
 
+// TestLoadKindPoints covers the spec scenario "Frontend point filled by a
+// CSS framework" as far as loading goes: a kind declares points in its
+// kind.yaml, every component of the kind gets them for its templates, and
+// a component of another kind contributes to them.
+func TestLoadKindPoints(t *testing.T) {
+	t.Parallel()
+
+	cat, err := Load(baseCatalog(map[string]string{
+		"frontend/kind.yaml":                "contributions:\n  stylesheet: \" The stylesheet. \"\n  head: Head lines.\n",
+		"frontend/pages/component.yaml":     "name: pages\ntitle: Pages\n",
+		"frontend/spa/component.yaml":       "name: spa\ntitle: SPA\n",
+		"css/paint/component.yaml":          "name: paint\ntitle: Paint\n",
+		"css/paint/contrib/stylesheet.tmpl": "body {}\n",
+	}))
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	for _, c := range cat.Components(KindFrontend) {
+		if len(c.Points) != 2 || c.Points[0].Name != "head" || c.Points[1].Description != "The stylesheet." {
+			t.Errorf("%s Points = %+v", c.ID(), c.Points)
+		}
+		if _, ok := c.Point("stylesheet"); !ok {
+			t.Errorf(`%s: Point("stylesheet") not found`, c.ID())
+		}
+	}
+	paint, _ := cat.Component(KindCSS, "paint")
+	if paint.Contributions["stylesheet"] != "body {}\n" || len(paint.Points) != 0 {
+		t.Errorf("paint = %+v", paint)
+	}
+}
+
 func TestLoadWithoutBaseLayer(t *testing.T) {
 	t.Parallel()
 
@@ -111,7 +142,51 @@ func TestLoadBaseLayerErrors(t *testing.T) {
 			// Spec scenario "Unknown contribution point".
 			name:    "undeclared point",
 			changes: map[string]string{"database/pg/contrib/ci-steps.tmpl": "- run: make\n"},
-			want:    []string{"database/pg/contrib/ci-steps.tmpl", `no contribution point "ci-steps"`, "declared points: ci-services, docker-build"},
+			want:    []string{"database/pg/contrib/ci-steps.tmpl", `declares the contribution point "ci-steps"`, "declared points: ci-services, docker-build"},
+		},
+		{
+			// Points declared by kinds count as declared.
+			name: "undeclared point with kind points",
+			changes: map[string]string{
+				"frontend/kind.yaml":                   "contributions:\n  stylesheet: The stylesheet.\n",
+				"frontend/pages/component.yaml":        "name: pages\ntitle: Pages\n",
+				"database/pg/contrib/stylesheets.tmpl": "x\n",
+			},
+			want: []string{"database/pg/contrib/stylesheets.tmpl", "declared points: ci-services, docker-build, stylesheet"},
+		},
+		{
+			name: "kind redeclares a base layer point",
+			changes: map[string]string{
+				"frontend/kind.yaml":            "contributions:\n  docker-build: Mine.\n",
+				"frontend/pages/component.yaml": "name: pages\ntitle: Pages\n",
+			},
+			want: []string{"frontend/kind.yaml", `point "docker-build" is declared by the base layer`},
+		},
+		{
+			name: "two kinds declare one point",
+			changes: map[string]string{
+				"frontend/kind.yaml":            "contributions:\n  stylesheet: The stylesheet.\n",
+				"frontend/pages/component.yaml": "name: pages\ntitle: Pages\n",
+				"css/kind.yaml":                 "contributions:\n  stylesheet: Also mine.\n",
+				"css/paint/component.yaml":      "name: paint\ntitle: Paint\n",
+			},
+			want: []string{"css/kind.yaml", `point "stylesheet" is also declared by the frontend kind`},
+		},
+		{
+			name: "kind point without description",
+			changes: map[string]string{
+				"frontend/kind.yaml":            "contributions:\n  stylesheet: \"\"\n",
+				"frontend/pages/component.yaml": "name: pages\ntitle: Pages\n",
+			},
+			want: []string{"frontend/kind.yaml", "point stylesheet needs a description"},
+		},
+		{
+			name: "unknown kind manifest field",
+			changes: map[string]string{
+				"frontend/kind.yaml":            "title: Frontend\n",
+				"frontend/pages/component.yaml": "name: pages\ntitle: Pages\n",
+			},
+			want: []string{"frontend/kind.yaml", "field title not found"},
 		},
 		{
 			name: "contribution without a base layer",

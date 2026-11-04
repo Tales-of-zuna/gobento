@@ -20,8 +20,13 @@ describe('beltPlates', () => {
       'GORM',
       'sqlc',
       'htmx + templ',
+      'Tailwind CSS',
     ]);
     expect(plates.filter((p) => p.status === 'roadmap')).toHaveLength(ROADMAP.length);
+  });
+
+  it('keeps React, Vue, and Svelte on the roadmap, but not the shipped Tailwind CSS', () => {
+    expect(ROADMAP.map((item) => item.name)).toEqual(['React', 'Vue', 'Svelte']);
   });
 
   it('follows the catalog when a component is added', () => {
@@ -52,9 +57,12 @@ describe('stackCells', () => {
       'Database',
       'Data access',
       'Frontend',
+      'CSS framework',
     ]);
-    expect(cells.map((c) => c.optional)).toEqual([false, false, false, false, true]);
+    expect(cells.map((c) => c.optional)).toEqual([false, false, false, false, true, true]);
     expect(cells[4]!.options.map((o) => o.name)).toEqual(['htmx + templ']);
+    expect(cells[5]!.options.map((o) => o.name)).toEqual(['Tailwind CSS']);
+    expect(cells[5]!.roadmap).toEqual([]);
     expect(cells[1]!.options.map((o) => o.name)).toEqual(['net/http']);
     expect(cells[1]!.roadmap).toEqual(['echo', 'fiber']);
   });

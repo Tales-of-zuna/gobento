@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
+	"maps"
 	"path"
 	"regexp"
 	"slices"
@@ -30,8 +32,12 @@ const (
 	BaseDir = "base"
 	// BaseManifestFile is the manifest of the base layer.
 	BaseManifestFile = "base.yaml"
-	// ContribDir holds a component's contributions to the base layer's
-	// points, one <point>.tmpl file per point.
+	// KindManifestFile is the optional manifest of a kind directory, which
+	// declares contribution points for the templates of the kind's
+	// components.
+	KindManifestFile = "kind.yaml"
+	// ContribDir holds a component's contributions to the points of the
+	// base layer and of other components, one <point>.tmpl file per point.
 	ContribDir = "contrib"
 	// DotPrefix at the start of a path element maps to ".", so that
 	// templates for dotfiles are not dotfiles themselves.
@@ -72,6 +78,12 @@ type manifest struct {
 	Requires    map[string][]string     `yaml:"requires"`
 }
 
+// kindManifest mirrors the YAML layout of kind.yaml, the optional manifest
+// of a kind directory.
+type kindManifest struct {
+	Contributions map[string]string `yaml:"contributions"`
+}
+
 // baseManifest mirrors the YAML layout of base.yaml.
 type baseManifest struct {
 	Title         string            `yaml:"title"`
@@ -95,8 +107,8 @@ type slotManifest struct {
 // component.yaml, versions.yaml, and embed.go ends in .tmpl and that no
 // file or directory name starts with ".", parses the rules file, and checks
 // that every component referenced by the rules exists and that every
-// contribution names a point the base layer declares. It reports every
-// problem found, joined with errors.Join.
+// contribution names a point the base layer or a kind declares. It
+// reports every problem found, joined with errors.Join.
 func Load(fsys fs.FS) (*Catalog, error) {
 	var errs []error
 	cat := &Catalog{}
@@ -160,8 +172,10 @@ func Load(fsys fs.FS) (*Catalog, error) {
 	return cat, nil
 }
 
-// loadKind loads every component directory of one kind. A missing kind
-// directory means the catalog has no components of that kind.
+// loadKind loads every component directory of one kind, and the kind's
+// contribution points from its optional kind.yaml, which every component of
+// the kind gets as its Points. A missing kind directory means the catalog
+// has no components of that kind.
 func loadKind(fsys fs.FS, kind Kind) ([]*Component, []error) {
 	entries, err := fs.ReadDir(fsys, string(kind))
 	if errors.Is(err, fs.ErrNotExist) {
@@ -171,11 +185,18 @@ func loadKind(fsys fs.FS, kind Kind) ([]*Component, []error) {
 		return nil, []error{fmt.Errorf("%s: %w", kind, err)}
 	}
 	var (
-		comps []*Component
-		errs  []error
+		comps  []*Component
+		errs   []error
+		points []Point
 	)
 	for _, e := range entries {
 		dir := path.Join(string(kind), e.Name())
+		if e.Name() == KindManifestFile && !e.IsDir() {
+			p, perrs := loadKindManifest(fsys, dir)
+			points = p
+			errs = append(errs, perrs...)
+			continue
+		}
 		if !e.IsDir() {
 			errs = append(errs, fmt.Errorf("%s: unexpected file; components are directories", dir))
 			continue
@@ -187,7 +208,30 @@ func loadKind(fsys fs.FS, kind Kind) ([]*Component, []error) {
 		}
 		comps = append(comps, c)
 	}
+	for _, c := range comps {
+		c.Points = slices.Clone(points)
+	}
 	return comps, errs
+}
+
+// loadKindManifest reads the kind.yaml at name and returns the points it
+// declares.
+func loadKindManifest(fsys fs.FS, name string) ([]Point, []error) {
+	data, err := fs.ReadFile(fsys, name)
+	if err != nil {
+		return nil, []error{err}
+	}
+	var m kindManifest
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true)
+	if err := dec.Decode(&m); err != nil && !errors.Is(err, io.EOF) {
+		return nil, []error{fmt.Errorf("%s: %w", name, err)}
+	}
+	points, perrs := parsePoints(m.Contributions)
+	for i, err := range perrs {
+		perrs[i] = fmt.Errorf("%s: %w", name, err)
+	}
+	return points, perrs
 }
 
 // loadComponent loads and validates the component in dir.
@@ -340,14 +384,10 @@ func loadBase(fsys fs.FS) (*Component, []error) {
 	if strings.TrimSpace(m.Title) == "" {
 		fail("title is required")
 	}
-	for _, name := range sortedKeys(m.Contributions) {
-		if !namePattern.MatchString(name) {
-			fail("contributions: point name %q must match %s", name, namePattern)
-		}
-		if strings.TrimSpace(m.Contributions[name]) == "" {
-			fail("contributions: point %s needs a description", name)
-		}
-		c.Points = append(c.Points, Point{Name: name, Description: strings.TrimSpace(m.Contributions[name])})
+	points, perrs := parsePoints(m.Contributions)
+	c.Points = points
+	for _, err := range perrs {
+		fail("%w", err)
 	}
 	if len(errs) > 0 {
 		return nil, errs
@@ -385,25 +425,66 @@ func loadContributions(fsys fs.FS, dir string) (map[string]string, []error) {
 	return out, errs
 }
 
-// checkContributions reports every contribution to a point the base layer
-// does not declare.
+// parsePoints converts the contributions: mapping of base.yaml or
+// component.yaml into points sorted by name.
+func parsePoints(decl map[string]string) ([]Point, []error) {
+	var (
+		points []Point
+		errs   []error
+	)
+	for _, name := range sortedKeys(decl) {
+		if !namePattern.MatchString(name) {
+			errs = append(errs, fmt.Errorf("contributions: point name %q must match %s", name, namePattern))
+		}
+		if strings.TrimSpace(decl[name]) == "" {
+			errs = append(errs, fmt.Errorf("contributions: point %s needs a description", name))
+		}
+		points = append(points, Point{Name: name, Description: strings.TrimSpace(decl[name])})
+	}
+	return points, errs
+}
+
+// checkContributions reports every point a kind declares that the base
+// layer or another kind also declares, and every contribution to a point
+// that neither the base layer nor any kind declares.
 func checkContributions(comps []*Component, base *Component) []error {
 	var errs []error
+	declared := make(map[string]string) // point -> BaseID or the declaring kind
+	if base != nil {
+		for _, p := range base.Points {
+			declared[p.Name] = BaseID
+		}
+	}
+	for _, kind := range Kinds() {
+		i := slices.IndexFunc(comps, func(c *Component) bool { return c.Kind == kind })
+		if i < 0 {
+			continue
+		}
+		for _, p := range comps[i].Points {
+			source := path.Join(string(kind), KindManifestFile)
+			switch by, ok := declared[p.Name]; {
+			case ok && by == BaseID:
+				errs = append(errs, fmt.Errorf("%s: contributions: point %q is declared by the base layer; choose another name", source, p.Name))
+			case ok:
+				errs = append(errs, fmt.Errorf("%s: contributions: point %q is also declared by the %s kind; choose another name", source, p.Name, by))
+			default:
+				declared[p.Name] = string(kind)
+			}
+		}
+	}
+	names := slices.Sorted(maps.Keys(declared))
 	for _, c := range comps {
 		for _, point := range sortedKeys(c.Contributions) {
-			if base == nil {
-				errs = append(errs, fmt.Errorf("%s/%s/%s%s: the catalog has no base layer (%s/) to contribute to",
+			if _, ok := declared[point]; ok {
+				continue
+			}
+			if len(names) == 0 {
+				errs = append(errs, fmt.Errorf("%s/%s/%s%s: the catalog has no base layer (%s/) and no kind declares a point to contribute to",
 					c.ID(), ContribDir, point, TemplateSuffix, BaseDir))
 				continue
 			}
-			if _, ok := base.Point(point); !ok {
-				names := make([]string, len(base.Points))
-				for i, p := range base.Points {
-					names[i] = p.Name
-				}
-				errs = append(errs, fmt.Errorf("%s/%s/%s%s: the base layer declares no contribution point %q; declared points: %s",
-					c.ID(), ContribDir, point, TemplateSuffix, point, strings.Join(names, ", ")))
-			}
+			errs = append(errs, fmt.Errorf("%s/%s/%s%s: neither the base layer nor any kind declares the contribution point %q; declared points: %s",
+				c.ID(), ContribDir, point, TemplateSuffix, point, strings.Join(names, ", ")))
 		}
 	}
 	return errs

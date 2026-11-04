@@ -1,0 +1,54 @@
+{{- if eq (index .Traits "frontend-build") "go" -}}
+package main
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestReleases(t *testing.T) {
+	if len(releases) == 0 {
+		t.Fatal("no releases")
+	}
+	for platform, rel := range releases {
+		if !strings.HasPrefix(rel.url, "https://") || !strings.Contains(rel.url, version) {
+			t.Errorf("%s: url %q is not an https URL of version %s", platform, rel.url, version)
+		}
+		if len(rel.sum) != 64 {
+			t.Errorf("%s: checksum %q is not 64 hex digits", platform, rel.sum)
+		}
+	}
+}
+
+func TestBinaryOverride(t *testing.T) {
+	t.Setenv("TAILWINDCSS", "/opt/tailwindcss")
+	got, err := binary(t.Context(), "plan9/mips")
+	if err != nil || got != "/opt/tailwindcss" {
+		t.Errorf("binary() = %q, %v; want the TAILWINDCSS path", got, err)
+	}
+}
+
+func TestBinaryUnsupportedPlatform(t *testing.T) {
+	t.Setenv("TAILWINDCSS", "")
+	_, err := binary(t.Context(), "plan9/mips")
+	if err == nil || !strings.Contains(err.Error(), "plan9/mips") || !strings.Contains(err.Error(), "TAILWINDCSS") {
+		t.Errorf("binary() error = %v, want the platform and TAILWINDCSS named", err)
+	}
+}
+
+func TestFileSHA256(t *testing.T) {
+	name := filepath.Join(t.TempDir(), "file")
+	if err := os.WriteFile(name, []byte("abc"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := fileSHA256(name)
+	sum := sha256.Sum256([]byte("abc"))
+	if want := hex.EncodeToString(sum[:]); err != nil || got != want {
+		t.Errorf("fileSHA256() = %q, %v; want %s", got, err, want)
+	}
+}
+{{end -}}

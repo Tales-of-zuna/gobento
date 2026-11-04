@@ -20,6 +20,7 @@ export const KIND_FLAGS: Readonly<Record<KindId, string>> = {
   database: 'db',
   data: 'data',
   frontend: 'frontend',
+  css: 'css',
 };
 
 /** Everything the configurator lets a visitor choose. */
@@ -83,7 +84,8 @@ function needsFlag(catalog: Catalog, kind: KindId): boolean {
  * Builds the command for a state, or lists every problem that prevents one:
  * invalid name or module path, a required kind with several options left
  * unchosen, or an incompatible selection. An optional kind left unchosen
- * means none, so its flag is omitted (`--frontend none` is the default).
+ * means none, so its flag is omitted (`--frontend none` and `--css none` are
+ * the defaults).
  */
 export function buildCommand(catalog: Catalog, state: ConfigState): BuildResult {
   const errors: FieldError[] = [...inputErrors(catalog, state)];

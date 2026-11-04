@@ -46,6 +46,7 @@ only:
     <File name="versions.yaml" />
     <File name="embed.go" />
     <Folder name="<kind>" defaultOpen>
+      <File name="kind.yaml" />
       <Folder name="<name>" defaultOpen>
         <File name="component.yaml" />
         <File name="notes.md.tmpl" />
@@ -69,11 +70,12 @@ only:
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `versions.yaml`            | The [version rules](#versions) for every generated project.                                                          |
 | `embed.go`                 | Embeds the catalog into the gobento binary. The only Go file under `components/`.                                    |
+| `kind.yaml`                | Optional, per kind: [contribution points](#points-of-a-kind) that the kind's components include in their templates.  |
 | `component.yaml`           | The [manifest](#the-manifest). The loader validates it.                                                              |
 | `files/<slot>/<file>.tmpl` | Rendered into that slot's directory, for example `files/store/` for the store slot.                                  |
 | `files/root/<file>.tmpl`   | Rendered into the project root, for example `sqlc.yaml`. Root paths are checked for conflicts with other components. |
 | `notes.md.tmpl`            | Optional notes appended to the generated README.                                                                     |
-| `contrib/<point>.tmpl`     | Optional [contributions](#contributing-to-the-tooling) to the base layer's tooling files, one per point.             |
+| `contrib/<point>.tmpl`     | Optional [contributions](#contributing-to-the-tooling) to the points of the base layer or of a kind, one per point.  |
 
 The base layer lives next to the kinds, in `components/base/`: `base.yaml`
 (its title and contribution points), `notes.md.tmpl` (the README's
@@ -126,7 +128,7 @@ Each slot has these keys:
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `dir`       | Required. The slot's directory, relative to the project root. It is a template over `.Project`, for example `cmd/{{.Project.Name}}`.                                              |
 | `package`   | Optional. The Go package name. It defaults to the last element of the rendered `dir`; set it when that is not a valid package name, as the entry point does with `package: main`. |
-| `filled_by` | Required. The kind that fills the slot: `architecture`, `framework`, `database`, `data`, or `frontend`.                                                                           |
+| `filled_by` | Required. The kind that fills the slot: `architecture`, `framework`, `database`, `data`, `frontend`, or `css`.                                                                    |
 | `required`  | Optional, default `false`. The selection must fill the slot. A slot of an optional kind, such as `web`, is not required.                                                          |
 
 Slot names match `^[a-z][a-z0-9_]*$`, because templates use them as field
@@ -222,28 +224,37 @@ To change the API, change every framework and the shared test together.
 Templates use Go's [`text/template`](https://pkg.go.dev/text/template). Every
 template, including slot directories and notes, receives the same data:
 
-| Field                   | Example                                    | Meaning                                                                                             |
-| ----------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------- |
-| `.Project.Name`         | `shop`                                     | The project name                                                                                    |
-| `.Project.Module`       | `example.com/shop`                         | The module path                                                                                     |
-| `.Project.GoVersion`    | `1.27.0`                                   | The `go` directive of the generated `go.mod`                                                        |
-| `.Slots.<name>.Dir`     | `internal/controllers`                     | The slot's directory                                                                                |
-| `.Slots.<name>.Package` | `controllers`                              | The slot's package name                                                                             |
-| `.Slots.<name>.Import`  | `example.com/shop/internal/controllers`    | The slot's import path                                                                              |
-| `.Slots.<name>.Filled`  | `{{if .Slots.web.Filled}}`                 | Whether a selected component fills the slot                                                         |
-| `.APIPrefix`            | `/api`                                     | Where the API router is served: `""` without a frontend, `/api` with one                            |
-| `.Traits`               | `{{index .Traits "sql-dialect"}}`          | The traits of the selection                                                                         |
-| `.Versions`             | `{{index .Versions "modernc.org/sqlite"}}` | The chosen version of each module                                                                   |
-| `.Assets`               | `{{index .Assets "htmx.org"}}`             | The version of each [vendored asset](/docs/concepts/version-rules#vendored-assets) of the selection |
-| `.Images`               | `{{.Images.postgres}}`                     | Container images, as `image:tag[@digest]`                                                           |
-| `.Actions`              | `{{index .Actions "actions/checkout"}}`    | GitHub Actions, as `owner/repo@<sha> # <version>`                                                   |
-| `.Tools`                | `{{index .Tools "golangci-lint"}}`         | Tool versions                                                                                       |
+| Field                   | Example                                    | Meaning                                                                                                                                                      |
+| ----------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `.Project.Name`         | `shop`                                     | The project name                                                                                                                                             |
+| `.Project.Module`       | `example.com/shop`                         | The module path                                                                                                                                              |
+| `.Project.GoVersion`    | `1.27.0`                                   | The `go` directive of the generated `go.mod`                                                                                                                 |
+| `.Slots.<name>.Dir`     | `internal/controllers`                     | The slot's directory                                                                                                                                         |
+| `.Slots.<name>.Package` | `controllers`                              | The slot's package name                                                                                                                                      |
+| `.Slots.<name>.Import`  | `example.com/shop/internal/controllers`    | The slot's import path                                                                                                                                       |
+| `.Slots.<name>.Filled`  | `{{if .Slots.web.Filled}}`                 | Whether a selected component fills the slot                                                                                                                  |
+| `.APIPrefix`            | `/api`                                     | Where the API router is served: `""` without a frontend, `/api` with one                                                                                     |
+| `.Traits`               | `{{index .Traits "sql-dialect"}}`          | The traits of the selection                                                                                                                                  |
+| `.Versions`             | `{{index .Versions "modernc.org/sqlite"}}` | The chosen version of each module                                                                                                                            |
+| `.Assets`               | `{{index .Assets "htmx.org"}}`             | The version of each [vendored asset](/docs/concepts/version-rules#vendored-assets) of the selection                                                          |
+| `.Binaries`             | `{{.Binaries.tailwindcss.Version}}`        | Each [downloaded binary](/docs/concepts/version-rules#downloaded-binaries) of the selection: `.Version` and `.Platforms` (`.OS`, `.Arch`, `.URL`, `.SHA256`) |
+| `.Images`               | `{{.Images.postgres}}`                     | Container images, as `image:tag[@digest]`                                                                                                                    |
+| `.Actions`              | `{{index .Actions "actions/checkout"}}`    | GitHub Actions, as `owner/repo@<sha> # <version>`                                                                                                            |
+| `.Tools`                | `{{index .Tools "golangci-lint"}}`         | Tool versions                                                                                                                                                |
 
 `.Images`, `.Actions`, and `.Tools` come from the
 [tooling section](/docs/concepts/version-rules#tooling-versions) of the rules
 file. Every template may also use two functions: `indent N TEXT` puts `N`
 spaces before every non-empty line, and `prefix P TEXT` puts `P` there (for
-example `"\t"`).
+example `"\t"`). The templates of the base layer, and of a component whose
+kind declares points, also have `contrib "<point>"` (see
+[Contributing to the tooling](#contributing-to-the-tooling)).
+
+A file template that renders to nothing but whitespace produces **no file**.
+Use it for a file that only some selections need, guarded by a trait:
+`css/tailwind` wraps `tailwind.css.tmpl` in
+`{{if eq (index .Traits "frontend-build") "go"}}...{{end}}`, so a Vite
+frontend, whose build compiles Tailwind itself, gets no such file.
 
 This data shape is the contributor API, and the golden test covers it. Use
 `index` for keys that contain `-`, `.`, or `/`. A missing key is an error, not
@@ -267,9 +278,12 @@ go run github.com/sqlc-dev/sqlc/cmd/sqlc@{{index .Versions "github.com/sqlc-dev/
 
 ### Rules for templates
 
-- **No version numbers.** Versions come from `.Versions`, `.Assets`, and the
-  rules file, never from a template. A vendored file, such as htmx, contains
-  its own version, which is fine: it is shipped unmodified.
+- **No version numbers.** Versions come from `.Versions`, `.Assets`,
+  `.Binaries`, and the rules file, never from a template. A vendored file,
+  such as htmx, contains its own version, which is fine: it is shipped
+  unmodified. So does generated output that a component ships, such as
+  sqlc's code or the compiled Tailwind stylesheet, which CI regenerates with
+  the pinned version.
 - **Write API paths with `.APIPrefix`.** In notes and READMEs, write
   `{{.APIPrefix}}/items`, so the paths are right with and without a frontend.
 - **Implement your slot's contract.** Provide exactly the functions and types
@@ -334,12 +348,29 @@ postgres:
     - 5432:5432
 ```
 
-A contribution to a point that `base.yaml` does not declare fails when the
-catalog loads, listing the declared points. When no point fits (a new kind
-might need, say, a step in a job of its own), add one: an entry with a
-description in `base.yaml` and one `{{contrib "<point>"}}` in the base
-template where it belongs; only the base layer's templates may call
-`contrib`. Other components need no change.
+A contribution to a point that neither `base.yaml` nor a `kind.yaml`
+declares fails when the catalog loads, listing the declared points. When no
+point fits (a new kind might need, say, a step in a job of its own), add one:
+an entry with a description in `base.yaml` and one `{{contrib "<point>"}}` in
+the base template where it belongs. Other components need no change.
+
+A contribution that renders to whitespace counts as none, so guard a
+contribution that only some selections need with a trait. A non-empty
+contribution must reach a template: composition fails when no part of the
+selection declares its point, or when no rendered template includes it.
+
+#### Points of a kind
+
+A kind can declare points too, for the templates of its components, in
+`components/<kind>/kind.yaml` (same format as `base.yaml`'s
+`contributions:`). Components of other kinds contribute to them like to the
+base layer's. The frontend kind declares the points a
+[CSS framework](/docs/concepts/slots-and-contracts#css-frameworks) fills:
+`stylesheet` for frontends built by Go, and `vite-config-imports`,
+`vite-plugins`, `css-imports`, and `npm-dev-dependencies` for Vite builds. A
+component's templates may call `contrib` only for its kind's points, and the
+base layer's only for its own. No two kinds, and no kind and the base layer,
+may declare the same point.
 
 ### Composition errors
 
@@ -400,6 +431,14 @@ a JavaScript library, is not a module: record it under `assets` with its
 `sha256`. See [Vendored assets](/docs/concepts/version-rules#vendored-assets).
 Asset versions are fixed per gobento release, and the tests compare the
 checksum with your file and with the upstream one.
+
+A program that generated projects download on demand, one file per platform,
+such as the standalone Tailwind CLI, goes under `binaries`, with its
+`version`, the release's `checksums` file, and a `url` and `sha256` per
+`GOOS/GOARCH` platform. See
+[Downloaded binaries](/docs/concepts/version-rules#downloaded-binaries). Take
+every checksum from the release's checksum file; the tests compare them with
+it.
 
 gobento rejects the generation if `go mod tidy` would raise any chosen version
 or the `go` directive, and reports the missing constraint. See
@@ -579,14 +618,35 @@ The `htmx` frontend ships the Go code templ generates from `pages.templ`
 `--frontend htmx`, run `go generate ./...` in it (the `//go:generate` line in
 the web package runs the pinned templ), and copy `pages_templ.go` back to
 `components/frontend/htmx/files/web/pages_templ.go.tmpl`, replacing the
-package name, the models import and package, the project name in `<title>`,
-and `/api` with their template fields (`{{.Slots.web.Package}}`,
-`{{.Slots.models.Import}}`, `{{.Slots.models.Package}}`, `{{.Project.Name}}`,
-`{{.APIPrefix}}`). Keep template fields off lines with templ expressions, so
+package name, the models import and package, and `/api` with their template
+fields (`{{.Slots.web.Package}}`, `{{.Slots.models.Import}}`,
+`{{.Slots.models.Package}}`, `{{.APIPrefix}}`). The page title is the Go
+constant `title` in `handler.go`, not text in `pages.templ`, so that Tailwind,
+which scans the `.templ` files for class names, never sees the project name. Keep template fields off lines with templ expressions, so
 the line and column numbers templ records stay right. Then update the golden
 files. CI's `templ-fresh` job regenerates the code in a reference project and
 fails if any file changes. When you bump templ in `versions.yaml`, regenerate
 in the same way.
+
+The markup is the same with and without a CSS framework, so a change to
+`pages.templ` also changes what Tailwind compiles: regenerate the Tailwind
+output too (next section).
+
+### Generated code: Tailwind CSS
+
+`css/tailwind` ships, as its `stylesheet` contribution
+(`contrib/stylesheet.tmpl`), the stylesheet the pinned Tailwind CLI compiles
+from `tailwind.css.tmpl` and htmx's `pages.templ`. After changing either, or
+the Tailwind version in `versions.yaml`, generate a project with
+`--frontend htmx --css tailwind`, run
+`go run ./internal/tools/tailwindcss --input tailwind.css --output internal/views/static/styles.css --minify`
+in it, and copy `internal/views/static/styles.css` into
+`contrib/stylesheet.tmpl`, between the `{{if eq (index .Traits "frontend-build") "go"}}`
+line and the `{{end}}` line. The output must not contain `{{`. It is the same
+for every architecture and project name, because `tailwind.css` makes
+Tailwind scan only the web slot's `.templ` files. CI's `templ-fresh` job
+(its `tailwind` leg) and the integration test regenerate it and fail if
+anything changes.
 
 To update htmx, replace `files/web/static/htmx.min.js.tmpl` with
 `dist/htmx.min.js` of the new release, and change `version`, `source`, and
@@ -643,11 +703,38 @@ only through `ItemStore`. Serve its static files from the binary with
 [asset](#versions). Ship `*_test.go.tmpl` tests against a fake `ItemStore`, as
 `htmx` does.
 
+Every frontend provides the trait `frontend-build`: `go` when the Go
+toolchain alone builds its assets, as with htmx, or `vite`. CSS frameworks
+require it, so they are offered with your frontend only if it provides a
+value they support, and they contribute only to the points of that build
+system. Include those points of `components/frontend/kind.yaml` where they
+belong: a `go` frontend serves the `stylesheet` contribution as its
+stylesheet, or its own CSS when there is none; a `vite` frontend inserts
+`vite-config-imports` at the top of its Vite configuration, `vite-plugins` in
+its `plugins` array, `css-imports` at the top of its main stylesheet, and
+installs `npm-dev-dependencies` as development dependencies. A frontend that
+leaves out a point makes the CSS framework's selections with it unsupported,
+because a contribution that reaches no template fails composition.
+
 Frontends built by a JavaScript toolchain (React, Vue, or Svelte via Vite)
 are planned: they will embed the built `dist/` directory with
 `//go:embed all:dist`, serve `index.html` for client-side routes, call the API
 under `{{.APIPrefix}}`, and configure Vite's dev server to proxy
-`{{.APIPrefix}}` to the Go server.
+`{{.APIPrefix}}` to the Go server. `internal/compose/testdata/vite-frontend`
+is a fixture of such a frontend that includes the Vite points, and
+`TestViteHook` checks what Tailwind CSS contributes to it.
+
+## Adding a CSS framework
+
+A CSS framework (kind `css`) has no slot. It requires `frontend-build` with
+the build systems it supports, provides `css: <name>`, and reaches the
+frontend only through the frontend kind's points, guarded by
+`{{if eq (index .Traits "frontend-build") "go"}}` (or `"vite"`). Files that
+only one build needs, such as `tailwind.css` and the Tailwind runner, are
+root files wrapped in the same condition, so they render empty, and are left
+out, for the other one. Like every component, it may contribute to the base
+layer's points, for example a `make generate` command and a CI step that
+checks its generated output.
 
 ## Documentation
 

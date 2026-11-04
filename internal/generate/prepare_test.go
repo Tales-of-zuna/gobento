@@ -167,6 +167,26 @@ func TestPrepareErrors(t *testing.T) {
 			wantMsg: []string{"modernc.org/sqlite v1.0.0", ">=v1.61.0 <v2.0.0"},
 		},
 		{
+			// Spec: CSS framework without a frontend.
+			name:    "css framework without a frontend",
+			spec:    Spec{Name: "shop", Components: map[catalog.Kind]string{catalog.KindArchitecture: "mvc", catalog.KindFramework: "nethttp", catalog.KindDatabase: "sqlite", catalog.KindData: "sqlc", catalog.KindCSS: "tailwind"}},
+			wantMsg: []string{"mvc/nethttp/sqlite/sqlc/tailwind is not supported", "css/tailwind requires one of [go, vite]", "frontend-build is provided by frontend/htmx"},
+		},
+		{
+			// Spec: Unknown CSS framework.
+			name:    "unknown css framework",
+			spec:    Spec{Name: "shop", Components: map[catalog.Kind]string{catalog.KindArchitecture: "mvc", catalog.KindFramework: "nethttp", catalog.KindDatabase: "sqlite", catalog.KindData: "sqlc", catalog.KindFrontend: "htmx", catalog.KindCSS: "bootstrap"}},
+			wantMsg: []string{`unknown CSS framework "bootstrap"; supported: none, tailwind`},
+		},
+		{
+			// Spec: Pin for a binary.
+			name: "pin of a binary",
+			spec: Spec{Name: "shop", Components: map[catalog.Kind]string{catalog.KindArchitecture: "mvc", catalog.KindFramework: "nethttp", catalog.KindDatabase: "sqlite", catalog.KindData: "sqlc", catalog.KindFrontend: "htmx", catalog.KindCSS: "tailwind"},
+				Pins: map[string]string{"tailwindcss": "4.0.0"}},
+			wantIs:  []error{compat.ErrNotPinnable},
+			wantMsg: []string{"cannot pin tailwindcss, binary versions are fixed per gobento release"},
+		},
+		{
 			name:    "name and version problems together",
 			spec:    Spec{Name: "Shop", Go: "1.20"},
 			wantIs:  []error{ErrInvalidName},

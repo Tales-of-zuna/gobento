@@ -14,7 +14,7 @@ description: gobento composes a ready-to-build Go project from the stack you cho
 
 gobento is a command-line tool that generates a new Go project from the stack
 you pick: an architecture, an HTTP framework, a database, a data-access
-library, and optionally a frontend.
+library, and optionally a frontend and a CSS framework.
 
 ```sh
 gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres --data sqlc
@@ -35,8 +35,8 @@ and every new option multiplies the work.
 gobento avoids both problems:
 
 - **Your stack, your choice.** You select one component of each kind, and a
-  frontend only if you want one. Flags are only required when a required kind
-  has more than one option.
+  frontend and a CSS framework only if you want them. Flags are only required
+  when a required kind has more than one option.
 - **Versions as data.** All supported Go and module versions live in one rules
   file. You can choose versions inside the supported ranges, and gobento
   rejects combinations that do not work instead of silently changing them.
@@ -48,7 +48,7 @@ gobento avoids both problems:
   failure or Ctrl-C it leaves nothing behind.
 - **Proven builds.** Every supported backend combination is generated, built,
   and tested in CI on Linux, macOS, and Windows, and the combinations with a
-  frontend are covered pairwise.
+  frontend or a CSS framework are covered pairwise.
 
 gobento is inspired by [go-blueprint](https://github.com/melkeydev/go-blueprint),
 which showed how much a good project generator helps Go developers get
@@ -63,13 +63,15 @@ started.
 | Database       | `sqlite` (pure Go, no cgo), `postgres` (PostgreSQL through pgx, pure Go)                                |
 | Data access    | `sqlc` or `gorm` (GORM)                                                                                 |
 | Frontend       | none (API only, the default) or `htmx` (htmx + templ pages)                                             |
+| CSS framework  | none (the frontend's own CSS, the default) or `tailwind` (Tailwind CSS, with a frontend)                |
 
 Every architecture uses the same framework, database, and data-access
 components, arranged in a different layout, and every framework serves
 exactly the same API. Every combination generates a project with a health
 endpoint and one example resource, `/items`, stored in the database you
 chose. With `--frontend htmx`, it also serves a page at `/` that lists and
-adds items, and the API moves under `/api`. More architectures and frontends
+adds items, and the API moves under `/api`; `--css tailwind` styles those
+pages with Tailwind CSS. More architectures and frontends
 (React, Vue, and Svelte via Vite) are on the roadmap; the
 [Components](/docs/components) reference always lists exactly what the
 catalog supports, and [`gobento list`](/docs/cli/list) shows the same from the

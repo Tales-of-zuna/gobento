@@ -9,7 +9,8 @@ const STEPS = ['generate', 'build', 'test'] as const;
 /**
  * "Proven in CI": the OS × Go matrix gobento's tests pass, with a stamp. The
  * lead states the coverage rule of compose.Coverage: every supported
- * selection without a frontend, and those with one pairwise.
+ * selection without an optional component (frontend, CSS framework), and
+ * those with one pairwise.
  */
 export function ProvenInCI() {
   return (
@@ -26,9 +27,9 @@ export function ProvenInCI() {
               Built on all three, before you ever run it.
             </h2>
             <p className={s.lead}>
-              Every supported selection without a frontend is generated, built and tested on Linux,
-              macOS and Windows, with default and floor versions. With a frontend, every pair of
-              parts that can share a project is built together at least once.
+              Every supported selection without a frontend or CSS framework is generated, built and
+              tested on Linux, macOS and Windows, with default and floor versions. With them, every
+              pair of parts that can share a project is built together at least once.
             </p>
           </div>
           <Stagger inView>

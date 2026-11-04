@@ -60,8 +60,9 @@ commands, so you can always run them directly.
 ### Integration tests and PostgreSQL
 
 `make test-all` includes `TestIntegration` in `internal/generate`, which
-generates every supported selection without a frontend, plus a pairwise
-covering set of those with one (`compose.Coverage`), and runs `go test ./...`
+generates every supported selection without a frontend or CSS framework,
+plus a pairwise covering set of those with one (`compose.Coverage`), and runs
+`go test ./...`
 inside each project. The tests of a PostgreSQL project are skipped unless
 `TEST_DATABASE_URL` names a server; CI sets it on Linux, so the PostgreSQL code
 paths always run there. To run them locally, start a throwaway server with
@@ -84,7 +85,11 @@ a few minutes more), runs actionlint on the generated workflow and
 golangci-lint on the code, and, where `make` is installed, runs `make`,
 `make build`, and `make lint`; with a frontend, it also runs
 `go generate` in the web package and checks that the shipped templ code is
-unchanged. `TestIntegrationDocker` (matched by the same `-run
+unchanged, and with Tailwind CSS, it rebuilds the stylesheet with the pinned
+standalone Tailwind CLI (downloaded once into your user cache directory,
+about 100 MB) and checks that the shipped stylesheet is unchanged.
+`TestIntegrationTailwindProjectName` does the same for a project named
+`container`, a Tailwind utility. `TestIntegrationDocker` (matched by the same `-run
 TestIntegration`) builds the images of one SQLite and one PostgreSQL project
 and of a SQLite project with htmx with the generated `Dockerfile`, and runs
 the SQLite ones; it is skipped when no Docker daemon runs Linux containers, so
@@ -243,7 +248,7 @@ you get stuck, ask in the issue; there are no silly questions.
 ## Adding a component
 
 Components (frameworks, databases, data access libraries, architectures,
-frontends) are the heart of gobento. To suggest one, open a
+frontends, CSS frameworks) are the heart of gobento. To suggest one, open a
 [component request](https://github.com/Tales-of-zuna/gobento/issues/new?template=component_request.yml).
 For how to build one, see
 [Adding a component](https://tales-of-zuna.github.io/gobento/docs/contributing/adding-a-component/)

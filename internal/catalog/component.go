@@ -19,6 +19,10 @@ const (
 	KindData         Kind = "data"
 	// KindFrontend is optional: a project without a frontend is API-only.
 	KindFrontend Kind = "frontend"
+	// KindCSS is optional: a CSS framework that styles the frontend. Its
+	// components require the trait frontend-build, so they are supported
+	// only together with a frontend.
+	KindCSS Kind = "css"
 )
 
 // None is the name that selects no component of an optional kind, for
@@ -27,7 +31,7 @@ const None = "none"
 
 // Kinds returns every component kind in canonical order.
 func Kinds() []Kind {
-	return []Kind{KindArchitecture, KindFramework, KindDatabase, KindData, KindFrontend}
+	return []Kind{KindArchitecture, KindFramework, KindDatabase, KindData, KindFrontend, KindCSS}
 }
 
 // valid reports whether k is one of the known kinds.
@@ -37,7 +41,7 @@ func (k Kind) valid() bool {
 
 // Optional reports whether a selection may leave out a component of kind k.
 func (k Kind) Optional() bool {
-	return k == KindFrontend
+	return k == KindFrontend || k == KindCSS
 }
 
 // RootSlot is the pseudo-slot for files placed at the project root. Its
@@ -70,13 +74,15 @@ type Component struct {
 	// Contributions maps contribution points of the base layer to the
 	// component's template for that point, from contrib/<point>.tmpl.
 	Contributions map[string]string
-	// Points lists the contribution points the base layer declares,
-	// sorted by name. Only the base layer declares points.
+	// Points lists the contribution points that the component's templates
+	// may include, sorted by name: those of the base layer for the base
+	// layer, and those its kind declares in kind.yaml for a component.
 	Points []Point
 }
 
-// Point is a contribution point of the base layer: a named place in its
-// files where the selected components' contributions are inserted.
+// Point is a contribution point of the base layer or of a kind: a named
+// place in their files where the selected components' contributions are
+// inserted.
 type Point struct {
 	// Name identifies the point, for example ci-services. It is also the
 	// file name, without .tmpl, of a contribution in contrib/.
@@ -176,11 +182,13 @@ type Selection struct {
 	Data         *Component
 	// Frontend is optional; nil means an API-only project.
 	Frontend *Component
+	// CSS is optional; nil keeps the frontend's own stylesheet.
+	CSS *Component
 }
 
 // all returns the fields of s in kind order, including nil ones.
 func (s Selection) all() []*Component {
-	return []*Component{s.Architecture, s.Framework, s.Database, s.Data, s.Frontend}
+	return []*Component{s.Architecture, s.Framework, s.Database, s.Data, s.Frontend, s.CSS}
 }
 
 // Component returns the selected component of kind k, or nil if there is
@@ -206,6 +214,8 @@ func (s Selection) With(c *Component) Selection {
 		s.Data = c
 	case KindFrontend:
 		s.Frontend = c
+	case KindCSS:
+		s.CSS = c
 	}
 	return s
 }
@@ -223,8 +233,9 @@ func (s Selection) Components() []*Component {
 }
 
 // String returns the selection as names in kind order, for example
-// "mvc/nethttp/sqlite/sqlc", or "mvc/nethttp/sqlite/sqlc/htmx" with a
-// frontend. A missing required kind is shown as "-"; an optional kind
+// "mvc/nethttp/sqlite/sqlc", "mvc/nethttp/sqlite/sqlc/htmx" with a
+// frontend, or "mvc/nethttp/sqlite/sqlc/htmx/tailwind" with a CSS framework
+// too. A missing required kind is shown as "-"; an optional kind
 // without a component is left out.
 func (s Selection) String() string {
 	names := make([]string, 0, len(Kinds()))

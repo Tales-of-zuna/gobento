@@ -24,6 +24,11 @@ import (
 //go:embed static
 var static embed.FS
 
+// title is the title of every page. It is Go code rather than text in
+// pages.templ, so that a CSS framework scanning the pages for class names
+// does not take the project name for one.
+const title = "shop"
+
 // maxFormBytes limits the size of form submissions.
 const maxFormBytes = 1 << 20
 

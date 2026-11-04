@@ -47,6 +47,17 @@ and a requirement lists at least one accepted value.
   few facts one component needs about another's files, without naming the
   other component.
 
+- **`frontend-build`**: how a frontend's assets are built: `go` when the Go
+  toolchain alone builds them (htmx: templ code and static files are
+  committed and embedded), `vite` for frontends built by Vite. Every frontend
+  provides it, and a CSS framework requires it, which is why a CSS framework
+  is only supported together with a frontend. Tailwind CSS contributes
+  different things for each value: a Tailwind source and a compiled
+  stylesheet for `go`, the `@tailwindcss/vite` plugin for `vite`.
+- **`css`**: the CSS framework, such as `tailwind`, provided by the CSS
+  framework component so that a frontend or a module of the rules file can
+  depend on its value.
+
 Future components declare their own values. For example, a database that
 exposes pgx's native pool instead of `database/sql` would declare its own
 `conn` value, so an incompatible pair is rejected by data, without any code in

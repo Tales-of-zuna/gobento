@@ -28,7 +28,8 @@ func runInteractive(t *testing.T, catalog fs.FS, gen *fakeGenerator, ask asker, 
 }
 
 // TestNewAsks covers the spec scenarios "Several frameworks, framework flag
-// omitted", "No name given", and "Framework chosen by a question".
+// omitted", "No name given", "Framework chosen by a question", "CSS
+// framework question", and "Not asked without a frontend".
 func TestNewAsks(t *testing.T) {
 	t.Parallel()
 
@@ -43,10 +44,10 @@ func TestNewAsks(t *testing.T) {
 		{
 			name:       "components only",
 			args:       []string{"new", "shop", "--dry-run"},
-			answers:    map[string]string{"architecture": "vertical-slice", "framework": "chi", "database": "postgres", "data": "gorm", "frontend": "htmx"},
-			wantAsked:  []string{"architecture", "framework", "database", "data", "frontend"},
-			wantOut:    "gobento would create shop (vertical-slice/chi/postgres/gorm/htmx, Go 1.27) in shop",
-			wantStderr: "Equivalent command: gobento new shop --arch vertical-slice --framework chi --db postgres --data gorm --frontend htmx --dry-run\n",
+			answers:    map[string]string{"architecture": "vertical-slice", "framework": "chi", "database": "postgres", "data": "gorm", "frontend": "htmx", "css": "tailwind"},
+			wantAsked:  []string{"architecture", "framework", "database", "data", "frontend", "css"},
+			wantOut:    "gobento would create shop (vertical-slice/chi/postgres/gorm/htmx/tailwind, Go 1.27) in shop",
+			wantStderr: "Equivalent command: gobento new shop --arch vertical-slice --framework chi --db postgres --data gorm --frontend htmx --css tailwind --dry-run\n",
 		},
 		{
 			name:       "name, module, and framework",
@@ -65,10 +66,18 @@ func TestNewAsks(t *testing.T) {
 		{
 			name:       "frontend asked when only its flag is omitted",
 			args:       []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc", "--dry-run"},
-			answers:    map[string]string{"frontend": "htmx"},
-			wantAsked:  []string{"frontend"},
+			answers:    map[string]string{"frontend": "htmx", "css": "none"},
+			wantAsked:  []string{"frontend", "css"},
 			wantOut:    "(mvc/nethttp/sqlite/sqlc/htmx, Go 1.27)",
 			wantStderr: "Equivalent command: gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx --dry-run\n",
+		},
+		{
+			name:       "CSS framework asked when only its flag is omitted",
+			args:       []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc", "--frontend", "htmx", "--dry-run"},
+			answers:    map[string]string{"css": "tailwind"},
+			wantAsked:  []string{"css"},
+			wantOut:    "(mvc/nethttp/sqlite/sqlc/htmx/tailwind, Go 1.27)",
+			wantStderr: "Equivalent command: gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx --css tailwind --dry-run\n",
 		},
 	}
 	for _, tt := range tests {

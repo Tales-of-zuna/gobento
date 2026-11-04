@@ -11,11 +11,11 @@ gobento new [name] [flags]
 
 `gobento new` generates a Go project called `<name>` from one architecture,
 one HTTP framework, one database, and one data-access component, and
-optionally one frontend. Every flag is optional in a terminal: gobento asks
-for what is missing, including the name; see [Questions](#questions). In
-scripts and CI, a component flag is required when its kind has several
-supported components, except `--frontend`: without it, the project has no
-frontend.
+optionally one frontend and one CSS framework. Every flag is optional in a
+terminal: gobento asks for what is missing, including the name; see
+[Questions](#questions). In scripts and CI, a component flag is required when
+its kind has several supported components, except `--frontend` and `--css`:
+without them, the project has no frontend and no CSS framework.
 
 ## Arguments
 
@@ -25,20 +25,21 @@ frontend.
 
 ## Flags
 
-| Flag           | Type                         | Default        | Description                                                                                                                                                                                                                     |
-| -------------- | ---------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--module`     | string                       | `<name>`       | Go module path of the generated project, for example `example.com/shop`. It must be a valid Go import path, as checked by `module.CheckImportPath` from `golang.org/x/mod`. Paths without a dot, such as `shop`, are accepted.  |
-| `--arch`       | string                       | auto           | Architecture component: `mvc` (by layer), `vertical-slice` (by feature), or `ddd` (domain-driven design). There are several, so it is asked for in a terminal and required otherwise.                                           |
-| `--framework`  | string                       | auto           | HTTP framework component: `chi`, `gin`, or `nethttp`. There are several, so it is asked for in a terminal and required otherwise.                                                                                               |
-| `--db`         | string                       | auto           | Database component: `sqlite` or `postgres`. There are several, so it is asked for in a terminal and required otherwise.                                                                                                         |
-| `--data`       | string                       | auto           | Data-access component: `sqlc` or `gorm`. There are several, so it is asked for in a terminal and required otherwise.                                                                                                            |
-| `--frontend`   | string                       | `none`         | Frontend component: `htmx` (htmx + templ pages), or `none` for an API-only project. Optional: asked for in a terminal ("None (API only)" first), never required. With a frontend, the API is served under `/api`.               |
-| `--go`         | string                       | rules default  | Go version for the `go` directive, for example `1.26`. Must be inside the supported Go range.                                                                                                                                   |
-| `--pin`        | `module=version`, repeatable | rules defaults | Version of a library module, for example `--pin modernc.org/sqlite=v1.61.0`. Must be inside the module's range, and a selected component must use the module. Tool modules and vendored assets (such as htmx) cannot be pinned. |
-| `--dir`        | path                         | `./<name>`     | Directory to generate into, for example `.` for the current one. See [Output location](#output-location).                                                                                                                       |
-| `--dry-run`    | bool                         | `false`        | Check the input and list the files that would be created, without writing anything. See [Dry run](#dry-run).                                                                                                                    |
-| `--no-input`   | bool                         | `false`        | Never ask a question, even in a terminal. See [Questions](#questions).                                                                                                                                                          |
-| `-h`, `--help` | bool                         | `false`        | Show the command's help.                                                                                                                                                                                                        |
+| Flag           | Type                         | Default        | Description                                                                                                                                                                                                                                                                      |
+| -------------- | ---------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--module`     | string                       | `<name>`       | Go module path of the generated project, for example `example.com/shop`. It must be a valid Go import path, as checked by `module.CheckImportPath` from `golang.org/x/mod`. Paths without a dot, such as `shop`, are accepted.                                                   |
+| `--arch`       | string                       | auto           | Architecture component: `mvc` (by layer), `vertical-slice` (by feature), or `ddd` (domain-driven design). There are several, so it is asked for in a terminal and required otherwise.                                                                                            |
+| `--framework`  | string                       | auto           | HTTP framework component: `chi`, `gin`, or `nethttp`. There are several, so it is asked for in a terminal and required otherwise.                                                                                                                                                |
+| `--db`         | string                       | auto           | Database component: `sqlite` or `postgres`. There are several, so it is asked for in a terminal and required otherwise.                                                                                                                                                          |
+| `--data`       | string                       | auto           | Data-access component: `sqlc` or `gorm`. There are several, so it is asked for in a terminal and required otherwise.                                                                                                                                                             |
+| `--frontend`   | string                       | `none`         | Frontend component: `htmx` (htmx + templ pages), or `none` for an API-only project. Optional: asked for in a terminal ("None (API only)" first), never required. With a frontend, the API is served under `/api`.                                                                |
+| `--css`        | string                       | `none`         | CSS framework component: `tailwind` (Tailwind CSS), or `none` for the frontend's own stylesheet. Optional, and only with a frontend: asked for in a terminal after the frontend ("None (plain CSS)" first), never required.                                                      |
+| `--go`         | string                       | rules default  | Go version for the `go` directive, for example `1.26`. Must be inside the supported Go range.                                                                                                                                                                                    |
+| `--pin`        | `module=version`, repeatable | rules defaults | Version of a library module, for example `--pin modernc.org/sqlite=v1.61.0`. Must be inside the module's range, and a selected component must use the module. Tool modules, vendored assets (such as htmx), and downloaded binaries (such as the Tailwind CLI) cannot be pinned. |
+| `--dir`        | path                         | `./<name>`     | Directory to generate into, for example `.` for the current one. See [Output location](#output-location).                                                                                                                                                                        |
+| `--dry-run`    | bool                         | `false`        | Check the input and list the files that would be created, without writing anything. See [Dry run](#dry-run).                                                                                                                                                                     |
+| `--no-input`   | bool                         | `false`        | Never ask a question, even in a terminal. See [Questions](#questions).                                                                                                                                                                                                           |
+| `-h`, `--help` | bool                         | `false`        | Show the command's help.                                                                                                                                                                                                                                                         |
 
 **auto**: if the kind has exactly one supported component, it is selected. If
 it has several, gobento asks for one in a terminal (see
@@ -49,7 +50,10 @@ it has several, gobento asks for one in a terminal (see
 `--frontend none`, the project is an HTTP API whose routes are at `/`. With a
 frontend, the frontend serves `/` and every other path outside `/api/`, and
 the same API is served under `/api` (`/api/health`, `/api/items`). See
-[Frontends](/docs/concepts/slots-and-contracts#frontends).
+[Frontends](/docs/concepts/slots-and-contracts#frontends). The CSS framework
+is optional too, and needs a frontend that supports it: without `--css`, or
+with `--css none`, the frontend keeps its own stylesheet. See
+[CSS frameworks](/docs/concepts/slots-and-contracts#css-frameworks).
 
 **rules default**: the default from the [version rules](/docs/concepts/version-rules).
 The current defaults and ranges are listed in the [Components reference](/docs/components)
@@ -86,6 +90,13 @@ Add server-rendered pages with htmx and templ; the API moves under `/api`:
 
 ```sh
 gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend htmx
+```
+
+Style those pages with Tailwind CSS, compiled by the standalone Tailwind CLI,
+so no Node.js is needed:
+
+```sh
+gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend htmx --css tailwind
 ```
 
 Choose every component and the module path explicitly:
@@ -128,12 +139,14 @@ cannot decide by itself, before it checks or writes anything:
   [name rules](#arguments). Then the **Go module path**; press Enter to use
   the name.
 - **Each component kind** whose flag is omitted and that has several options,
-  in the order architecture, framework, database, data access, frontend. Only
+  in the order architecture, framework, database, data access, frontend, CSS
+  framework. Only
   options that form a [supported selection](/docs/concepts/components#supported-selections)
   with your flags and earlier answers are offered, so you cannot pick a
   combination that does not build. A kind left with one option is selected
   without a question. The frontend question offers "None (API only)" first,
-  preselected.
+  preselected. The CSS framework is asked only when you chose a frontend
+  that supports one, with "None (plain CSS)" first, preselected.
 
 Flags skip their questions: `gobento new shop` asks nothing about the name or
 module path, and `--framework nethttp` skips the framework question. Versions
@@ -145,8 +158,9 @@ If a value you gave on the command line is invalid, such as
 reports every problem, as in [Errors](#errors).
 
 After the questions, gobento prints the equivalent command on stderr, so you
-can repeat the run in a script. A frontend answered with "None (API only)" is
-left out, because that is what an omitted `--frontend` means:
+can repeat the run in a script. A frontend or CSS framework answered with
+"None" is left out, because that is what an omitted `--frontend` or `--css`
+means:
 
 ```text
 Equivalent command: gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
@@ -159,7 +173,8 @@ Equivalent command: gobento new shop --module example.com/shop --arch mvc --fram
 gobento never asks when stdin or stdout is not a terminal (pipes, CI, output
 redirected to a file), or when you pass `--no-input`. It then behaves exactly
 as without questions: `<name>` is required, a kind with several options needs
-its flag, and no frontend is selected unless `--frontend` names one. On Windows, questions need a console such as Windows Terminal
+its flag, and no frontend or CSS framework is selected unless `--frontend` or
+`--css` names one. On Windows, questions need a console such as Windows Terminal
 or the classic console window; Git Bash's mintty is not one, so use flags
 there or start gobento with `winpty`.
 
@@ -281,7 +296,9 @@ selection reads `mvc/nethttp/sqlite/sqlc/htmx`, and the list adds
 `internal/views/handler.go`, `handler_test.go`, `pages.templ`,
 `pages_templ.go`, `static/htmx.min.js`, and `static/styles.css` (under
 `internal/web/` with `vertical-slice` and `internal/adapters/web/` with
-`ddd`). The [tooling files](/docs/concepts/project-tooling) at the top
+`ddd`). With `--css tailwind` as well, the selection reads
+`mvc/nethttp/sqlite/sqlc/htmx/tailwind`, and the list adds `tailwind.css`
+and `internal/tools/tailwindcss/main.go` with its test. The [tooling files](/docs/concepts/project-tooling) at the top
 (`Makefile`, `Dockerfile`, `.dockerignore`, `.golangci.yml`, and `.github/`)
 are the same for every architecture.
 
@@ -368,12 +385,28 @@ gobento: cannot create "shop":
   - version is fixed: cannot pin htmx.org, vendored asset versions are fixed per gobento release (this release ships 2.0.11)
 ```
 
+A downloaded binary, such as the Tailwind CLI, whose version is fixed too:
+
+```text
+$ gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx --css tailwind --pin tailwindcss=4.0.0
+gobento: cannot create "shop":
+  - version is fixed: cannot pin tailwindcss, binary versions are fixed per gobento release (this release uses 4.3.4)
+```
+
 An unknown frontend; `none` is always accepted:
 
 ```text
 $ gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend react
 gobento: cannot create "shop":
   - --frontend: unknown frontend "react"; supported: none, htmx
+```
+
+A CSS framework without a frontend that supports it:
+
+```text
+$ gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --css tailwind
+gobento: cannot create "shop":
+  - the combination mvc/nethttp/sqlite/sqlc/tailwind is not supported: incompatible traits: trait frontend-build: css/tailwind requires one of [go, vite], but no selected component provides it; frontend-build is provided by frontend/htmx
 ```
 
 A module no selected component uses:

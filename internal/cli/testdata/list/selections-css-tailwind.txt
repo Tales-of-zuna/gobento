@@ -1,0 +1,27 @@
+ARCHITECTURE    FRAMEWORK  DATABASE  DATA  FRONTEND  CSS
+mvc             chi        postgres  gorm  htmx      tailwind
+mvc             chi        postgres  sqlc  htmx      tailwind
+mvc             chi        sqlite    gorm  htmx      tailwind
+mvc             chi        sqlite    sqlc  htmx      tailwind
+mvc             gin        postgres  gorm  htmx      tailwind
+mvc             gin        postgres  sqlc  htmx      tailwind
+mvc             gin        sqlite    gorm  htmx      tailwind
+mvc             gin        sqlite    sqlc  htmx      tailwind
+mvc             nethttp    postgres  gorm  htmx      tailwind
+mvc             nethttp    postgres  sqlc  htmx      tailwind
+mvc             nethttp    sqlite    gorm  htmx      tailwind
+mvc             nethttp    sqlite    sqlc  htmx      tailwind
+vertical-slice  chi        postgres  gorm  htmx      tailwind
+vertical-slice  chi        postgres  sqlc  htmx      tailwind
+vertical-slice  chi        sqlite    gorm  htmx      tailwind
+vertical-slice  chi        sqlite    sqlc  htmx      tailwind
+vertical-slice  gin        postgres  gorm  htmx      tailwind
+vertical-slice  gin        postgres  sqlc  htmx      tailwind
+vertical-slice  gin        sqlite    gorm  htmx      tailwind
+vertical-slice  gin        sqlite    sqlc  htmx      tailwind
+vertical-slice  nethttp    postgres  gorm  htmx      tailwind
+vertical-slice  nethttp    postgres  sqlc  htmx      tailwind
+vertical-slice  nethttp    sqlite    gorm  htmx      tailwind
+vertical-slice  nethttp    sqlite    sqlc  htmx      tailwind
+
+24 of 72 supported selections.

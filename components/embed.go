@@ -17,7 +17,7 @@ import (
 // with "." or "_", so that the catalog loader can reject them instead of
 // having them silently left out of the binary.
 //
-//go:embed versions.yaml all:base all:architecture all:framework all:database all:data all:frontend
+//go:embed versions.yaml all:base all:architecture all:framework all:database all:data all:frontend all:css
 var files embed.FS
 
 // FS returns the embedded catalog as a read-only file system rooted at the

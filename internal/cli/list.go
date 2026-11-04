@@ -34,12 +34,13 @@ type selectionsJSON struct {
 }
 
 // versionsJSON is the JSON of `gobento list versions`: the go, modules,
-// assets, and tooling fields of the catalog document.
+// assets, binaries, and tooling fields of the catalog document.
 type versionsJSON struct {
-	Go      catalogjson.GoRule   `json:"go"`
-	Modules []catalogjson.Module `json:"modules"`
-	Assets  []catalogjson.Asset  `json:"assets"`
-	Tooling catalogjson.Tooling  `json:"tooling"`
+	Go       catalogjson.GoRule   `json:"go"`
+	Modules  []catalogjson.Module `json:"modules"`
+	Assets   []catalogjson.Asset  `json:"assets"`
+	Binaries []catalogjson.Binary `json:"binaries"`
+	Tooling  catalogjson.Tooling  `json:"tooling"`
 }
 
 // newListCommand returns the `gobento list` command and its subcommands.
@@ -55,7 +56,7 @@ version rules. Without a subcommand, all three are listed.
 With --json, the output is one JSON document instead of text. For gobento list
 it is the catalog document the gobento website is built from; each subcommand
 prints only the fields it lists ("kinds" and "components", "supported", or
-"go", "modules", and "assets"), in the same format.
+"go", "modules", "assets", "binaries", and "tooling"), in the same format.
 
 gobento list never asks a question, writes a file, or uses the network.`,
 		Example: `  # Everything gobento supports
@@ -127,13 +128,15 @@ func newListSelectionsCommand(a *app, asJSON *bool) *cobra.Command {
 		Use:   "selections",
 		Short: "List the supported selections",
 		Long: `List every supported selection: the components that gobento new accepts
-together, one of each kind and at most one frontend. A selection without a
-frontend shows none in its frontend column. The component flags of gobento
-new narrow the list to the selections that contain the named component;
---frontend none keeps the selections without a frontend.`,
+together, one of each required kind and at most one frontend and one CSS
+framework. A selection without a component of an optional kind shows none in
+its column. The component flags of gobento new narrow the list to the
+selections that contain the named component; --frontend none keeps the
+selections without a frontend.`,
 		Example: `  gobento list selections
   gobento list selections --arch mvc --db postgres
-  gobento list selections --frontend htmx`,
+  gobento list selections --frontend htmx
+  gobento list selections --css tailwind`,
 		Args: cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			d, err := a.document()
@@ -146,6 +149,7 @@ new narrow the list to the selections that contain the named component;
 				catalog.KindDatabase:     f.db,
 				catalog.KindData:         f.data,
 				catalog.KindFrontend:     f.frontend,
+				catalog.KindCSS:          f.css,
 			}
 			v, err := selectionsOf(d, chosen)
 			if err != nil {
@@ -154,7 +158,7 @@ new narrow the list to the selections that contain the named component;
 			if *asJSON {
 				return catalogjson.Encode(a.stdout, v)
 			}
-			filtered := f.arch != "" || f.framework != "" || f.db != "" || f.data != "" || f.frontend != ""
+			filtered := f.arch != "" || f.framework != "" || f.db != "" || f.data != "" || f.frontend != "" || f.css != ""
 			return writeSelections(a.stdout, d, v, filtered)
 		},
 	}
@@ -164,6 +168,7 @@ new narrow the list to the selections that contain the named component;
 	fl.StringVar(&f.db, "db", "", "only selections with this database")
 	fl.StringVar(&f.data, "data", "", "only selections with this data-access library")
 	fl.StringVar(&f.frontend, "frontend", "", "only selections with this frontend, or none for those without one")
+	fl.StringVar(&f.css, "css", "", "only selections with this CSS framework, or none for those without one")
 	return cmd
 }
 
@@ -175,8 +180,10 @@ func newListVersionsCommand(a *app, asJSON *bool) *cobra.Command {
 the version rules with its role, range, default, the components that use it,
 the trait values it is limited to, and its constraints on other versions,
 followed by the files components vendor from an upstream release (such as
-htmx), whose versions are fixed per gobento release. Choose versions inside
-the module ranges with gobento new --go and --pin.`,
+htmx) and the programs generated projects download on demand (such as the
+Tailwind CSS CLI), whose versions are fixed per gobento release, and the
+tooling versions. Choose versions inside the module ranges with gobento new
+--go and --pin.`,
 		Example: `  gobento list versions`,
 		Args:    cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
@@ -185,7 +192,7 @@ the module ranges with gobento new --go and --pin.`,
 				return err
 			}
 			if *asJSON {
-				return catalogjson.Encode(a.stdout, versionsJSON{Go: d.Go, Modules: d.Modules, Assets: d.Assets, Tooling: d.Tooling})
+				return catalogjson.Encode(a.stdout, versionsJSON{Go: d.Go, Modules: d.Modules, Assets: d.Assets, Binaries: d.Binaries, Tooling: d.Tooling})
 			}
 			return writeVersions(a.stdout, d)
 		},
@@ -360,7 +367,7 @@ func writeComponents(w io.Writer, v componentsJSON) error {
 		}
 		var rows [][]string
 		if k.Optional {
-			rows = append(rows, []string{"  " + catalog.None, "No " + strings.ToLower(k.Title) + " (the default)"})
+			rows = append(rows, []string{"  " + catalog.None, "No " + inSentence(k.Title) + " (the default)"})
 		}
 		for _, c := range v.Components {
 			if c.Kind != k.ID {
@@ -494,6 +501,18 @@ func writeVersions(w io.Writer, d *catalogjson.Document) error {
 			return err
 		}
 	}
+	if len(d.Binaries) > 0 {
+		if _, err := fmt.Fprint(w, "\nDownloaded binaries (fixed per gobento release):\n\n"); err != nil {
+			return err
+		}
+		rows = [][]string{{"BINARY", "VERSION", "USED BY", "PLATFORMS"}}
+		for _, b := range d.Binaries {
+			rows = append(rows, []string{b.Name, b.Version, strings.Join(b.Components, ", "), strings.Join(b.Platforms, ", ")})
+		}
+		if err := writeTable(w, rows); err != nil {
+			return err
+		}
+	}
 	return writeTooling(w, d.Tooling)
 }
 
@@ -522,4 +541,14 @@ func writeTooling(w io.Writer, t catalogjson.Tooling) error {
 		rows = append(rows, []string{"tool", tool.Name, tool.Version, "-"})
 	}
 	return writeTable(w, rows)
+}
+
+// inSentence returns a kind title for use inside a sentence: its first
+// letter in lower case, unless the first word is an acronym such as CSS.
+func inSentence(title string) string {
+	first, _, _ := strings.Cut(title, " ")
+	if len(first) > 1 && strings.ToUpper(first) == first {
+		return title
+	}
+	return strings.ToLower(title[:1]) + title[1:]
 }

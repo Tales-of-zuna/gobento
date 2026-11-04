@@ -1,51 +1,75 @@
-ARCHITECTURE    FRAMEWORK  DATABASE  DATA  FRONTEND
-mvc             chi        postgres  gorm  none
-mvc             chi        postgres  gorm  htmx
-mvc             chi        postgres  sqlc  none
-mvc             chi        postgres  sqlc  htmx
-mvc             chi        sqlite    gorm  none
-mvc             chi        sqlite    gorm  htmx
-mvc             chi        sqlite    sqlc  none
-mvc             chi        sqlite    sqlc  htmx
-mvc             gin        postgres  gorm  none
-mvc             gin        postgres  gorm  htmx
-mvc             gin        postgres  sqlc  none
-mvc             gin        postgres  sqlc  htmx
-mvc             gin        sqlite    gorm  none
-mvc             gin        sqlite    gorm  htmx
-mvc             gin        sqlite    sqlc  none
-mvc             gin        sqlite    sqlc  htmx
-mvc             nethttp    postgres  gorm  none
-mvc             nethttp    postgres  gorm  htmx
-mvc             nethttp    postgres  sqlc  none
-mvc             nethttp    postgres  sqlc  htmx
-mvc             nethttp    sqlite    gorm  none
-mvc             nethttp    sqlite    gorm  htmx
-mvc             nethttp    sqlite    sqlc  none
-mvc             nethttp    sqlite    sqlc  htmx
-vertical-slice  chi        postgres  gorm  none
-vertical-slice  chi        postgres  gorm  htmx
-vertical-slice  chi        postgres  sqlc  none
-vertical-slice  chi        postgres  sqlc  htmx
-vertical-slice  chi        sqlite    gorm  none
-vertical-slice  chi        sqlite    gorm  htmx
-vertical-slice  chi        sqlite    sqlc  none
-vertical-slice  chi        sqlite    sqlc  htmx
-vertical-slice  gin        postgres  gorm  none
-vertical-slice  gin        postgres  gorm  htmx
-vertical-slice  gin        postgres  sqlc  none
-vertical-slice  gin        postgres  sqlc  htmx
-vertical-slice  gin        sqlite    gorm  none
-vertical-slice  gin        sqlite    gorm  htmx
-vertical-slice  gin        sqlite    sqlc  none
-vertical-slice  gin        sqlite    sqlc  htmx
-vertical-slice  nethttp    postgres  gorm  none
-vertical-slice  nethttp    postgres  gorm  htmx
-vertical-slice  nethttp    postgres  sqlc  none
-vertical-slice  nethttp    postgres  sqlc  htmx
-vertical-slice  nethttp    sqlite    gorm  none
-vertical-slice  nethttp    sqlite    gorm  htmx
-vertical-slice  nethttp    sqlite    sqlc  none
-vertical-slice  nethttp    sqlite    sqlc  htmx
+ARCHITECTURE    FRAMEWORK  DATABASE  DATA  FRONTEND  CSS
+mvc             chi        postgres  gorm  none      none
+mvc             chi        postgres  gorm  htmx      none
+mvc             chi        postgres  gorm  htmx      tailwind
+mvc             chi        postgres  sqlc  none      none
+mvc             chi        postgres  sqlc  htmx      none
+mvc             chi        postgres  sqlc  htmx      tailwind
+mvc             chi        sqlite    gorm  none      none
+mvc             chi        sqlite    gorm  htmx      none
+mvc             chi        sqlite    gorm  htmx      tailwind
+mvc             chi        sqlite    sqlc  none      none
+mvc             chi        sqlite    sqlc  htmx      none
+mvc             chi        sqlite    sqlc  htmx      tailwind
+mvc             gin        postgres  gorm  none      none
+mvc             gin        postgres  gorm  htmx      none
+mvc             gin        postgres  gorm  htmx      tailwind
+mvc             gin        postgres  sqlc  none      none
+mvc             gin        postgres  sqlc  htmx      none
+mvc             gin        postgres  sqlc  htmx      tailwind
+mvc             gin        sqlite    gorm  none      none
+mvc             gin        sqlite    gorm  htmx      none
+mvc             gin        sqlite    gorm  htmx      tailwind
+mvc             gin        sqlite    sqlc  none      none
+mvc             gin        sqlite    sqlc  htmx      none
+mvc             gin        sqlite    sqlc  htmx      tailwind
+mvc             nethttp    postgres  gorm  none      none
+mvc             nethttp    postgres  gorm  htmx      none
+mvc             nethttp    postgres  gorm  htmx      tailwind
+mvc             nethttp    postgres  sqlc  none      none
+mvc             nethttp    postgres  sqlc  htmx      none
+mvc             nethttp    postgres  sqlc  htmx      tailwind
+mvc             nethttp    sqlite    gorm  none      none
+mvc             nethttp    sqlite    gorm  htmx      none
+mvc             nethttp    sqlite    gorm  htmx      tailwind
+mvc             nethttp    sqlite    sqlc  none      none
+mvc             nethttp    sqlite    sqlc  htmx      none
+mvc             nethttp    sqlite    sqlc  htmx      tailwind
+vertical-slice  chi        postgres  gorm  none      none
+vertical-slice  chi        postgres  gorm  htmx      none
+vertical-slice  chi        postgres  gorm  htmx      tailwind
+vertical-slice  chi        postgres  sqlc  none      none
+vertical-slice  chi        postgres  sqlc  htmx      none
+vertical-slice  chi        postgres  sqlc  htmx      tailwind
+vertical-slice  chi        sqlite    gorm  none      none
+vertical-slice  chi        sqlite    gorm  htmx      none
+vertical-slice  chi        sqlite    gorm  htmx      tailwind
+vertical-slice  chi        sqlite    sqlc  none      none
+vertical-slice  chi        sqlite    sqlc  htmx      none
+vertical-slice  chi        sqlite    sqlc  htmx      tailwind
+vertical-slice  gin        postgres  gorm  none      none
+vertical-slice  gin        postgres  gorm  htmx      none
+vertical-slice  gin        postgres  gorm  htmx      tailwind
+vertical-slice  gin        postgres  sqlc  none      none
+vertical-slice  gin        postgres  sqlc  htmx      none
+vertical-slice  gin        postgres  sqlc  htmx      tailwind
+vertical-slice  gin        sqlite    gorm  none      none
+vertical-slice  gin        sqlite    gorm  htmx      none
+vertical-slice  gin        sqlite    gorm  htmx      tailwind
+vertical-slice  gin        sqlite    sqlc  none      none
+vertical-slice  gin        sqlite    sqlc  htmx      none
+vertical-slice  gin        sqlite    sqlc  htmx      tailwind
+vertical-slice  nethttp    postgres  gorm  none      none
+vertical-slice  nethttp    postgres  gorm  htmx      none
+vertical-slice  nethttp    postgres  gorm  htmx      tailwind
+vertical-slice  nethttp    postgres  sqlc  none      none
+vertical-slice  nethttp    postgres  sqlc  htmx      none
+vertical-slice  nethttp    postgres  sqlc  htmx      tailwind
+vertical-slice  nethttp    sqlite    gorm  none      none
+vertical-slice  nethttp    sqlite    gorm  htmx      none
+vertical-slice  nethttp    sqlite    gorm  htmx      tailwind
+vertical-slice  nethttp    sqlite    sqlc  none      none
+vertical-slice  nethttp    sqlite    sqlc  htmx      none
+vertical-slice  nethttp    sqlite    sqlc  htmx      tailwind
 
-48 supported selections.
+72 supported selections.

@@ -227,3 +227,54 @@ func TestShippedToolingFollowsFrontend(t *testing.T) {
 		}
 	}
 }
+
+// TestShippedToolingFollowsCSS covers the spec scenarios "Same pages with
+// Tailwind", "Regeneration changes nothing", and "Stale stylesheet fails
+// CI" as far as composition goes: with htmx and Tailwind CSS, every
+// architecture gets the Tailwind source, the runner, the compiled
+// stylesheet, a make generate line, and a CI step, while the pages are
+// byte for byte those of htmx alone; htmx alone mentions no Tailwind.
+func TestShippedToolingFollowsCSS(t *testing.T) {
+	t.Parallel()
+
+	for _, arch := range []string{"mvc", "vertical-slice", "ddd"} {
+		names := [4]string{arch, "nethttp", "sqlite", "sqlc"}
+		plain, tw := referencePlanWith(t, names, "htmx"), referencePlanWith(t, names, "htmx", "tailwind")
+		web := tw.Slots["web"].Dir
+		command := "go run ./internal/tools/tailwindcss --input tailwind.css --output " + web + "/static/styles.css --minify"
+		for path, wants := range map[string][]string{
+			"Makefile":                                {"\t$(GO) run ./internal/tools/tailwindcss --input tailwind.css --output " + web + "/static/styles.css --minify\n"},
+			".github/workflows/ci.yml":                {"Check that the Tailwind CSS is current", command, "git status --porcelain -- " + web + "/static/styles.css"},
+			"tailwind.css":                            {`@import "tailwindcss" source(none);`, `@source "./` + web + `/**/*.templ";`},
+			"internal/tools/tailwindcss/main.go":      {"const version = "},
+			web + "/static/styles.css":                {"/*! tailwindcss v", ".row{", ".problem{"},
+			"README.md":                               {"## Tailwind CSS", command, "TAILWINDCSS"},
+			"internal/tools/tailwindcss/main_test.go": {"func TestReleases"},
+		} {
+			f, ok := tw.File(path)
+			if !ok {
+				t.Fatalf("%s with Tailwind: %s is not planned", arch, path)
+			}
+			for _, want := range wants {
+				if !strings.Contains(string(f.Content), want) {
+					t.Errorf("%s with Tailwind: %s does not contain %q", arch, path, want)
+				}
+			}
+		}
+		for _, f := range plain.Files {
+			if f.Component != "frontend/htmx" {
+				continue
+			}
+			g, _ := tw.File(f.Path)
+			same := string(g.Content) == string(f.Content)
+			if strings.HasSuffix(f.Path, "/static/styles.css") == same {
+				t.Errorf("%s: %s is %s with Tailwind", arch, f.Path, map[bool]string{true: "unchanged", false: "different"}[same])
+			}
+		}
+		for _, f := range plain.Files {
+			if strings.Contains(strings.ToLower(string(f.Content)), "tailwind") {
+				t.Errorf("%s with htmx alone: %s mentions Tailwind", arch, f.Path)
+			}
+		}
+	}
+}

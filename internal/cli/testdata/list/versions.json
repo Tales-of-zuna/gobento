@@ -146,6 +146,23 @@
       "source": "https://registry.npmjs.org/htmx.org/-/htmx.org-2.0.11.tgz"
     }
   ],
+  "binaries": [
+    {
+      "name": "tailwindcss",
+      "components": [
+        "css/tailwind"
+      ],
+      "version": "4.3.4",
+      "platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "linux/arm64",
+        "windows/amd64",
+        "windows/arm64"
+      ]
+    }
+  ],
   "tooling": {
     "images": [
       {

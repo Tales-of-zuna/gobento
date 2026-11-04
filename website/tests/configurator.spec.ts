@@ -138,6 +138,62 @@ test.describe('configurator', () => {
     );
   });
 
+  test('CSS framework needs a frontend: None (plain CSS) is preselected and Tailwind CSS disabled', async ({
+    page,
+  }) => {
+    await open(page);
+    const css = group(page, 'CSS framework');
+    await expect(css.getByRole('radio', { name: 'None (plain CSS)' })).toBeChecked();
+    const tailwind = css.getByRole('radio', { name: 'Tailwind CSS' });
+    await expect(tailwind).toBeDisabled();
+    await expect(css).toContainText('Incompatible');
+    await expect(css).toContainText(
+      'Tailwind CSS requires a frontend that provides frontend-build go or vite, such as htmx + templ.',
+    );
+    await expect(command(page)).not.toContainText('--css');
+    // The tray has a compartment for every kind, the CSS framework's empty.
+    const tray = page.getByRole('list', { name: 'Bento: chosen parts' });
+    await expect(tray.getByRole('listitem')).toHaveCount(6);
+    await expect(tray.locator('[data-kind="css"]')).toHaveAttribute('data-filled', 'false');
+  });
+
+  test('CSS framework with a frontend: htmx and Tailwind CSS add --frontend htmx --css tailwind', async ({
+    page,
+  }) => {
+    await open(page);
+    const base = 'gobento new myapp --arch mvc --framework nethttp --db sqlite --data sqlc';
+    await group(page, 'Frontend').getByText('htmx + templ', { exact: true }).click();
+    const css = group(page, 'CSS framework');
+    await expect(css.getByRole('radio', { name: 'Tailwind CSS' })).toBeEnabled();
+    await css.getByText('Tailwind CSS', { exact: true }).click();
+    await expect(command(page)).toHaveText(`${base} --frontend htmx --css tailwind`);
+    await expect(page).toHaveURL(/[?&]frontend=htmx&css=tailwind(&|$)/);
+    await expect(page.getByText('Incompatible', { exact: true })).toHaveCount(0);
+    const tray = page.getByRole('list', { name: 'Bento: chosen parts' });
+    await expect(tray.locator('[data-kind="css"]')).toHaveAttribute('data-filled', 'true');
+    await expect(tray).toContainText('Tailwind CSS');
+    const files = page.getByRole('list', { name: 'Generated files' });
+    await expect(files).toContainText('tailwind.css');
+    await page.getByRole('button', { name: /Advanced/ }).click();
+    await expect(page.getByText('tailwindcss (Tailwind CSS)')).toBeVisible();
+    await expect(page.getByText('On demand', { exact: true })).toBeVisible();
+
+    // The shared link restores both choices.
+    await open(page, `?arch=mvc&framework=nethttp&db=sqlite&data=sqlc&frontend=htmx&css=tailwind`);
+    await expect(css.getByRole('radio', { name: 'Tailwind CSS' })).toBeChecked();
+    await expect(command(page)).toHaveText(`${base} --frontend htmx --css tailwind`);
+
+    // Removing the frontend keeps Tailwind CSS but blocks the command until it is fixed.
+    await group(page, 'Frontend').getByText('None (API only)', { exact: true }).click();
+    await expect(css.getByRole('radio', { name: 'Tailwind CSS' })).toBeChecked();
+    await expect(
+      page.getByText('No command yet. Fix the CSS framework choice').locator('visible=true'),
+    ).toBeVisible();
+    await css.getByText('None (plain CSS)', { exact: true }).click();
+    await expect(command(page)).toHaveText(base);
+    await expect(page).not.toHaveURL(/css=/);
+  });
+
   test('Copy command puts the displayed command on the clipboard', async ({ page }) => {
     await open(page);
     await page.getByLabel('Project name').fill('blog');
@@ -330,6 +386,7 @@ test.describe('configurator', () => {
     await expect(page.locator('canvas')).toHaveCount(0);
     // Let the arrival packing finish first: filling a compartment may change its text.
     await expect(tray.locator('[data-filled="true"]')).toHaveCount(4);
+    await expect(tray.getByRole('listitem')).toHaveCount(6);
     const before = await tray.boundingBox();
     await page.mouse.move(400, 300);
     await expect(page.locator('[data-stage]')).toHaveAttribute('data-stage', 'scene', {

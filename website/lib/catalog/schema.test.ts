@@ -14,26 +14,40 @@ describe('catalog schema', () => {
       'data/gorm',
       'data/sqlc',
       'frontend/htmx',
+      'css/tailwind',
     ]);
-    expect(result.data?.kinds.filter((k) => k.optional).map((k) => k.id)).toEqual(['frontend']);
+    expect(result.data?.kinds.filter((k) => k.optional).map((k) => k.id)).toEqual([
+      'frontend',
+      'css',
+    ]);
     expect(result.data?.assets.map((a) => [a.name, a.version])).toEqual([['htmx.org', '2.0.11']]);
+    expect(result.data?.binaries.map((b) => [b.name, b.version, b.components])).toEqual([
+      ['tailwindcss', '4.3.4', ['css/tailwind']],
+    ]);
+    expect(result.data?.binaries[0]?.platforms).toContain('linux/amd64');
   });
 
   it('accepts supported selections with and without an optional kind', () => {
     const result = catalogSchema.safeParse(fixtureData());
-    const frontends = result.data?.supported.map((s) => s.frontend ?? 'none');
-    expect(frontends?.filter((f) => f === 'none')).toHaveLength(4);
-    expect(frontends?.filter((f) => f === 'htmx')).toHaveLength(4);
+    const optional = result.data?.supported.map(
+      (s) => `${s.frontend ?? 'none'}+${s.css ?? 'none'}`,
+    );
+    expect(optional?.filter((f) => f === 'none+none')).toHaveLength(4);
+    expect(optional?.filter((f) => f === 'htmx+none')).toHaveLength(4);
+    expect(optional?.filter((f) => f === 'htmx+tailwind')).toHaveLength(4);
+    expect(optional).toHaveLength(12);
   });
 
-  it('defaults a kind to required and the assets to none when they are left out', () => {
+  it('defaults a kind to required and the assets and binaries to none when they are left out', () => {
     const data = fixtureData();
     for (const kind of data.kinds) if (!kind.optional) delete kind.optional;
     delete data.assets;
+    delete data.binaries;
     const result = catalogSchema.safeParse(data);
     expect(result.error?.issues).toBeUndefined();
     expect(result.data?.kinds.filter((k) => !k.optional)).toHaveLength(4);
     expect(result.data?.assets).toEqual([]);
+    expect(result.data?.binaries).toEqual([]);
   });
 
   it('accepts the tooling versions and defaults them to none', () => {
@@ -205,6 +219,41 @@ describe('catalog schema', () => {
       name: 'duplicate asset',
       edit: (d) => d.assets!.push({ ...d.assets![0]! }),
       expected: 'duplicate asset name',
+    },
+    {
+      name: 'binary of an unknown component',
+      edit: (d) => (d.binaries![0]!.components = ['css/bootstrap']),
+      expected: 'tailwindcss: unknown component "css/bootstrap"',
+    },
+    {
+      name: 'binary without a version',
+      edit: (d) => (d.binaries![0]!.version = ''),
+      expected: 'Too small',
+    },
+    {
+      name: 'binary without platforms',
+      edit: (d) => (d.binaries![0]!.platforms = []),
+      expected: 'Too small',
+    },
+    {
+      name: 'binary with a malformed platform',
+      edit: (d) => (d.binaries![0]!.platforms = ['linux-amd64']),
+      expected: 'Invalid string',
+    },
+    {
+      name: 'binary without components',
+      edit: (d) => (d.binaries![0]!.components = []),
+      expected: 'Too small',
+    },
+    {
+      name: 'duplicate binary',
+      edit: (d) => d.binaries!.push({ ...d.binaries![0]! }),
+      expected: 'duplicate binary name',
+    },
+    {
+      name: 'supported selection naming an unknown CSS framework',
+      edit: (d) => (d.supported[0]!.css = 'bootstrap'),
+      expected: 'supported selection names unknown component "css/bootstrap"',
     },
     {
       name: 'no supported selection',

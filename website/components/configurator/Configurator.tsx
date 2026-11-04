@@ -47,7 +47,10 @@ interface Toast {
 
 const TOAST_MS = 2000;
 const PACK_STEP_MS = 320;
-/** Tray compartments, one per kind; the mascot's box has the first four. */
+/**
+ * Tray compartments, one per kind, packed one after another; the mascot's box
+ * has food for the first four only.
+ */
 const KIND_COUNT = KIND_IDS.length;
 
 async function copyText(text: string): Promise<boolean> {

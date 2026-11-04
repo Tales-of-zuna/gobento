@@ -65,7 +65,7 @@ and green uses Frappé crust. Frappé accents pass as-is.
 | Recessed          | `--well`                                                                       | command blocks, code snippets, tray frames (Latte text color in light, Frappé mantle in dark)                    |
 | Code              | `--code-bg`                                                                    | syntax-highlighted code blocks: Latte base / Frappé mantle, the surfaces Shiki's catppuccin themes are tuned for |
 | Shape             | `--r-sm/md/lg/xl`, `--stroke`, `--toy-1/2/3`                                   | radii, outline width, offset shadows                                                                             |
-| Kind identity     | `--kind-architecture/framework/database/data/frontend`                         | the same color per component kind everywhere                                                                     |
+| Kind identity     | `--kind-architecture/framework/database/data/frontend/css`                     | the same color per component kind everywhere                                                                     |
 | Patterns          | `--pat-seigaiha`, `--pat-ichimatsu`, `--pat-mizutama`, `--scallop`             | band backgrounds and scalloped edges                                                                             |
 
 Type: **Zen Maru Gothic** (display), **Figtree** (text), **JetBrains Mono**
@@ -85,8 +85,9 @@ Font loading (`app/layout.tsx`), all with `font-display: swap`:
   preloaded: code is never the first thing on screen.
 
 Component-kind colors: Architecture is sora, HTTP framework is shu, Database
-is tamago, Data access is matcha, and Frontend (optional) is hisui, jade teal
-(`--hisui`, `--hisui-ink`, `--hisui-soft`).
+is tamago, Data access is matcha, Frontend (optional) is hisui, jade teal
+(`--hisui`, `--hisui-ink`, `--hisui-soft`), and CSS framework (optional) is
+fuji, wisteria (`--fuji`, `--fuji-ink`, `--fuji-soft`).
 
 ## Mascot
 

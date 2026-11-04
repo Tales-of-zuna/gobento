@@ -41,6 +41,8 @@ type Rules struct {
 	Modules []Module
 	// Assets lists every vendored asset, sorted by name.
 	Assets []Asset
+	// Binaries lists every platform binary, sorted by name.
+	Binaries []Binary
 	// Tooling lists the versions of the project tooling that are not Go
 	// modules: container images, GitHub Actions, and tools.
 	Tooling Tooling
@@ -151,9 +153,10 @@ type rulesFile struct {
 		Range   string `yaml:"range"`
 		Default string `yaml:"default"`
 	} `yaml:"go"`
-	Modules map[string]moduleFile `yaml:"modules"`
-	Assets  map[string]assetFile  `yaml:"assets"`
-	Tooling toolingFile           `yaml:"tooling"`
+	Modules  map[string]moduleFile `yaml:"modules"`
+	Assets   map[string]assetFile  `yaml:"assets"`
+	Binaries map[string]binaryFile `yaml:"binaries"`
+	Tooling  toolingFile           `yaml:"tooling"`
 }
 
 type assetFile struct {
@@ -182,8 +185,9 @@ type constraintFile struct {
 // finds, joined with errors.Join: unknown fields, malformed ranges or
 // versions, defaults outside their range, tool modules without an exact
 // range, constraints that refer to unknown targets, assets without
-// components or with a malformed version, source, path, or checksum, and
-// malformed tooling entries. References to components are checked
+// components or with a malformed version, source, path, or checksum,
+// binaries without components or platforms or with a malformed version,
+// platform, URL, or checksum, and malformed tooling entries. References to components are checked
 // separately with CheckComponents, because the component catalog is loaded
 // elsewhere.
 func ParseRules(data []byte) (*Rules, error) {
@@ -226,6 +230,17 @@ func ParseRules(data []byte) (*Rules, error) {
 		errs = append(errs, aerrs...)
 		if _, ok := file.Modules[name]; ok {
 			errs = append(errs, fmt.Errorf("asset %s: the name is also a module; use another one", name))
+		}
+	}
+
+	for _, name := range slices.Sorted(maps.Keys(file.Binaries)) {
+		b, berrs := parseBinary(name, file.Binaries[name])
+		rules.Binaries = append(rules.Binaries, b)
+		errs = append(errs, berrs...)
+		_, isModule := file.Modules[name]
+		_, isAsset := file.Assets[name]
+		if isModule || isAsset {
+			errs = append(errs, fmt.Errorf("binary %s: the name is also a module or an asset; use another one", name))
 		}
 	}
 
@@ -373,7 +388,8 @@ func parseConstraint(cf constraintFile, known map[string]moduleFile) (Constraint
 }
 
 // CheckComponents reports every component reference in the rules for which
-// exists returns false, naming the module or asset and the component.
+// exists returns false, naming the module, asset, or binary and the
+// component.
 func (r *Rules) CheckComponents(exists func(id string) bool) error {
 	var errs []error
 	for _, m := range r.Modules {
@@ -387,6 +403,13 @@ func (r *Rules) CheckComponents(exists func(id string) bool) error {
 		for _, c := range a.Components {
 			if !exists(c) {
 				errs = append(errs, fmt.Errorf("asset %s: unknown component %q", a.Name, c))
+			}
+		}
+	}
+	for _, b := range r.Binaries {
+		for _, c := range b.Components {
+			if !exists(c) {
+				errs = append(errs, fmt.Errorf("binary %s: unknown component %q", b.Name, c))
 			}
 		}
 	}

@@ -1,0 +1,1 @@
+$(GO) run ./internal/tools/tailwindcss --input tailwind.css --output internal/views/static/styles.css --minify

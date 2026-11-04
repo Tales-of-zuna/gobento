@@ -188,6 +188,8 @@ func kindTitle(kind catalog.Kind) string {
 		return "Database"
 	case catalog.KindFrontend:
 		return "Frontend"
+	case catalog.KindCSS:
+		return "CSS framework"
 	default:
 		return "Data access"
 	}
@@ -218,9 +220,14 @@ func matching(supported []catalog.Selection, chosen map[catalog.Kind]string) []c
 	return out
 }
 
-// noneLabel labels the option of an optional kind that selects no
-// component.
-const noneLabel = "None (API only)"
+// noneLabel returns the label of the option of optional kind that selects
+// no component.
+func noneLabel(kind catalog.Kind) string {
+	if kind == catalog.KindCSS {
+		return "None (plain CSS)"
+	}
+	return "None (API only)"
+}
 
 // componentOptions returns the distinct components of kind in sels as
 // options sorted by name, labelled with their title and name. For an
@@ -246,7 +253,7 @@ func componentOptions(sels []catalog.Selection, kind catalog.Kind) []option {
 	}
 	slices.SortFunc(opts, func(a, b option) int { return strings.Compare(a.value, b.value) })
 	if kind.Optional() && none {
-		opts = append([]option{{label: noneLabel, value: catalog.None}}, opts...)
+		opts = append([]option{{label: noneLabel(kind), value: catalog.None}}, opts...)
 	}
 	return opts
 }
@@ -297,6 +304,8 @@ func givenFlag(f newFlags, kind catalog.Kind) string {
 		return f.db
 	case catalog.KindFrontend:
 		return f.frontend
+	case catalog.KindCSS:
+		return f.css
 	default:
 		return f.data
 	}

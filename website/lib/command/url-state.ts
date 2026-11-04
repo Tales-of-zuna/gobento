@@ -1,7 +1,7 @@
 /**
  * Configurator state in the page URL (design D4), so a shared link restores
  * the same choices. Parameters use the CLI's flag names: `name`, `module`,
- * `arch`, `framework`, `db`, `data`, `frontend`, `go`, and repeated
+ * `arch`, `framework`, `db`, `data`, `frontend`, `css`, `go`, and repeated
  * `pin=<path>=<version>`. Values equal to their default are left out to keep
  * links short; an optional kind set to none (the default) is absent.
  */

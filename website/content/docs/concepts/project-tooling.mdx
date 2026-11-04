@@ -22,25 +22,27 @@ selected components.
 
 ## Make targets, with or without make
 
-| Target               | Runs                                                                         |
-| -------------------- | ---------------------------------------------------------------------------- |
-| `make` / `make help` | Lists the targets                                                            |
-| `make build`         | `go build -o bin/<name> ./cmd/<name>` (with `.exe` on Windows)               |
-| `make run`           | `go run ./cmd/<name>`                                                        |
-| `make test`          | `go test ./...`                                                              |
-| `make cover`         | `go test -coverprofile=coverage.out ./...` and a coverage summary            |
-| `make vet`           | `go vet ./...`                                                               |
-| `make lint`          | `golangci-lint run`, at the pinned version, with `go run`                    |
-| `make fmt`           | `golangci-lint fmt`                                                          |
-| `make tidy`          | `go mod tidy`                                                                |
-| `make check`         | `vet`, `lint`, and `test`                                                    |
-| `make generate`      | Regenerates generated code; only with a component that has some (sqlc, htmx) |
-| `make docker-build`  | `docker build --tag <name> .`                                                |
-| `make docker-run`    | `docker run --rm --publish 8080:8080 <name>`, with the database's options    |
-| `make clean`         | Removes `bin/` and `coverage.out`                                            |
+| Target               | Runs                                                                                       |
+| -------------------- | ------------------------------------------------------------------------------------------ |
+| `make` / `make help` | Lists the targets                                                                          |
+| `make build`         | `go build -o bin/<name> ./cmd/<name>` (with `.exe` on Windows)                             |
+| `make run`           | `go run ./cmd/<name>`                                                                      |
+| `make test`          | `go test ./...`                                                                            |
+| `make cover`         | `go test -coverprofile=coverage.out ./...` and a coverage summary                          |
+| `make vet`           | `go vet ./...`                                                                             |
+| `make lint`          | `golangci-lint run`, at the pinned version, with `go run`                                  |
+| `make fmt`           | `golangci-lint fmt`                                                                        |
+| `make tidy`          | `go mod tidy`                                                                              |
+| `make check`         | `vet`, `lint`, and `test`                                                                  |
+| `make generate`      | Regenerates generated code; only with a component that has some (sqlc, htmx, Tailwind CSS) |
+| `make docker-build`  | `docker build --tag <name> .`                                                              |
+| `make docker-run`    | `docker run --rm --publish 8080:8080 <name>`, with the database's options                  |
+| `make clean`         | Removes `bin/` and `coverage.out`                                                          |
 
 Make is the only prerequisite besides Go: golangci-lint, sqlc, and templ run
-with `go run <module>@<version>`, so nothing else has to be installed. On Windows
+with `go run <module>@<version>`, and the Tailwind CLI through the project's
+`go run ./internal/tools/tailwindcss`, which downloads and verifies it, so
+nothing else has to be installed. On Windows
 without make, run the commands that the README lists next to each target.
 
 ## The container image
@@ -68,14 +70,18 @@ The database decides what the container needs at run time:
 
 With the **htmx** frontend, the pages and their static files are compiled
 into the binary (`go:embed`), so the image needs nothing else: the pages are
-at `/`, and the API, its health check included, under `/api/`.
+at `/`, and the API, its health check included, under `/api/`. With
+**Tailwind CSS**, the compiled stylesheet is one of those static files, so
+the image build needs neither Node.js nor the Tailwind CLI.
 
 ## Continuous integration
 
 The workflow has two jobs. `check` sets up Go from `go.mod`, runs the steps
 the components add (with sqlc, `sqlc diff` fails when the committed code is
 stale; with htmx, `go generate` runs the pinned templ and the step fails when
-the committed `pages_templ.go` changes), and then `go mod tidy -diff`, `go build`, `go vet`, golangci-lint,
+the committed `pages_templ.go` changes; with Tailwind CSS, the step runs the
+pinned standalone Tailwind CLI and fails when the committed `styles.css`
+changes), and then `go mod tidy -diff`, `go build`, `go vet`, golangci-lint,
 and `go test -race ./...`. `docker` builds the image. With PostgreSQL, the
 `check` job starts a PostgreSQL service container and sets
 `TEST_DATABASE_URL`, so the database tests run in CI instead of being skipped.
@@ -100,20 +106,23 @@ only they know about through **contribution points** that the base layer
 declares in `components/base/base.yaml`, with a template
 `contrib/<point>.tmpl` in the component's directory:
 
-| Point            | Where it goes                                    | Used by                                       |
-| ---------------- | ------------------------------------------------ | --------------------------------------------- |
-| `make`           | Makefile variables or extra targets              | sqlite (data volume), postgres (host mapping) |
-| `make-generate`  | The recipe of `make generate`                    | sqlc, htmx (`go generate` of the web package) |
-| `ci-services`    | Service containers of the CI job                 | postgres                                      |
-| `ci-env`         | Environment of the CI job                        | postgres (`TEST_DATABASE_URL`)                |
-| `ci-steps`       | CI steps before the tidy check, build, and tests | sqlc (`sqlc diff`), htmx (templ output check) |
-| `docker-build`   | Build stage, after the sources are copied        | sqlite (`/out/data`)                          |
-| `docker-runtime` | Runtime stage, before `USER` and `ENTRYPOINT`    | sqlite (`/data` volume, `DATABASE_URL`)       |
-| `dockerignore`   | `.dockerignore` patterns                         | sqlite (`*.db`), htmx (`*_templ.txt`)         |
-| `readme-docker`  | The README's Docker section                      | sqlite, postgres, htmx                        |
+| Point            | Where it goes                                    | Used by                                                                    |
+| ---------------- | ------------------------------------------------ | -------------------------------------------------------------------------- |
+| `make`           | Makefile variables or extra targets              | sqlite (data volume), postgres (host mapping)                              |
+| `make-generate`  | The recipe of `make generate`                    | sqlc, htmx (`go generate` of the web package), tailwind (Tailwind CLI)     |
+| `ci-services`    | Service containers of the CI job                 | postgres                                                                   |
+| `ci-env`         | Environment of the CI job                        | postgres (`TEST_DATABASE_URL`)                                             |
+| `ci-steps`       | CI steps before the tidy check, build, and tests | sqlc (`sqlc diff`), htmx (templ output check), tailwind (stylesheet check) |
+| `docker-build`   | Build stage, after the sources are copied        | sqlite (`/out/data`)                                                       |
+| `docker-runtime` | Runtime stage, before `USER` and `ENTRYPOINT`    | sqlite (`/data` volume, `DATABASE_URL`)                                    |
+| `dockerignore`   | `.dockerignore` patterns                         | sqlite (`*.db`), htmx (`*_templ.txt`)                                      |
+| `readme-docker`  | The README's Docker section                      | sqlite, postgres, htmx                                                     |
 
 A contribution depends only on traits and the template data, never on which
 other component is selected, so a component of a kind added later, such as
-the htmx frontend, which runs `templ generate`, contributes in the same way. See
+the htmx frontend, which runs `templ generate`, or the Tailwind CSS framework,
+contributes in the same way. A kind can declare points of its own as well:
+the frontend kind declares the points a CSS framework fills (see
+[CSS frameworks](/docs/concepts/slots-and-contracts#css-frameworks)). See
 [Adding a component](/docs/contributing/adding-a-component#contributing-to-the-tooling)
 for how to write one.

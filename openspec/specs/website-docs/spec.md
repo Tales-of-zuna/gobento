@@ -26,8 +26,9 @@ sidebar.
 The Component reference SHALL list every component in the catalog with its
 kind, description, the traits it provides or requires, the supported and
 default versions of its modules, including the trait values a module is
-conditioned on, and the version of every asset it vendors, generated at build
-time. It SHALL mark optional kinds as optional.
+conditioned on, the version of every asset it vendors, and the version of
+every platform binary it downloads, generated at build time. It SHALL mark
+optional kinds as optional.
 
 #### Scenario: Version bump
 - **WHEN** a module's default version changes in the rules file and the site is rebuilt
@@ -40,6 +41,10 @@ time. It SHALL mark optional kinds as optional.
 #### Scenario: Vendored asset
 - **WHEN** the rules file records htmx as an asset of the htmx frontend
 - **THEN** the component reference lists htmx and its version under that frontend, marked as vendored
+
+#### Scenario: Platform binary
+- **WHEN** the rules file records the Tailwind CLI as a binary of `css/tailwind`
+- **THEN** the component reference lists `tailwindcss` and its version under Tailwind CSS, marked as downloaded on demand
 
 ### Requirement: Static search
 The documentation SHALL provide full-text search that works on the static site

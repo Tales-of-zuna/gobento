@@ -174,6 +174,13 @@ test('the Components reference is generated from the catalog', async ({ page }) 
   await expect(page.getByRole('table', { name: 'Modules of htmx' })).toContainText(
     'github.com/a-h/templ',
   );
+  // Spec "Platform binary": the Tailwind CLI is listed under Tailwind CSS, downloaded on demand.
+  await expect(page.getByRole('heading', { level: 2, name: /^CSS framework/ })).toContainText(
+    'optional',
+  );
+  const binaries = page.getByRole('table', { name: 'Binaries of tailwind' });
+  await expect(binaries).toContainText('tailwindcss');
+  await expect(binaries).toContainText('downloaded on demand');
 });
 
 test('the accessibility audit covers every docs page', () => {

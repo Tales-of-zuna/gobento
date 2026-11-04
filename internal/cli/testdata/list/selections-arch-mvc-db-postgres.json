@@ -15,12 +15,28 @@
     },
     {
       "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
       "data": "sqlc",
       "database": "postgres",
       "framework": "chi"
     },
     {
       "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
       "data": "sqlc",
       "database": "postgres",
       "framework": "chi",
@@ -41,12 +57,28 @@
     },
     {
       "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
       "data": "sqlc",
       "database": "postgres",
       "framework": "gin"
     },
     {
       "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
       "data": "sqlc",
       "database": "postgres",
       "framework": "gin",
@@ -67,12 +99,28 @@
     },
     {
       "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
       "data": "sqlc",
       "database": "postgres",
       "framework": "nethttp"
     },
     {
       "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
       "data": "sqlc",
       "database": "postgres",
       "framework": "nethttp",

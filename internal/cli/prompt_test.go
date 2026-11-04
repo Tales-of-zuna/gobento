@@ -90,6 +90,9 @@ func selections(specs ...string) []catalog.Selection {
 		if len(n) > 4 {
 			sel.Frontend = get(catalog.KindFrontend, n[4])
 		}
+		if len(n) > 5 {
+			sel.CSS = get(catalog.KindCSS, n[5])
+		}
 		out = append(out, sel)
 	}
 	return out
@@ -314,6 +317,44 @@ func TestInterviewFrontend(t *testing.T) {
 	}
 	if !slices.Equal(a.fields(), []string{"framework"}) {
 		t.Errorf("asked %v with --frontend none, want only the framework", a.fields())
+	}
+}
+
+// withCSS is withFrontend where the selections with htmx also come with
+// the CSS framework tailwind, which needs a frontend.
+var withCSS = append(slices.Clone(withFrontend), selections("mvc/chi/sqlite/sqlc/htmx/tailwind", "mvc/gin/sqlite/sqlc/htmx/tailwind")...)
+
+// TestInterviewCSS covers the spec scenarios "CSS framework question" and
+// "Not asked without a frontend": the CSS framework is asked after the
+// frontend, with "None (plain CSS)" first, and only with a frontend.
+func TestInterviewCSS(t *testing.T) {
+	t.Parallel()
+
+	a := &scriptedAsker{answers: map[string]string{"framework": "gin", "frontend": "htmx", "css": "tailwind"}}
+	in := newInput{name: "shop", hasName: true}
+	if _, err := interview(context.Background(), withCSS, &in, a); err != nil {
+		t.Fatalf("interview() error = %v", err)
+	}
+	if !slices.Equal(a.fields(), []string{"framework", "frontend", "css"}) {
+		t.Errorf("asked %v, want the CSS framework after the frontend", a.fields())
+	}
+	if got := a.options("css"); !slices.Equal(got, []string{"none", "tailwind"}) {
+		t.Errorf("css options = %v, want [none tailwind]", got)
+	}
+	if q := a.asked[len(a.asked)-1]; q.options[0].label != "None (plain CSS)" || q.title != "CSS framework" || !strings.Contains(q.help, "--css none") {
+		t.Errorf("css question = %q (%s) with first option %q", q.title, q.help, q.options[0].label)
+	}
+	if in.components["css"] != "tailwind" {
+		t.Errorf("components = %v, want css tailwind", in.components)
+	}
+
+	a = &scriptedAsker{answers: map[string]string{"framework": "gin", "frontend": "none"}}
+	in = newInput{name: "shop", hasName: true}
+	if _, err := interview(context.Background(), withCSS, &in, a); err != nil {
+		t.Fatalf("interview() error = %v", err)
+	}
+	if !slices.Equal(a.fields(), []string{"framework", "frontend"}) || in.components["css"] != "" {
+		t.Errorf("asked %v and chose css %q without a frontend, want no CSS question", a.fields(), in.components["css"])
 	}
 }
 

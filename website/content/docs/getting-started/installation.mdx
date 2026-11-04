@@ -21,7 +21,9 @@ each release's notes list what changed.
   are pure Go, so cgo is not needed on Linux, macOS, or Windows.
 - **No Node.js.** The htmx frontend ships htmx and the Go code templ
   generates, so neither Node.js nor the templ command is needed to generate,
-  build, or run a project.
+  build, or run a project. With Tailwind CSS, the compiled stylesheet is
+  shipped too; rebuilding it after a change downloads the standalone Tailwind
+  CLI, which needs no Node.js either.
 
 ## Install the CLI
 

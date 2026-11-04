@@ -1,4 +1,4 @@
-/* Styles for the pages in ../pages.templ. Plain CSS, with no build step. */
+{{with contrib "stylesheet"}}{{.}}{{else}}/* Styles for the pages in ../pages.templ. Plain CSS, with no build step. */
 
 :root {
   color-scheme: light dark;
@@ -137,3 +137,4 @@ footer {
 a {
   color: var(--accent);
 }
+{{end -}}

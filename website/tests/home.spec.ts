@@ -124,17 +124,32 @@ test.describe('home page', () => {
       'GORM',
       'sqlc',
       'htmx + templ',
+      'Tailwind CSS',
     ]) {
       await expect(belt.getByText(name, { exact: true }).first()).toBeAttached();
     }
+    // Tailwind CSS ships: a ready plate, not a roadmap one.
+    await expect(
+      belt.locator('li', { hasText: 'Tailwind CSS' }).first().getByText('ready', { exact: true }),
+    ).toBeAttached();
     await expect(
       page.getByText('modernc.org/sqlite v1.61.1 needs Go 1.26 or newer'),
     ).toBeAttached();
     // The optional frontend kind has its own compartment, with the roadmap.
     const frontend = page.getByRole('list', { name: 'Frontend roadmap' });
-    for (const name of ['React', 'Vue', 'Svelte', 'Tailwind CSS']) {
+    for (const name of ['React', 'Vue', 'Svelte']) {
       await expect(frontend.getByText(name, { exact: true })).toBeAttached();
     }
+    await expect(frontend.getByText('Tailwind CSS', { exact: true })).toHaveCount(0);
+    // The optional CSS framework kind has its own compartment with Tailwind CSS.
+    const css = page.getByRole('heading', { level: 3, name: /^CSS framework/ });
+    await expect(css).toContainText('optional');
+    await expect(page.getByRole('list', { name: 'CSS framework roadmap' })).toContainText(
+      'more later',
+    );
+    await expect(page.getByRole('list', { name: 'Component kinds' })).toContainText(
+      'CSS framework',
+    );
   });
 
   test.describe('mobile', () => {

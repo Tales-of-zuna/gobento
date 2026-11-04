@@ -1,0 +1,3 @@
+{{- if eq (index .Traits "frontend-build") "go"}}
+$(GO) run ./internal/tools/tailwindcss --input tailwind.css --output {{.Slots.web.Dir}}/static/styles.css --minify
+{{- end}}

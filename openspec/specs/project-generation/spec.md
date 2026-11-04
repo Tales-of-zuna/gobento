@@ -196,6 +196,14 @@ reported with the supported values, including `none`.
 - **WHEN** the user omits `--frontend` and stdin is not a terminal
 - **THEN** the project is generated without a frontend
 
+#### Scenario: No CSS flag with a frontend
+- **WHEN** the user passes `--frontend htmx`, omits `--css`, and stdin is not a terminal
+- **THEN** the project is generated with htmx and without a CSS framework
+
+#### Scenario: Unknown CSS framework
+- **WHEN** the user passes `--css bootstrap`
+- **THEN** gobento exits non-zero naming `--css` and listing `none` and `tailwind`, and writes nothing
+
 ### Requirement: Ask for missing input in a terminal
 In a terminal (stdin and stdout) without `--no-input`, `gobento new` SHALL
 ask, before validating, for the project name when no `<name>` is given, then
@@ -222,6 +230,10 @@ questions.
 #### Scenario: Frontend question
 - **WHEN** the user runs `gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc` in a terminal
 - **THEN** gobento asks for the frontend, offering "None (API only)" first and then `htmx`
+
+#### Scenario: CSS framework question
+- **WHEN** the user answers `htmx` to the frontend question
+- **THEN** gobento then asks for the CSS framework, offering "None (plain CSS)" first and then `tailwind`
 
 ### Requirement: Questions offer only supported options
 A component question SHALL offer only the options that form a supported
@@ -333,3 +345,7 @@ deterministically from the catalog.
 #### Scenario: Frontend combinations are covered pairwise
 - **WHEN** CI runs the integration test and the catalog has a frontend
 - **THEN** for every architecture, framework, database, and data-access component that can be combined with that frontend, a project with the frontend and that component is checked, and for every two such components that can appear together with the frontend, a project with the frontend and both of them is checked
+
+#### Scenario: CSS frameworks are covered pairwise
+- **WHEN** CI runs the integration test and the catalog has a CSS framework
+- **THEN** for every component that can be combined with that CSS framework, including each frontend, a project with the CSS framework and that component is checked

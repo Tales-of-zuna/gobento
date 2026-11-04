@@ -8,6 +8,10 @@ gobento new shop --module example.com/shop --arch ddd --framework chi --db postg
 gobento new shop --arch ddd --framework chi --db postgres --data gorm --frontend htmx
 # ddd/chi/postgres/gorm/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework chi --db postgres --data gorm --frontend htmx --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# ddd/chi/postgres/gorm/htmx/tailwind, defaults
+gobento new shop --arch ddd --framework chi --db postgres --data gorm --frontend htmx --css tailwind
+# ddd/chi/postgres/gorm/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework chi --db postgres --data gorm --frontend htmx --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # ddd/chi/postgres/sqlc, defaults
 gobento new shop --arch ddd --framework chi --db postgres --data sqlc
 # ddd/chi/postgres/sqlc, explicit module and range floors
@@ -16,6 +20,10 @@ gobento new shop --module example.com/shop --arch ddd --framework chi --db postg
 gobento new shop --arch ddd --framework chi --db postgres --data sqlc --frontend htmx
 # ddd/chi/postgres/sqlc/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework chi --db postgres --data sqlc --frontend htmx --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
+# ddd/chi/postgres/sqlc/htmx/tailwind, defaults
+gobento new shop --arch ddd --framework chi --db postgres --data sqlc --frontend htmx --css tailwind
+# ddd/chi/postgres/sqlc/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework chi --db postgres --data sqlc --frontend htmx --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
 # ddd/chi/sqlite/gorm, defaults
 gobento new shop --arch ddd --framework chi --db sqlite --data gorm
 # ddd/chi/sqlite/gorm, explicit module and range floors
@@ -24,6 +32,10 @@ gobento new shop --module example.com/shop --arch ddd --framework chi --db sqlit
 gobento new shop --arch ddd --framework chi --db sqlite --data gorm --frontend htmx
 # ddd/chi/sqlite/gorm/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework chi --db sqlite --data gorm --frontend htmx --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# ddd/chi/sqlite/gorm/htmx/tailwind, defaults
+gobento new shop --arch ddd --framework chi --db sqlite --data gorm --frontend htmx --css tailwind
+# ddd/chi/sqlite/gorm/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework chi --db sqlite --data gorm --frontend htmx --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # ddd/chi/sqlite/sqlc, defaults
 gobento new shop --arch ddd --framework chi --db sqlite --data sqlc
 # ddd/chi/sqlite/sqlc, explicit module and range floors
@@ -32,6 +44,10 @@ gobento new shop --module example.com/shop --arch ddd --framework chi --db sqlit
 gobento new shop --arch ddd --framework chi --db sqlite --data sqlc --frontend htmx
 # ddd/chi/sqlite/sqlc/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework chi --db sqlite --data sqlc --frontend htmx --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
+# ddd/chi/sqlite/sqlc/htmx/tailwind, defaults
+gobento new shop --arch ddd --framework chi --db sqlite --data sqlc --frontend htmx --css tailwind
+# ddd/chi/sqlite/sqlc/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework chi --db sqlite --data sqlc --frontend htmx --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
 # ddd/gin/postgres/gorm, defaults
 gobento new shop --arch ddd --framework gin --db postgres --data gorm
 # ddd/gin/postgres/gorm, explicit module and range floors
@@ -40,6 +56,10 @@ gobento new shop --module example.com/shop --arch ddd --framework gin --db postg
 gobento new shop --arch ddd --framework gin --db postgres --data gorm --frontend htmx
 # ddd/gin/postgres/gorm/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework gin --db postgres --data gorm --frontend htmx --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# ddd/gin/postgres/gorm/htmx/tailwind, defaults
+gobento new shop --arch ddd --framework gin --db postgres --data gorm --frontend htmx --css tailwind
+# ddd/gin/postgres/gorm/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework gin --db postgres --data gorm --frontend htmx --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # ddd/gin/postgres/sqlc, defaults
 gobento new shop --arch ddd --framework gin --db postgres --data sqlc
 # ddd/gin/postgres/sqlc, explicit module and range floors
@@ -48,6 +68,10 @@ gobento new shop --module example.com/shop --arch ddd --framework gin --db postg
 gobento new shop --arch ddd --framework gin --db postgres --data sqlc --frontend htmx
 # ddd/gin/postgres/sqlc/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework gin --db postgres --data sqlc --frontend htmx --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
+# ddd/gin/postgres/sqlc/htmx/tailwind, defaults
+gobento new shop --arch ddd --framework gin --db postgres --data sqlc --frontend htmx --css tailwind
+# ddd/gin/postgres/sqlc/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework gin --db postgres --data sqlc --frontend htmx --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
 # ddd/gin/sqlite/gorm, defaults
 gobento new shop --arch ddd --framework gin --db sqlite --data gorm
 # ddd/gin/sqlite/gorm, explicit module and range floors
@@ -56,6 +80,10 @@ gobento new shop --module example.com/shop --arch ddd --framework gin --db sqlit
 gobento new shop --arch ddd --framework gin --db sqlite --data gorm --frontend htmx
 # ddd/gin/sqlite/gorm/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework gin --db sqlite --data gorm --frontend htmx --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# ddd/gin/sqlite/gorm/htmx/tailwind, defaults
+gobento new shop --arch ddd --framework gin --db sqlite --data gorm --frontend htmx --css tailwind
+# ddd/gin/sqlite/gorm/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework gin --db sqlite --data gorm --frontend htmx --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # ddd/gin/sqlite/sqlc, defaults
 gobento new shop --arch ddd --framework gin --db sqlite --data sqlc
 # ddd/gin/sqlite/sqlc, explicit module and range floors
@@ -64,6 +92,10 @@ gobento new shop --module example.com/shop --arch ddd --framework gin --db sqlit
 gobento new shop --arch ddd --framework gin --db sqlite --data sqlc --frontend htmx
 # ddd/gin/sqlite/sqlc/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework gin --db sqlite --data sqlc --frontend htmx --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
+# ddd/gin/sqlite/sqlc/htmx/tailwind, defaults
+gobento new shop --arch ddd --framework gin --db sqlite --data sqlc --frontend htmx --css tailwind
+# ddd/gin/sqlite/sqlc/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework gin --db sqlite --data sqlc --frontend htmx --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
 # ddd/nethttp/postgres/gorm, defaults
 gobento new shop --arch ddd --framework nethttp --db postgres --data gorm
 # ddd/nethttp/postgres/gorm, explicit module and range floors
@@ -72,6 +104,10 @@ gobento new shop --module example.com/shop --arch ddd --framework nethttp --db p
 gobento new shop --arch ddd --framework nethttp --db postgres --data gorm --frontend htmx
 # ddd/nethttp/postgres/gorm/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework nethttp --db postgres --data gorm --frontend htmx --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# ddd/nethttp/postgres/gorm/htmx/tailwind, defaults
+gobento new shop --arch ddd --framework nethttp --db postgres --data gorm --frontend htmx --css tailwind
+# ddd/nethttp/postgres/gorm/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework nethttp --db postgres --data gorm --frontend htmx --css tailwind --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # ddd/nethttp/postgres/sqlc, defaults
 gobento new shop --arch ddd --framework nethttp --db postgres --data sqlc
 # ddd/nethttp/postgres/sqlc, explicit module and range floors
@@ -80,6 +116,10 @@ gobento new shop --module example.com/shop --arch ddd --framework nethttp --db p
 gobento new shop --arch ddd --framework nethttp --db postgres --data sqlc --frontend htmx
 # ddd/nethttp/postgres/sqlc/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework nethttp --db postgres --data sqlc --frontend htmx --go 1.26
+# ddd/nethttp/postgres/sqlc/htmx/tailwind, defaults
+gobento new shop --arch ddd --framework nethttp --db postgres --data sqlc --frontend htmx --css tailwind
+# ddd/nethttp/postgres/sqlc/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework nethttp --db postgres --data sqlc --frontend htmx --css tailwind --go 1.26
 # ddd/nethttp/sqlite/gorm, defaults
 gobento new shop --arch ddd --framework nethttp --db sqlite --data gorm
 # ddd/nethttp/sqlite/gorm, explicit module and range floors
@@ -88,6 +128,10 @@ gobento new shop --module example.com/shop --arch ddd --framework nethttp --db s
 gobento new shop --arch ddd --framework nethttp --db sqlite --data gorm --frontend htmx
 # ddd/nethttp/sqlite/gorm/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework nethttp --db sqlite --data gorm --frontend htmx --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# ddd/nethttp/sqlite/gorm/htmx/tailwind, defaults
+gobento new shop --arch ddd --framework nethttp --db sqlite --data gorm --frontend htmx --css tailwind
+# ddd/nethttp/sqlite/gorm/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework nethttp --db sqlite --data gorm --frontend htmx --css tailwind --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # ddd/nethttp/sqlite/sqlc, defaults
 gobento new shop --arch ddd --framework nethttp --db sqlite --data sqlc
 # ddd/nethttp/sqlite/sqlc, explicit module and range floors
@@ -96,6 +140,10 @@ gobento new shop --module example.com/shop --arch ddd --framework nethttp --db s
 gobento new shop --arch ddd --framework nethttp --db sqlite --data sqlc --frontend htmx
 # ddd/nethttp/sqlite/sqlc/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch ddd --framework nethttp --db sqlite --data sqlc --frontend htmx --go 1.26 --pin modernc.org/sqlite=v1.61.0
+# ddd/nethttp/sqlite/sqlc/htmx/tailwind, defaults
+gobento new shop --arch ddd --framework nethttp --db sqlite --data sqlc --frontend htmx --css tailwind
+# ddd/nethttp/sqlite/sqlc/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch ddd --framework nethttp --db sqlite --data sqlc --frontend htmx --css tailwind --go 1.26 --pin modernc.org/sqlite=v1.61.0
 # mvc/chi/postgres/gorm, defaults
 gobento new shop --arch mvc --framework chi --db postgres --data gorm
 # mvc/chi/postgres/gorm, explicit module and range floors
@@ -104,6 +152,10 @@ gobento new shop --module example.com/shop --arch mvc --framework chi --db postg
 gobento new shop --arch mvc --framework chi --db postgres --data gorm --frontend htmx
 # mvc/chi/postgres/gorm/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres --data gorm --frontend htmx --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# mvc/chi/postgres/gorm/htmx/tailwind, defaults
+gobento new shop --arch mvc --framework chi --db postgres --data gorm --frontend htmx --css tailwind
+# mvc/chi/postgres/gorm/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres --data gorm --frontend htmx --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # mvc/chi/postgres/sqlc, defaults
 gobento new shop --arch mvc --framework chi --db postgres --data sqlc
 # mvc/chi/postgres/sqlc, explicit module and range floors
@@ -112,6 +164,10 @@ gobento new shop --module example.com/shop --arch mvc --framework chi --db postg
 gobento new shop --arch mvc --framework chi --db postgres --data sqlc --frontend htmx
 # mvc/chi/postgres/sqlc/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres --data sqlc --frontend htmx --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
+# mvc/chi/postgres/sqlc/htmx/tailwind, defaults
+gobento new shop --arch mvc --framework chi --db postgres --data sqlc --frontend htmx --css tailwind
+# mvc/chi/postgres/sqlc/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres --data sqlc --frontend htmx --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
 # mvc/chi/sqlite/gorm, defaults
 gobento new shop --arch mvc --framework chi --db sqlite --data gorm
 # mvc/chi/sqlite/gorm, explicit module and range floors
@@ -120,6 +176,10 @@ gobento new shop --module example.com/shop --arch mvc --framework chi --db sqlit
 gobento new shop --arch mvc --framework chi --db sqlite --data gorm --frontend htmx
 # mvc/chi/sqlite/gorm/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework chi --db sqlite --data gorm --frontend htmx --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# mvc/chi/sqlite/gorm/htmx/tailwind, defaults
+gobento new shop --arch mvc --framework chi --db sqlite --data gorm --frontend htmx --css tailwind
+# mvc/chi/sqlite/gorm/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework chi --db sqlite --data gorm --frontend htmx --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # mvc/chi/sqlite/sqlc, defaults
 gobento new shop --arch mvc --framework chi --db sqlite --data sqlc
 # mvc/chi/sqlite/sqlc, explicit module and range floors
@@ -128,6 +188,10 @@ gobento new shop --module example.com/shop --arch mvc --framework chi --db sqlit
 gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend htmx
 # mvc/chi/sqlite/sqlc/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework chi --db sqlite --data sqlc --frontend htmx --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
+# mvc/chi/sqlite/sqlc/htmx/tailwind, defaults
+gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend htmx --css tailwind
+# mvc/chi/sqlite/sqlc/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework chi --db sqlite --data sqlc --frontend htmx --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
 # mvc/gin/postgres/gorm, defaults
 gobento new shop --arch mvc --framework gin --db postgres --data gorm
 # mvc/gin/postgres/gorm, explicit module and range floors
@@ -136,6 +200,10 @@ gobento new shop --module example.com/shop --arch mvc --framework gin --db postg
 gobento new shop --arch mvc --framework gin --db postgres --data gorm --frontend htmx
 # mvc/gin/postgres/gorm/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework gin --db postgres --data gorm --frontend htmx --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# mvc/gin/postgres/gorm/htmx/tailwind, defaults
+gobento new shop --arch mvc --framework gin --db postgres --data gorm --frontend htmx --css tailwind
+# mvc/gin/postgres/gorm/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework gin --db postgres --data gorm --frontend htmx --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # mvc/gin/postgres/sqlc, defaults
 gobento new shop --arch mvc --framework gin --db postgres --data sqlc
 # mvc/gin/postgres/sqlc, explicit module and range floors
@@ -144,6 +212,10 @@ gobento new shop --module example.com/shop --arch mvc --framework gin --db postg
 gobento new shop --arch mvc --framework gin --db postgres --data sqlc --frontend htmx
 # mvc/gin/postgres/sqlc/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework gin --db postgres --data sqlc --frontend htmx --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
+# mvc/gin/postgres/sqlc/htmx/tailwind, defaults
+gobento new shop --arch mvc --framework gin --db postgres --data sqlc --frontend htmx --css tailwind
+# mvc/gin/postgres/sqlc/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework gin --db postgres --data sqlc --frontend htmx --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
 # mvc/gin/sqlite/gorm, defaults
 gobento new shop --arch mvc --framework gin --db sqlite --data gorm
 # mvc/gin/sqlite/gorm, explicit module and range floors
@@ -152,6 +224,10 @@ gobento new shop --module example.com/shop --arch mvc --framework gin --db sqlit
 gobento new shop --arch mvc --framework gin --db sqlite --data gorm --frontend htmx
 # mvc/gin/sqlite/gorm/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework gin --db sqlite --data gorm --frontend htmx --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# mvc/gin/sqlite/gorm/htmx/tailwind, defaults
+gobento new shop --arch mvc --framework gin --db sqlite --data gorm --frontend htmx --css tailwind
+# mvc/gin/sqlite/gorm/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework gin --db sqlite --data gorm --frontend htmx --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # mvc/gin/sqlite/sqlc, defaults
 gobento new shop --arch mvc --framework gin --db sqlite --data sqlc
 # mvc/gin/sqlite/sqlc, explicit module and range floors
@@ -160,6 +236,10 @@ gobento new shop --module example.com/shop --arch mvc --framework gin --db sqlit
 gobento new shop --arch mvc --framework gin --db sqlite --data sqlc --frontend htmx
 # mvc/gin/sqlite/sqlc/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework gin --db sqlite --data sqlc --frontend htmx --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
+# mvc/gin/sqlite/sqlc/htmx/tailwind, defaults
+gobento new shop --arch mvc --framework gin --db sqlite --data sqlc --frontend htmx --css tailwind
+# mvc/gin/sqlite/sqlc/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework gin --db sqlite --data sqlc --frontend htmx --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
 # mvc/nethttp/postgres/gorm, defaults
 gobento new shop --arch mvc --framework nethttp --db postgres --data gorm
 # mvc/nethttp/postgres/gorm, explicit module and range floors
@@ -168,6 +248,10 @@ gobento new shop --module example.com/shop --arch mvc --framework nethttp --db p
 gobento new shop --arch mvc --framework nethttp --db postgres --data gorm --frontend htmx
 # mvc/nethttp/postgres/gorm/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db postgres --data gorm --frontend htmx --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# mvc/nethttp/postgres/gorm/htmx/tailwind, defaults
+gobento new shop --arch mvc --framework nethttp --db postgres --data gorm --frontend htmx --css tailwind
+# mvc/nethttp/postgres/gorm/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db postgres --data gorm --frontend htmx --css tailwind --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # mvc/nethttp/postgres/sqlc, defaults
 gobento new shop --arch mvc --framework nethttp --db postgres --data sqlc
 # mvc/nethttp/postgres/sqlc, explicit module and range floors
@@ -176,6 +260,10 @@ gobento new shop --module example.com/shop --arch mvc --framework nethttp --db p
 gobento new shop --arch mvc --framework nethttp --db postgres --data sqlc --frontend htmx
 # mvc/nethttp/postgres/sqlc/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db postgres --data sqlc --frontend htmx --go 1.26
+# mvc/nethttp/postgres/sqlc/htmx/tailwind, defaults
+gobento new shop --arch mvc --framework nethttp --db postgres --data sqlc --frontend htmx --css tailwind
+# mvc/nethttp/postgres/sqlc/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db postgres --data sqlc --frontend htmx --css tailwind --go 1.26
 # mvc/nethttp/sqlite/gorm, defaults
 gobento new shop --arch mvc --framework nethttp --db sqlite --data gorm
 # mvc/nethttp/sqlite/gorm, explicit module and range floors
@@ -184,6 +272,10 @@ gobento new shop --module example.com/shop --arch mvc --framework nethttp --db s
 gobento new shop --arch mvc --framework nethttp --db sqlite --data gorm --frontend htmx
 # mvc/nethttp/sqlite/gorm/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data gorm --frontend htmx --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# mvc/nethttp/sqlite/gorm/htmx/tailwind, defaults
+gobento new shop --arch mvc --framework nethttp --db sqlite --data gorm --frontend htmx --css tailwind
+# mvc/nethttp/sqlite/gorm/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data gorm --frontend htmx --css tailwind --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # mvc/nethttp/sqlite/sqlc, defaults
 gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc
 # mvc/nethttp/sqlite/sqlc, explicit module and range floors
@@ -192,6 +284,10 @@ gobento new shop --module example.com/shop --arch mvc --framework nethttp --db s
 gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx
 # mvc/nethttp/sqlite/sqlc/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx --go 1.26 --pin modernc.org/sqlite=v1.61.0
+# mvc/nethttp/sqlite/sqlc/htmx/tailwind, defaults
+gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx --css tailwind
+# mvc/nethttp/sqlite/sqlc/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx --css tailwind --go 1.26 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/chi/postgres/gorm, defaults
 gobento new shop --arch vertical-slice --framework chi --db postgres --data gorm
 # vertical-slice/chi/postgres/gorm, explicit module and range floors
@@ -200,6 +296,10 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework chi
 gobento new shop --arch vertical-slice --framework chi --db postgres --data gorm --frontend htmx
 # vertical-slice/chi/postgres/gorm/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db postgres --data gorm --frontend htmx --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# vertical-slice/chi/postgres/gorm/htmx/tailwind, defaults
+gobento new shop --arch vertical-slice --framework chi --db postgres --data gorm --frontend htmx --css tailwind
+# vertical-slice/chi/postgres/gorm/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db postgres --data gorm --frontend htmx --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # vertical-slice/chi/postgres/sqlc, defaults
 gobento new shop --arch vertical-slice --framework chi --db postgres --data sqlc
 # vertical-slice/chi/postgres/sqlc, explicit module and range floors
@@ -208,6 +308,10 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework chi
 gobento new shop --arch vertical-slice --framework chi --db postgres --data sqlc --frontend htmx
 # vertical-slice/chi/postgres/sqlc/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db postgres --data sqlc --frontend htmx --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
+# vertical-slice/chi/postgres/sqlc/htmx/tailwind, defaults
+gobento new shop --arch vertical-slice --framework chi --db postgres --data sqlc --frontend htmx --css tailwind
+# vertical-slice/chi/postgres/sqlc/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db postgres --data sqlc --frontend htmx --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0
 # vertical-slice/chi/sqlite/gorm, defaults
 gobento new shop --arch vertical-slice --framework chi --db sqlite --data gorm
 # vertical-slice/chi/sqlite/gorm, explicit module and range floors
@@ -216,6 +320,10 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework chi
 gobento new shop --arch vertical-slice --framework chi --db sqlite --data gorm --frontend htmx
 # vertical-slice/chi/sqlite/gorm/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db sqlite --data gorm --frontend htmx --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/chi/sqlite/gorm/htmx/tailwind, defaults
+gobento new shop --arch vertical-slice --framework chi --db sqlite --data gorm --frontend htmx --css tailwind
+# vertical-slice/chi/sqlite/gorm/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db sqlite --data gorm --frontend htmx --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/chi/sqlite/sqlc, defaults
 gobento new shop --arch vertical-slice --framework chi --db sqlite --data sqlc
 # vertical-slice/chi/sqlite/sqlc, explicit module and range floors
@@ -224,6 +332,10 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework chi
 gobento new shop --arch vertical-slice --framework chi --db sqlite --data sqlc --frontend htmx
 # vertical-slice/chi/sqlite/sqlc/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db sqlite --data sqlc --frontend htmx --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/chi/sqlite/sqlc/htmx/tailwind, defaults
+gobento new shop --arch vertical-slice --framework chi --db sqlite --data sqlc --frontend htmx --css tailwind
+# vertical-slice/chi/sqlite/sqlc/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework chi --db sqlite --data sqlc --frontend htmx --css tailwind --go 1.26 --pin github.com/go-chi/chi/v5=v5.3.0 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/gin/postgres/gorm, defaults
 gobento new shop --arch vertical-slice --framework gin --db postgres --data gorm
 # vertical-slice/gin/postgres/gorm, explicit module and range floors
@@ -232,6 +344,10 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework gin
 gobento new shop --arch vertical-slice --framework gin --db postgres --data gorm --frontend htmx
 # vertical-slice/gin/postgres/gorm/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db postgres --data gorm --frontend htmx --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# vertical-slice/gin/postgres/gorm/htmx/tailwind, defaults
+gobento new shop --arch vertical-slice --framework gin --db postgres --data gorm --frontend htmx --css tailwind
+# vertical-slice/gin/postgres/gorm/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db postgres --data gorm --frontend htmx --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # vertical-slice/gin/postgres/sqlc, defaults
 gobento new shop --arch vertical-slice --framework gin --db postgres --data sqlc
 # vertical-slice/gin/postgres/sqlc, explicit module and range floors
@@ -240,6 +356,10 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework gin
 gobento new shop --arch vertical-slice --framework gin --db postgres --data sqlc --frontend htmx
 # vertical-slice/gin/postgres/sqlc/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db postgres --data sqlc --frontend htmx --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
+# vertical-slice/gin/postgres/sqlc/htmx/tailwind, defaults
+gobento new shop --arch vertical-slice --framework gin --db postgres --data sqlc --frontend htmx --css tailwind
+# vertical-slice/gin/postgres/sqlc/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db postgres --data sqlc --frontend htmx --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0
 # vertical-slice/gin/sqlite/gorm, defaults
 gobento new shop --arch vertical-slice --framework gin --db sqlite --data gorm
 # vertical-slice/gin/sqlite/gorm, explicit module and range floors
@@ -248,6 +368,10 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework gin
 gobento new shop --arch vertical-slice --framework gin --db sqlite --data gorm --frontend htmx
 # vertical-slice/gin/sqlite/gorm/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db sqlite --data gorm --frontend htmx --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/gin/sqlite/gorm/htmx/tailwind, defaults
+gobento new shop --arch vertical-slice --framework gin --db sqlite --data gorm --frontend htmx --css tailwind
+# vertical-slice/gin/sqlite/gorm/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db sqlite --data gorm --frontend htmx --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/gin/sqlite/sqlc, defaults
 gobento new shop --arch vertical-slice --framework gin --db sqlite --data sqlc
 # vertical-slice/gin/sqlite/sqlc, explicit module and range floors
@@ -256,6 +380,10 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework gin
 gobento new shop --arch vertical-slice --framework gin --db sqlite --data sqlc --frontend htmx
 # vertical-slice/gin/sqlite/sqlc/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db sqlite --data sqlc --frontend htmx --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/gin/sqlite/sqlc/htmx/tailwind, defaults
+gobento new shop --arch vertical-slice --framework gin --db sqlite --data sqlc --frontend htmx --css tailwind
+# vertical-slice/gin/sqlite/sqlc/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework gin --db sqlite --data sqlc --frontend htmx --css tailwind --go 1.26 --pin github.com/gin-gonic/gin=v1.11.0 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/nethttp/postgres/gorm, defaults
 gobento new shop --arch vertical-slice --framework nethttp --db postgres --data gorm
 # vertical-slice/nethttp/postgres/gorm, explicit module and range floors
@@ -264,6 +392,10 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework net
 gobento new shop --arch vertical-slice --framework nethttp --db postgres --data gorm --frontend htmx
 # vertical-slice/nethttp/postgres/gorm/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db postgres --data gorm --frontend htmx --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
+# vertical-slice/nethttp/postgres/gorm/htmx/tailwind, defaults
+gobento new shop --arch vertical-slice --framework nethttp --db postgres --data gorm --frontend htmx --css tailwind
+# vertical-slice/nethttp/postgres/gorm/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db postgres --data gorm --frontend htmx --css tailwind --go 1.26 --pin gorm.io/driver/postgres=v1.6.1 --pin gorm.io/gorm=v1.31.1
 # vertical-slice/nethttp/postgres/sqlc, defaults
 gobento new shop --arch vertical-slice --framework nethttp --db postgres --data sqlc
 # vertical-slice/nethttp/postgres/sqlc, explicit module and range floors
@@ -272,6 +404,10 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework net
 gobento new shop --arch vertical-slice --framework nethttp --db postgres --data sqlc --frontend htmx
 # vertical-slice/nethttp/postgres/sqlc/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db postgres --data sqlc --frontend htmx --go 1.26
+# vertical-slice/nethttp/postgres/sqlc/htmx/tailwind, defaults
+gobento new shop --arch vertical-slice --framework nethttp --db postgres --data sqlc --frontend htmx --css tailwind
+# vertical-slice/nethttp/postgres/sqlc/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db postgres --data sqlc --frontend htmx --css tailwind --go 1.26
 # vertical-slice/nethttp/sqlite/gorm, defaults
 gobento new shop --arch vertical-slice --framework nethttp --db sqlite --data gorm
 # vertical-slice/nethttp/sqlite/gorm, explicit module and range floors
@@ -280,6 +416,10 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework net
 gobento new shop --arch vertical-slice --framework nethttp --db sqlite --data gorm --frontend htmx
 # vertical-slice/nethttp/sqlite/gorm/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db sqlite --data gorm --frontend htmx --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/nethttp/sqlite/gorm/htmx/tailwind, defaults
+gobento new shop --arch vertical-slice --framework nethttp --db sqlite --data gorm --frontend htmx --css tailwind
+# vertical-slice/nethttp/sqlite/gorm/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db sqlite --data gorm --frontend htmx --css tailwind --go 1.26 --pin github.com/libtnb/sqlite=v1.1.0 --pin gorm.io/gorm=v1.31.1 --pin modernc.org/sqlite=v1.61.0
 # vertical-slice/nethttp/sqlite/sqlc, defaults
 gobento new shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc
 # vertical-slice/nethttp/sqlite/sqlc, explicit module and range floors
@@ -288,3 +428,7 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework net
 gobento new shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc --frontend htmx
 # vertical-slice/nethttp/sqlite/sqlc/htmx, explicit module and range floors
 gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc --frontend htmx --go 1.26 --pin modernc.org/sqlite=v1.61.0
+# vertical-slice/nethttp/sqlite/sqlc/htmx/tailwind, defaults
+gobento new shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc --frontend htmx --css tailwind
+# vertical-slice/nethttp/sqlite/sqlc/htmx/tailwind, explicit module and range floors
+gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc --frontend htmx --css tailwind --go 1.26 --pin modernc.org/sqlite=v1.61.0

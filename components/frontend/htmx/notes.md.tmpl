@@ -33,6 +33,12 @@ The `//go:generate` line in `{{.Slots.web.Dir}}/handler.go` runs
 The CI workflow runs it too and fails when the committed `pages_templ.go` is
 not what templ generates from `pages.templ`.
 
-htmx {{index .Assets "htmx.org"}} is in `{{.Slots.web.Dir}}/static/htmx.min.js`, and the
-styles are plain CSS in `{{.Slots.web.Dir}}/static/styles.css`. To update htmx,
+htmx {{index .Assets "htmx.org"}} is in `{{.Slots.web.Dir}}/static/htmx.min.js`; to update it,
 replace the file with `dist/htmx.min.js` of a newer release.
+{{- if contrib "stylesheet"}}
+The stylesheet, `{{.Slots.web.Dir}}/static/styles.css`, is built by the CSS
+framework described in the next section.
+{{- else}}
+The styles are plain CSS in `{{.Slots.web.Dir}}/static/styles.css`, for the
+elements and the classes the pages use: `row`, `empty`, `problem`, and `name`.
+{{- end}}

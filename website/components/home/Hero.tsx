@@ -30,8 +30,8 @@ export function Hero({ release }: { release: ReleaseStatus }) {
           <Item>
             <p className={s.sub}>
               Choose an architecture, HTTP framework, database, data access and, if you like, a
-              frontend. gobento picks versions that are known to work together and generates a
-              project that builds.
+              frontend and a CSS framework. gobento picks versions that are known to work together
+              and generates a project that builds.
             </p>
           </Item>
           <Item>

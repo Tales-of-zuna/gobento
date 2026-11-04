@@ -3,6 +3,7 @@ package generate
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"regexp"
 	"slices"
 	"strings"
@@ -146,8 +147,11 @@ func (e *SelectionError) Error() string {
 		supported = "none"
 	}
 	noun := string(e.Kind)
-	if e.Kind == catalog.KindData {
+	switch e.Kind {
+	case catalog.KindData:
 		noun = "data-access library" // "a data" does not read
+	case catalog.KindCSS:
+		noun = "CSS framework"
 	}
 	if e.Value == "" {
 		article := "a"
@@ -207,6 +211,7 @@ func Prepare(cat *catalog.Catalog, spec Spec) (*Prepared, error) {
 		Selection: sel,
 		Versions:  res.Versions(),
 		Assets:    res.AssetVersions(),
+		Binaries:  res.BinaryVersions(),
 		Base:      cat.Base(),
 		Tooling:   res.Tooling,
 	})
@@ -254,10 +259,41 @@ func selectComponents(cat *catalog.Catalog, chosen map[catalog.Kind]string) (cat
 	}
 	if !slices.ContainsFunc(supported, func(s catalog.Selection) bool { return s.String() == sel.String() }) {
 		if err := compose.Check(cat, sel); err != nil {
+			if hint := providerHint(cat, sel); hint != "" {
+				err = fmt.Errorf("%w; %s", err, hint)
+			}
 			return catalog.Selection{}, ids, []error{fmt.Errorf("the combination %s is not supported: %w", sel, err)}
 		}
 	}
 	return sel, ids, nil
+}
+
+// providerHint names, for every trait a selected component requires and no
+// selected component provides, the components of the catalog that provide
+// an accepted value, for example "frontend-build is provided by
+// frontend/htmx", or returns "" if there are none.
+func providerHint(cat *catalog.Catalog, sel catalog.Selection) string {
+	provided := sel.Traits()
+	var hints []string
+	for _, c := range sel.Components() {
+		for _, trait := range slices.Sorted(maps.Keys(c.Requires)) {
+			if _, ok := provided[trait]; ok {
+				continue
+			}
+			var by []string
+			for _, kind := range catalog.Kinds() {
+				for _, p := range cat.Components(kind) {
+					if v, ok := p.Provides[trait]; ok && slices.Contains(c.Requires[trait], v) {
+						by = append(by, p.ID())
+					}
+				}
+			}
+			if len(by) > 0 {
+				hints = append(hints, trait+" is provided by "+strings.Join(by, ", "))
+			}
+		}
+	}
+	return strings.Join(hints, "; ")
 }
 
 // supportedNames returns the sorted, unique names of kind in the supported

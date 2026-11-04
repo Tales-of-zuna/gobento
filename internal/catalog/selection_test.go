@@ -80,8 +80,10 @@ func TestCandidatesOptionalKind(t *testing.T) {
 func TestSelectionOptionalKind(t *testing.T) {
 	t.Parallel()
 
-	if !KindFrontend.Optional() {
-		t.Error("KindFrontend.Optional() = false, want true")
+	for _, k := range []Kind{KindFrontend, KindCSS} {
+		if !k.Optional() {
+			t.Errorf("%s.Optional() = false, want true", k)
+		}
 	}
 	for _, k := range []Kind{KindArchitecture, KindFramework, KindDatabase, KindData} {
 		if k.Optional() {
@@ -106,6 +108,14 @@ func TestSelectionOptionalKind(t *testing.T) {
 	}
 	if n := len(sel.Components()); n != 2 {
 		t.Errorf("Components() has %d entries, want 2", n)
+	}
+	css := &Component{Kind: KindCSS, Name: "tailwind"}
+	sel = sel.With(css)
+	if got := sel.String(); got != "mvc/-/-/-/htmx/tailwind" {
+		t.Errorf("String() = %q, want mvc/-/-/-/htmx/tailwind", got)
+	}
+	if sel.Component(KindCSS) != css || sel.CSS != css || sel.Components()[2] != css {
+		t.Error("With(css) did not set the CSS framework last in kind order")
 	}
 }
 

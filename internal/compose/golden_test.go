@@ -21,18 +21,20 @@ var update = flag.Bool("update", false, "rewrite testdata/golden* from the curre
 
 // goldens maps each full-project golden directory to the reference selection
 // it holds: one per architecture, with the same framework, database, and
-// data access, and the first one again with a frontend, which shows how the
-// architecture mounts it.
+// data access, the first one again with a frontend, which shows how the
+// architecture mounts it, and once more with a CSS framework.
 var goldens = []struct {
 	dir      string
 	sel      [4]string // architecture, framework, database, data
 	frontend string    // "" for none
+	css      string    // "" for none
 }{
 	{dir: "testdata/golden", sel: [4]string{"mvc", "nethttp", "sqlite", "sqlc"}},
 	{dir: "testdata/golden-vertical-slice", sel: [4]string{"vertical-slice", "nethttp", "sqlite", "sqlc"}},
 	{dir: "testdata/golden-ddd", sel: [4]string{"ddd", "nethttp", "sqlite", "sqlc"}},
 	{dir: "testdata/golden-htmx", sel: [4]string{"mvc", "nethttp", "sqlite", "sqlc"}, frontend: "htmx"},
 	{dir: "testdata/golden-ddd-htmx", sel: [4]string{"ddd", "nethttp", "sqlite", "sqlc"}, frontend: "htmx"},
+	{dir: "testdata/golden-htmx-tailwind", sel: [4]string{"mvc", "nethttp", "sqlite", "sqlc"}, frontend: "htmx", css: "tailwind"},
 }
 
 // goldenComponentsDir holds the files each component contributes, in
@@ -46,7 +48,7 @@ const goldenComponentsDir = "testdata/golden-components"
 func TestGolden(t *testing.T) {
 	for _, g := range goldens {
 		t.Run(filepath.Base(g.dir), func(t *testing.T) {
-			checkGolden(t, g.dir, referencePlanWith(t, g.sel, g.frontend).Files)
+			checkGolden(t, g.dir, referencePlanWith(t, g.sel, g.frontend, g.css).Files)
 		})
 	}
 }
@@ -188,26 +190,42 @@ func shippedCatalog(t *testing.T) *catalog.Catalog {
 // a frontend, for the example project shop, with default versions.
 func referencePlan(t *testing.T, names [4]string) *Plan {
 	t.Helper()
-	return referencePlanWith(t, names, "")
+	return referencePlanWith(t, names)
 }
 
-// referencePlanWith is referencePlan with the named frontend, or none for "".
-func referencePlanWith(t *testing.T, names [4]string, frontend string) *Plan {
+// referencePlanWith is referencePlan with the named components of the
+// optional kinds, in kind order (frontend, then CSS framework); "" selects
+// none.
+func referencePlanWith(t *testing.T, names [4]string, optional ...string) *Plan {
 	t.Helper()
 	cat := shippedCatalog(t)
 	sel := pick(t, cat, names[0], names[1], names[2], names[3])
-	if frontend != "" {
-		ui, ok := cat.Component(catalog.KindFrontend, frontend)
-		if !ok {
-			t.Fatalf("frontend %s is not shipped", frontend)
+	kinds := []catalog.Kind{catalog.KindFrontend, catalog.KindCSS}
+	for i, name := range optional {
+		if name == "" {
+			continue
 		}
-		sel = sel.With(ui)
+		c, ok := cat.Component(kinds[i], name)
+		if !ok {
+			t.Fatalf("%s %s is not shipped", kinds[i], name)
+		}
+		sel = sel.With(c)
 	}
 	return planFor(t, cat, sel)
 }
 
 // planFor composes sel with default versions for the example project shop.
 func planFor(t *testing.T, cat *catalog.Catalog, sel catalog.Selection) *Plan {
+	t.Helper()
+	plan, err := planForErr(t, cat, sel)
+	if err != nil {
+		t.Fatalf("Compose() error = %v", err)
+	}
+	return plan
+}
+
+// planForErr is planFor, returning the composition error.
+func planForErr(t *testing.T, cat *catalog.Catalog, sel catalog.Selection) (*Plan, error) {
 	t.Helper()
 	var ids []string
 	for _, c := range sel.Components() {
@@ -221,18 +239,15 @@ func planFor(t *testing.T, cat *catalog.Catalog, sel catalog.Selection) *Plan {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := Compose(Input{
+	return Compose(Input{
 		Project:   Project{Name: "shop", Module: "example.com/shop", GoVersion: goVersion},
 		Selection: sel,
 		Versions:  res.Versions(),
 		Assets:    res.AssetVersions(),
+		Binaries:  res.BinaryVersions(),
 		Base:      cat.Base(),
 		Tooling:   res.Tooling,
 	})
-	if err != nil {
-		t.Fatalf("Compose() error = %v", err)
-	}
-	return plan
 }
 
 // TestShippedFrameworksAreLayoutIndependent covers the spec scenarios
@@ -326,7 +341,7 @@ func TestShippedCatalogSupported(t *testing.T) {
 			for _, db := range []string{"postgres", "sqlite"} {
 				for _, data := range []string{"gorm", "sqlc"} {
 					sel := arch + "/" + fw + "/" + db + "/" + data
-					want = append(want, sel, sel+"/htmx")
+					want = append(want, sel, sel+"/htmx", sel+"/htmx/tailwind")
 				}
 			}
 		}
