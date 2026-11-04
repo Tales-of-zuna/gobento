@@ -1,12 +1,14 @@
 /**
  * The Components reference (design D5): every component of the catalog with
- * its traits, module versions, and vendored assets, rendered at build time so
+ * its traits, module versions, vendored assets, and the platform binaries it
+ * downloads on demand, rendered at build time so
  * that no docs content contains a version number. Optional kinds are marked.
  */
 import { catalog as builtCatalog } from '@/lib/catalog/data';
 import {
   KIND_IDS,
   type Asset,
+  type Binary,
   type Catalog,
   type Component,
   type Module,
@@ -71,6 +73,7 @@ export function CatalogReference({ catalog }: { catalog: Catalog }) {
                 kindTitle={kind.title}
                 modules={catalog.modules.filter((m) => m.components.includes(component.id))}
                 assets={catalog.assets.filter((a) => a.components.includes(component.id))}
+                binaries={catalog.binaries.filter((b) => b.components.includes(component.id))}
               />
             ))}
           </section>
@@ -85,11 +88,13 @@ function ComponentEntry({
   kindTitle,
   modules,
   assets,
+  binaries,
 }: {
   component: Component;
   kindTitle: string;
   modules: Module[];
   assets: Asset[];
+  binaries: Binary[];
 }) {
   const provides = Object.entries(component.provides);
   const requires = Object.entries(component.requires);
@@ -219,6 +224,46 @@ function ComponentEntry({
                   <td>vendored (fixed per release)</td>
                   <td>
                     <code>{asset.version}</code>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {binaries.length > 0 && (
+        <div
+          className="docs-table"
+          tabIndex={0}
+          role="region"
+          aria-label={`Binaries of ${component.name} table`}
+        >
+          <table aria-label={`Binaries of ${component.name}`}>
+            <thead>
+              <tr>
+                <th scope="col">Binary</th>
+                <th scope="col">Role</th>
+                <th scope="col">Version</th>
+                <th scope="col">Platforms</th>
+              </tr>
+            </thead>
+            <tbody>
+              {binaries.map((binary) => (
+                <tr key={binary.name}>
+                  <td>
+                    <code>{binary.name}</code>
+                  </td>
+                  <td>downloaded on demand (fixed per release)</td>
+                  <td>
+                    <code>{binary.version}</code>
+                  </td>
+                  <td>
+                    {binary.platforms.map((platform, i) => (
+                      <span key={platform}>
+                        {i > 0 && ', '}
+                        <code>{platform}</code>
+                      </span>
+                    ))}
                   </td>
                 </tr>
               ))}

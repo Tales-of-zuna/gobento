@@ -180,6 +180,48 @@ recorded checksum, and, with network access, so does the file at `path` in
 `source`. To update an asset, replace the file and change `version`,
 `source`, and `sha256` together.
 
+## Downloaded binaries
+
+Some components need a program that is neither a Go module nor small enough
+to vendor, such as the standalone Tailwind CSS CLI, a self-contained binary of
+about 100 MB per platform that compiles Tailwind CSS without Node.js. Such a
+program is a **binary**, recorded with a download for each platform:
+
+```yaml title="components/versions.yaml"
+binaries:
+  tailwindcss:
+    components: [css/tailwind]
+    version: 4.3.4
+    checksums: https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.4/sha256sums.txt
+    platforms:
+      linux/amd64:
+        url: https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.4/tailwindcss-linux-x64
+        sha256: 149a8ece5b855587a9c10de6da9dcbcfad0e47c4ed5dca219f721b3eae39d817
+      # darwin/amd64, darwin/arm64, linux/arm64, windows/amd64, windows/arm64
+```
+
+| Key                    | Meaning                                                                                          |
+| ---------------------- | ------------------------------------------------------------------------------------------------ |
+| `components`           | The components that use the binary                                                               |
+| `version`              | The upstream release, such as `4.3.4`                                                            |
+| `checksums`            | Optional. The `https` URL of the release's checksum file (`<sha256>  <file>` lines)              |
+| `platforms`            | One entry per `GOOS/GOARCH` platform the release supports                                        |
+| `platforms.<p>.url`    | The `https` URL of the file for that platform; it must contain the version                       |
+| `platforms.<p>.sha256` | The file's SHA-256 checksum, 64 lowercase hex digits, which the project checks before running it |
+
+A generated project downloads a binary only when a developer runs it (with
+Tailwind CSS: `make generate` after a style change), never to build, test, or
+run the project, and never at generation time. Like an asset, a binary is
+fixed per gobento release and cannot be pinned. Templates read it as
+`{{.Binaries.tailwindcss.Version}}` and range over
+`{{.Binaries.tailwindcss.Platforms}}` (`.OS`, `.Arch`, `.URL`, `.SHA256`);
+`css/tailwind` renders that table into the Go program that downloads, checks,
+and runs the CLI. Loading the rules rejects a platform that is not
+`GOOS/GOARCH`, a URL without the version, and a malformed checksum, and
+gobento's tests compare every checksum with the release's `checksums` file
+when they have network access. To update a binary, change `version`, every
+URL, and every `sha256` together, from the release's checksum file.
+
 ## Tooling versions
 
 The [project tooling](/docs/concepts/project-tooling) uses versions that are not

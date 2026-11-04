@@ -16,8 +16,9 @@ This guide generates a project called `shop` with MVC, `net/http`, SQLite, and
 sqlc. Swap `--framework nethttp` for `chi` or `gin` to use another router; the
 generated API is the same. SQLite needs no database server;
 [Use PostgreSQL](#use-postgresql) shows what changes with `--db postgres`,
-[With GORM](#with-gorm) what changes with `--data gorm`, and
-[With htmx](#with-htmx) how to add web pages with `--frontend htmx`.
+[With GORM](#with-gorm) what changes with `--data gorm`,
+[With htmx](#with-htmx) how to add web pages with `--frontend htmx`, and
+[With Tailwind CSS](#with-tailwind-css) how to style them with `--css tailwind`.
 
 ## Generate and run it
 
@@ -388,6 +389,39 @@ The CI workflow runs the same command and fails when the committed
 
 A blank name is answered with `422` and a message next to the field, and form
 posts from other sites are rejected with `403`.
+
+## With Tailwind CSS
+
+With a frontend, add `--css tailwind` to style the pages with
+[Tailwind CSS](https://tailwindcss.com):
+
+```sh
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx --css tailwind
+cd shop
+go run ./cmd/shop
+```
+
+The pages and their markup are the same as with htmx alone; only the
+stylesheet changes. The project gains:
+
+| Path                                 | Contents                                                                                                   |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `tailwind.css`                       | The Tailwind source: styles the pages' elements and classes with `@apply`, and scans the `.templ` files    |
+| `internal/views/static/styles.css`   | The stylesheet Tailwind compiles from it, committed and embedded, so building needs no Node.js and no CLI  |
+| `internal/tools/tailwindcss/main.go` | A Go program that downloads the pinned standalone Tailwind CLI, checks its SHA-256, caches it, and runs it |
+
+After you change `tailwind.css` or add a utility class to a `.templ` file,
+rebuild the stylesheet with `make generate`, or without make:
+
+```sh
+go run ./internal/tools/tailwindcss --input tailwind.css --output internal/views/static/styles.css --minify
+```
+
+The first run downloads the CLI for your platform (about 100 MB) into your
+user cache directory. Add `--watch` instead of `--minify` to rebuild on every
+change while you work. To use a `tailwindcss` binary you already have, for
+example on musl-based Linux, set `TAILWINDCSS` to its path. The CI workflow
+fails when the committed stylesheet is not what the pinned CLI compiles.
 
 ## Next steps
 

@@ -30,7 +30,7 @@ Each slot has these keys:
 | ----------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `dir`       | Required. The directory, relative to the project root. It is a template over `.Project`, such as `cmd/{{.Project.Name}}`. |
 | `package`   | Optional. The Go package name; by default the last element of the rendered `dir`. The entry point sets `package: main`.   |
-| `filled_by` | Required. The kind that fills the slot: `architecture`, `framework`, `database`, `data`, or `frontend`.                   |
+| `filled_by` | Required. The kind that fills the slot: `architecture`, `framework`, `database`, `data`, `frontend`, or `css`.            |
 | `required`  | Optional, default `false`. Whether a selection must fill the slot.                                                        |
 
 Slot names match `^[a-z][a-z0-9_]*$`, because templates use them as field
@@ -222,6 +222,44 @@ declares no `web` slot simply does not support frontends: a frontend has
 templates for an undeclared slot, so composition rejects the selection, and
 it is not supported. [Adding a component](/docs/contributing/adding-a-component#supporting-frontends-in-an-architecture)
 lists what an architecture does to support them.
+
+## CSS frameworks
+
+A CSS framework (the optional `css` kind) has no slot of its own: a slot is a
+Go package, and where a frontend keeps its styles depends on the frontend
+(`static/` for htmx, the app's sources for a Vite build). Instead, the
+frontend kind declares **contribution points** in
+`components/frontend/kind.yaml`, the same mechanism the
+[base layer](/docs/concepts/project-tooling#how-components-extend-the-tooling)
+uses. A frontend includes a point in its templates, and the selected CSS
+framework fills it:
+
+| Point                  | Build (`frontend-build`) | Filled with                                                                    |
+| ---------------------- | ------------------------ | ------------------------------------------------------------------------------ |
+| `stylesheet`           | `go`                     | The complete stylesheet served as `/static/styles.css`                         |
+| `vite-config-imports`  | `vite`                   | Import lines at the top of the Vite configuration                              |
+| `vite-plugins`         | `vite`                   | Entries of the Vite configuration's `plugins` array                            |
+| `css-imports`          | `vite`                   | Lines at the top of the app's main stylesheet, such as `@import "tailwindcss"` |
+| `npm-dev-dependencies` | `vite`                   | npm packages with exact versions, installed as development dependencies        |
+
+The frontend's markup is the same for every CSS choice. htmx renders its
+stylesheet as the `stylesheet` contribution, or its plain CSS when there is
+none:
+
+```text title="components/frontend/htmx/files/web/static/styles.css.tmpl"
+{{with contrib "stylesheet"}}{{.}}{{else}}/* Styles for the pages in ../pages.templ. ... */
+...
+{{end -}}
+```
+
+A CSS framework contributes only to the points of the frontend's build
+system, guarded by the trait, and ships the files that only one build needs
+the same way: a template that renders nothing produces no file. Tailwind CSS
+ships `tailwind.css`, the compiled stylesheet, and a Go program that runs the
+standalone Tailwind CLI for `go`, and the `@tailwindcss/vite` plugin for
+`vite`. If a contribution reaches no template, because the selected frontend
+does not include that point, composition fails, so the combination is not
+supported instead of silently unstyled.
 
 ## Why there are no per-combination templates
 

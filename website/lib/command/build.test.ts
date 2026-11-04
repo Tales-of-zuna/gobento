@@ -76,6 +76,20 @@ describe('buildCommand', () => {
       }),
       command: 'gobento new myapp --arch mvc --data sqlc --frontend htmx --go 1.26',
     },
+    {
+      name: 'a CSS framework adds --css after --frontend (spec: CSS framework with a frontend)',
+      state: state({
+        components: {
+          css: 'tailwind',
+          architecture: 'mvc',
+          data: 'sqlc',
+          frontend: 'htmx',
+          framework: 'nethttp',
+          database: 'sqlite',
+        },
+      }),
+      command: 'gobento new myapp --arch mvc --data sqlc --frontend htmx --css tailwind',
+    },
   ])('$name', ({ state: input, command }) => {
     expect(buildCommand(fixture, input)).toEqual({ ok: true, command });
   });
@@ -83,6 +97,24 @@ describe('buildCommand', () => {
   it('never asks for an optional kind to be chosen', () => {
     const result = buildCommand(fixture, state());
     expect(result.ok).toBe(true);
+  });
+
+  it('offers no command for a CSS framework without a frontend (spec: CSS framework needs a frontend)', () => {
+    const result = buildCommand(
+      fixture,
+      state({ components: { ...state().components, css: 'tailwind' } }),
+    );
+    expect(result).toEqual({
+      ok: false,
+      errors: [
+        {
+          field: 'css',
+          message:
+            'Tailwind CSS requires a frontend that provides frontend-build go or vite, such as htmx + templ.',
+          involves: ['css/tailwind'],
+        },
+      ],
+    });
   });
 
   it.each(cases)('$name', ({ state: input, command }) => {

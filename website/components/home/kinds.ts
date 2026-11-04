@@ -8,4 +8,5 @@ export const KIND_CLASS: Readonly<Record<KindId, string>> = {
   database: s.kDb!,
   data: s.kData!,
   frontend: s.kFront!,
+  css: s.kCss!,
 };

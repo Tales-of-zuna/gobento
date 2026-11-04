@@ -8,7 +8,7 @@ description: Reference for gobento list, the command that shows the supported co
 ```text
 gobento list [flags]
 gobento list components [--kind <kind>] [flags]
-gobento list selections [--arch <name>] [--framework <name>] [--db <name>] [--data <name>] [--frontend <name>] [flags]
+gobento list selections [--arch <name>] [--framework <name>] [--db <name>] [--data <name>] [--frontend <name>] [--css <name>] [flags]
 gobento list versions [flags]
 ```
 
@@ -25,16 +25,17 @@ or CI.
 
 ## Flags
 
-| Flag           | Applies to   | Description                                                                         |
-| -------------- | ------------ | ----------------------------------------------------------------------------------- |
-| `--json`       | every form   | Print one JSON document instead of text. See [JSON output](#json-output).           |
-| `--kind`       | `components` | List only one kind: `architecture`, `framework`, `database`, `data`, or `frontend`. |
-| `--arch`       | `selections` | List only the selections with this architecture.                                    |
-| `--framework`  | `selections` | List only the selections with this HTTP framework.                                  |
-| `--db`         | `selections` | List only the selections with this database.                                        |
-| `--data`       | `selections` | List only the selections with this data-access library.                             |
-| `--frontend`   | `selections` | List only the selections with this frontend, or with `none`, those without one.     |
-| `-h`, `--help` | every form   | Show the command's help.                                                            |
+| Flag           | Applies to   | Description                                                                                |
+| -------------- | ------------ | ------------------------------------------------------------------------------------------ |
+| `--json`       | every form   | Print one JSON document instead of text. See [JSON output](#json-output).                  |
+| `--kind`       | `components` | List only one kind: `architecture`, `framework`, `database`, `data`, `frontend`, or `css`. |
+| `--arch`       | `selections` | List only the selections with this architecture.                                           |
+| `--framework`  | `selections` | List only the selections with this HTTP framework.                                         |
+| `--db`         | `selections` | List only the selections with this database.                                               |
+| `--data`       | `selections` | List only the selections with this data-access library.                                    |
+| `--frontend`   | `selections` | List only the selections with this frontend, or with `none`, those without one.            |
+| `--css`        | `selections` | List only the selections with this CSS framework, or with `none`, those without one.       |
+| `-h`, `--help` | every form   | Show the command's help.                                                                   |
 
 The selection filters have the same names as the component flags of
 [`gobento new`](/docs/cli/new#flags), and they combine: every filter you give
@@ -64,9 +65,9 @@ Where the project stores its data.
             provides: conn=database/sql, sql-dialect=sqlite, sql-schema=schema.sql
 ```
 
-An optional kind, such as the frontend, says so after its flag and lists
-`none` first: the value that selects no component of the kind, which is also
-the default.
+An optional kind, such as the frontend or the CSS framework, says so after
+its flag and lists `none` first: the value that selects no component of the
+kind, which is also the default.
 
 {/* list-components-frontend */}
 
@@ -78,35 +79,40 @@ Web pages served next to the API, which then moves under /api.
   none  No frontend (the default)
   htmx  htmx + templ
         Server-rendered pages written as templ components, made interactive with htmx, and served by the Go binary with no build step.
+        provides: frontend-build=go
 ```
+
+The trait `frontend-build` names how a frontend is built; a CSS framework,
+such as `tailwind` (`gobento list components --kind css`), requires it, so it
+can only be selected together with a frontend.
 
 ## Selections
 
 `gobento list selections` prints every supported selection, one per row with
 one column per kind, followed by their number. A selection without a frontend
-shows `none` in the `FRONTEND` column. These are exactly the combinations
-`gobento new` accepts; gobento's CI generates and tests every one without a
-frontend and a covering set of those with one. With filters, the last line
+or CSS framework shows `none` in the `FRONTEND` or `CSS` column. These are
+exactly the combinations `gobento new` accepts; gobento's CI generates and
+tests every one without a frontend and a covering set of those with one. With filters, the last line
 says how many of all supported selections match:
 
 {/* list-selections-mvc-postgres */}
 
 ```text
 $ gobento list selections --arch mvc --db postgres --frontend none
-ARCHITECTURE  FRAMEWORK  DATABASE  DATA  FRONTEND
-mvc           chi        postgres  gorm  none
-mvc           chi        postgres  sqlc  none
-mvc           gin        postgres  gorm  none
-mvc           gin        postgres  sqlc  none
-mvc           nethttp    postgres  gorm  none
-mvc           nethttp    postgres  sqlc  none
+ARCHITECTURE  FRAMEWORK  DATABASE  DATA  FRONTEND  CSS
+mvc           chi        postgres  gorm  none      none
+mvc           chi        postgres  sqlc  none      none
+mvc           gin        postgres  gorm  none      none
+mvc           gin        postgres  sqlc  none      none
+mvc           nethttp    postgres  gorm  none      none
+mvc           nethttp    postgres  sqlc  none      none
 
-6 of 72 supported selections.
+6 of 108 supported selections.
 ```
 
 Any row is a valid `gobento new` command: for the first one,
 `gobento new shop --arch mvc --framework chi --db postgres --data gorm`
-(`--frontend none` is the default and can be left out).
+(`--frontend none` and `--css none` are the defaults and can be left out).
 
 ## Versions
 
@@ -116,11 +122,13 @@ sorted by path: its role (`library` modules can be chosen with
 `gobento new --pin`, `tool` modules are fixed), its range and default, the
 components that use it, and the trait values it is limited to (`-` for none).
 Constraints between versions follow the table, and then the files components
-vendor from an upstream release, such as htmx, and the
+vendor from an upstream release, such as htmx, the programs generated
+projects download on demand, such as the Tailwind CSS CLI, with the platforms
+they are available for, and the
 [project tooling](/docs/concepts/project-tooling) versions: the container
 images (`{go}` in a tag is the selected Go version) with their digest when
-pinned, the GitHub Actions with their commit SHA, and the tools. Assets and
-tooling are fixed per gobento release and cannot be pinned. For example (the
+pinned, the GitHub Actions with their commit SHA, and the tools. Assets,
+binaries, and tooling are fixed per gobento release and cannot be pinned. For example (the
 values are today's rules):
 
 ```text
@@ -144,6 +152,11 @@ Vendored assets (fixed per gobento release):
 
 ASSET     VERSION  USED BY        SOURCE
 htmx.org  2.0.11   frontend/htmx  https://registry.npmjs.org/htmx.org/-/htmx.org-2.0.11.tgz
+
+Downloaded binaries (fixed per gobento release):
+
+BINARY       VERSION  USED BY       PLATFORMS
+tailwindcss  4.3.4    css/tailwind  darwin/amd64, darwin/arm64, linux/amd64, linux/arm64, windows/amd64, windows/arm64
 
 Project tooling (fixed per gobento release; {go} is the selected Go version):
 
@@ -174,13 +187,14 @@ website is built from, with these fields:
 | `go`         | The Go `range` and `default`.                                                                                                                                                                    |
 | `modules`    | Each module's `path`, `components`, `traits` (the trait values it is limited to), `role`, `range`, `default`, and `constraints`.                                                                 |
 | `assets`     | Each vendored file's `name`, `components`, `version`, and `source`.                                                                                                                              |
+| `binaries`   | Each downloaded binary's `name`, `components`, `version`, and `platforms` (`<GOOS>/<GOARCH>`, sorted).                                                                                           |
 | `tooling`    | The project tooling versions: `images` (`key`, `image`, `tag`, `digest`, `""` when unpinned), `actions` (`name`, `version`, `sha`), and `tools` (`name`, `version`), each sorted by key or name. |
 | `supported`  | Each supported selection, as an object from kind to component name, without an entry for an optional kind it leaves out (no `frontend` means none).                                              |
 | `rules`      | The patterns and messages for the project name and module path.                                                                                                                                  |
 
 Each subcommand prints an object with only the fields it lists, in the same
 format: `components` prints `kinds` and `components`, `selections` prints
-`supported`, and `versions` prints `go`, `modules`, `assets`, and `tooling`. Filters apply to the
+`supported`, and `versions` prints `go`, `modules`, `assets`, `binaries`, and `tooling`. Filters apply to the
 JSON as well. Lists are empty (`[]`) rather than `null`, and objects without
 entries are `{}`. Later releases may add fields; renaming or removing one is a breaking change
 and is announced in the changelog.
@@ -191,7 +205,7 @@ gobento list components --kind database --json | jq -r '.components[].name'
 
 # Every supported selection as a gobento new command
 gobento list selections --json |
-  jq -r '.supported[] | "gobento new shop --arch \(.architecture) --framework \(.framework) --db \(.database) --data \(.data) --frontend \(.frontend // "none")"'
+  jq -r '.supported[] | "gobento new shop --arch \(.architecture) --framework \(.framework) --db \(.database) --data \(.data) --frontend \(.frontend // "none") --css \(.css // "none")"'
 
 # The default version of a module
 gobento list versions --json | jq -r '.modules[] | select(.path == "gorm.io/gorm") | .default'

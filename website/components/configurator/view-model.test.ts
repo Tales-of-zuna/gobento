@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { KIND_IDS } from '@/lib/catalog/kinds';
 import { buildCommand } from '@/lib/command/build';
 import { defaultState } from '@/lib/command/url-state';
 import { addPostgres, catalogWith, moduleOf } from '@/lib/test/catalog';
@@ -28,6 +29,11 @@ const mvc = withArch('mvc');
 const htmx = (state: typeof defaults) => ({
   ...state,
   components: { ...state.components, frontend: 'htmx' },
+});
+/** A state with Tailwind CSS added. */
+const tailwind = (state: typeof defaults) => ({
+  ...state,
+  components: { ...state.components, css: 'tailwind' },
 });
 
 describe('goVersions', () => {
@@ -155,8 +161,10 @@ describe('trayCells and fileTree', () => {
       'SQLite',
       'sqlc',
       undefined,
+      undefined,
     ]);
-    expect(trayCells(catalog, htmx(mvc)).at(-1)).toMatchObject({
+    expect(trayCells(catalog, mvc).map((c) => c.kind)).toEqual(KIND_IDS);
+    expect(trayCells(catalog, htmx(mvc)).at(-2)).toMatchObject({
       kind: 'frontend',
       label: 'Frontend',
       value: 'htmx + templ',
@@ -274,7 +282,6 @@ describe('optional frontend (spec: Frontend is optional)', () => {
       ['react', 'React via Vite', 'soon'],
       ['vue', 'Vue via Vite', 'soon'],
       ['svelte', 'Svelte via Vite', 'soon'],
-      ['tailwind', 'Tailwind CSS', 'soon'],
     ]);
   });
 
@@ -340,5 +347,88 @@ describe('optional frontend (spec: Frontend is optional)', () => {
     expect(lines).toEqual(
       expect.arrayContaining(['adapters/web/', 'adapters/web/pages.templ', 'adapters/web/static/']),
     );
+  });
+});
+
+describe('optional CSS framework (spec: CSS framework needs a frontend)', () => {
+  const css = (state: typeof defaults) =>
+    kindGroups(catalog, state, errorsByField(buildCommand(catalog, state))).find(
+      (g) => g.kind === 'css',
+    )!;
+  const needsFrontend =
+    'Tailwind CSS requires a frontend that provides frontend-build go or vite, such as htmx + templ.';
+
+  it('comes after the frontend, offering None (plain CSS) first and preselected', () => {
+    const groups = kindGroups(catalog, mvc, new Map());
+    expect(groups.map((g) => g.kind).slice(-2)).toEqual(['frontend', 'css']);
+    const group = css(mvc);
+    expect(group.title).toBe('CSS framework');
+    expect(group.description).toMatch(/^Optional\. /);
+    expect(group.options[0]).toMatchObject({
+      value: NONE,
+      title: 'None (plain CSS)',
+      status: 'selected',
+    });
+  });
+
+  it('disables Tailwind CSS without a frontend, explaining that it needs one', () => {
+    for (const state of [defaults, mvc]) {
+      const option = css(state).options.find((o) => o.value === 'tailwind')!;
+      expect(option.status).toBe('incompatible');
+      expect(option.reasons).toEqual([needsFrontend]);
+    }
+  });
+
+  it('offers Tailwind CSS with htmx and adds it to the command', () => {
+    const option = css(htmx(mvc)).options.find((o) => o.value === 'tailwind')!;
+    expect(option.status).toBe('available');
+    const state = tailwind(htmx(mvc));
+    expect(css(state).options.map((o) => o.status)).toEqual(['available', 'selected']);
+    const result = buildCommand(catalog, state);
+    expect(result.ok && result.command).toBe(
+      'gobento new myapp --arch mvc --data sqlc --frontend htmx --css tailwind',
+    );
+  });
+
+  it('keeps Tailwind CSS but blocks the command when the frontend is removed', () => {
+    const state = {
+      ...mvc,
+      components: withChoice(catalog, tailwind(htmx(mvc)).components, 'frontend', NONE),
+    };
+    expect(state.components).toEqual({ ...mvc.components, css: 'tailwind' });
+    const group = css(state);
+    expect(group.options.find((o) => o.value === 'tailwind')!.status).toBe('selected');
+    expect(group.error).toBe(needsFrontend);
+    const result = buildCommand(catalog, state);
+    expect(result.ok).toBe(false);
+    expect(blockedMessage(catalog, result)).toBe(
+      'No command yet. Fix the CSS framework choice to get a copyable command.',
+    );
+    // None (plain CSS) clears it again.
+    expect(withChoice(catalog, state.components, 'css', NONE)).toEqual(mvc.components);
+  });
+
+  it('packs a sixth compartment and lists the binary and files Tailwind CSS adds', () => {
+    const state = tailwind(htmx(mvc));
+    expect(trayCells(catalog, state).at(-1)).toMatchObject({
+      kind: 'css',
+      label: 'CSS framework',
+      value: 'Tailwind CSS',
+      piece: 'shiba',
+    });
+    expect(moduleFields(catalog, state, new Map()).at(-1)).toMatchObject({
+      path: 'tailwindcss',
+      fixed: true,
+      tag: 'On demand',
+      value: '4.3.4',
+      usedBy: 'Tailwind CSS',
+    });
+    expect(moduleFields(catalog, htmx(mvc), new Map()).map((f) => f.path)).not.toContain(
+      'tailwindcss',
+    );
+    const labels = fileTree(catalog, state, true).map((l) => l.label);
+    expect(labels).toContain('tailwind.css');
+    expect(labels).toContain('tools/tailwindcss/');
+    expect(fileTree(catalog, htmx(mvc), true).map((l) => l.label)).not.toContain('tailwind.css');
   });
 });

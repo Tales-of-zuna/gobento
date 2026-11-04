@@ -13,6 +13,7 @@ export const KIND_SHORT: Readonly<Record<KindId, string>> = {
   database: 'Database',
   data: 'Data',
   frontend: 'Frontend',
+  css: 'CSS',
 };
 
 /** A component planned for a later release (shown dashed). */
@@ -26,7 +27,6 @@ export const ROADMAP: readonly RoadmapItem[] = [
   { kind: 'frontend', name: 'React' },
   { kind: 'frontend', name: 'Vue' },
   { kind: 'frontend', name: 'Svelte' },
-  { kind: 'frontend', name: 'Tailwind CSS' },
 ];
 
 /** One plate on the belt. */
@@ -65,7 +65,7 @@ export function beltPlates(catalog: Catalog, roadmap: readonly RoadmapItem[] = R
 export interface StackCell {
   readonly kind: KindId;
   readonly title: string;
-  /** Whether the kind may be left out (the frontend: none means API only). */
+  /** Whether the kind may be left out (the frontend and the CSS framework). */
   readonly optional: boolean;
   readonly options: readonly { readonly name: string; readonly description: string }[];
   readonly roadmap: readonly string[];

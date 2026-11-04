@@ -34,7 +34,8 @@ describe('CatalogReference', () => {
     render(<CatalogReference catalog={catalogWith()} />);
     const kind = screen.getByRole('heading', { level: 2, name: /^Frontend/ });
     expect(kind).toHaveTextContent('optional');
-    expect(screen.getByText(/without/, { selector: 'p' })).toHaveTextContent(
+    const frontend = screen.getByRole('region', { name: /^Frontend/ });
+    expect(within(frontend).getByText(/without/, { selector: 'p' })).toHaveTextContent(
       'without --frontend (or with --frontend none) the project has none',
     );
     expect(screen.getByRole('table', { name: 'Modules of htmx' })).toHaveTextContent(
@@ -44,7 +45,30 @@ describe('CatalogReference', () => {
     const row = within(assets).getByRole('row', { name: /htmx\.org/ });
     expect(row).toHaveTextContent('vendored');
     expect(row).toHaveTextContent('2.0.11');
-    expect(screen.getAllByRole('heading', { level: 2, name: /optional/ })).toHaveLength(1);
+    expect(screen.getAllByRole('heading', { level: 2, name: /optional/ }).map((h) => h.id)).toEqual(
+      ['kind-frontend', 'kind-css'],
+    );
+  });
+
+  it('marks the CSS framework kind optional and lists the Tailwind CLI downloaded on demand (spec: Platform binary)', () => {
+    render(<CatalogReference catalog={catalogWith()} />);
+    expect(screen.getByRole('heading', { level: 2, name: /^CSS framework/ })).toHaveTextContent(
+      'optional',
+    );
+    const css = screen.getByRole('region', { name: /^CSS framework/ });
+    expect(within(css).getByText(/without/, { selector: 'p' })).toHaveTextContent(
+      'without --css (or with --css none) the project has none',
+    );
+    const tailwind = screen.getByRole('article', { name: /Tailwind CSS/ });
+    expect(tailwind).toHaveTextContent('frontend-build in [go, vite]');
+    expect(tailwind).toHaveTextContent('css: tailwind');
+    const binaries = within(tailwind).getByRole('table', { name: 'Binaries of tailwind' });
+    const row = within(binaries).getByRole('row', { name: /tailwindcss/ });
+    expect(row).toHaveTextContent('downloaded on demand');
+    expect(row).toHaveTextContent('4.3.4');
+    expect(row).toHaveTextContent('linux/amd64');
+    expect(screen.queryByRole('table', { name: 'Binaries of htmx' })).toBeNull();
+    expect(screen.getByRole('article', { name: /htmx/ })).toHaveTextContent('frontend-build: go');
   });
 
   // Spec "Version bump": a changed default appears without editing docs content.

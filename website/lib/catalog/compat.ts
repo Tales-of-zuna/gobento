@@ -5,8 +5,8 @@
  * add-generator-foundation): defaults, then overrides, then range checks,
  * then every matching constraint.
  */
-import type { Asset, Catalog, Component, KindId, Module } from './schema';
-import { isOptionalKind, KIND_IDS } from './kinds';
+import type { Asset, Binary, Catalog, Component, KindId, Module } from './schema';
+import { isOptionalKind, KIND_IDS, titleInSentence } from './kinds';
 import { parseGoVersion, parseModuleVersion, satisfies } from './semver';
 
 /** Chosen components and versions. */
@@ -75,6 +75,15 @@ export function selectedAssets(catalog: Catalog, selection: Selection): Asset[] 
   return catalog.assets.filter((a) => a.components.some((id) => ids.has(id)));
 }
 
+/**
+ * Returns the platform binaries the chosen components download on demand,
+ * whose versions are fixed per release.
+ */
+export function selectedBinaries(catalog: Catalog, selection: Selection): Binary[] {
+  const ids = new Set(selectedComponents(catalog, selection).map((c) => c.id));
+  return catalog.binaries.filter((b) => b.components.some((id) => ids.has(id)));
+}
+
 /** Returns the version each selected module gets: its override, or else its default. */
 export function resolvedVersions(catalog: Catalog, selection: Selection): Map<string, string> {
   return new Map(
@@ -82,10 +91,48 @@ export function resolvedVersions(catalog: Catalog, selection: Selection): Map<st
   );
 }
 
+/**
+ * The kinds whose components could provide `trait` with one of the `allowed`
+ * values, in kind order, with those components' titles.
+ */
+function possibleProviders(
+  catalog: Catalog,
+  trait: string,
+  allowed: readonly string[],
+): { kinds: KindId[]; titles: string[] } {
+  const candidates = catalog.components.filter(
+    (c) => trait in c.provides && allowed.includes(c.provides[trait]!),
+  );
+  return {
+    kinds: KIND_IDS.filter((kind) => candidates.some((c) => c.kind === kind)),
+    titles: candidates.map((c) => c.title),
+  };
+}
+
+/** Explains a requirement that no chosen component provides, naming who could. */
+function missingProviderMessage(
+  catalog: Catalog,
+  requirer: Component,
+  trait: string,
+  allowed: readonly string[],
+): string {
+  const wanted = allowed.join(' or ');
+  const { kinds, titles } = possibleProviders(catalog, trait, allowed);
+  if (kinds.length === 0) {
+    return `${requirer.title} requires a component that provides ${trait} ${wanted}.`;
+  }
+  const what = kinds
+    .map((kind) => titleInSentence(catalog.kinds.find((k) => k.id === kind)?.title ?? kind))
+    .join(' or ');
+  return `${requirer.title} requires a ${what} that provides ${trait} ${wanted}, such as ${titles.join(' or ')}.`;
+}
+
 function traitProblems(catalog: Catalog, selection: Selection): Problem[] {
   const components = selectedComponents(catalog, selection);
-  const complete = KIND_IDS.every(
-    (kind) => isOptionalKind(catalog, kind) || selection.components[kind] !== undefined,
+  // Required kinds not chosen yet may still add a provider. An optional kind
+  // left unchosen means none (no frontend, for example), so it adds nothing.
+  const open = KIND_IDS.filter(
+    (kind) => !isOptionalKind(catalog, kind) && selection.components[kind] === undefined,
   );
   const problems: Problem[] = [];
   for (const requirer of components) {
@@ -93,11 +140,13 @@ function traitProblems(catalog: Catalog, selection: Selection): Problem[] {
       const providers = components.filter((c) => c !== requirer && trait in c.provides);
       const wanted = allowed.join(' or ');
       if (providers.length === 0) {
-        // Until every kind is chosen, a provider may still be added.
-        if (complete) {
+        const pending = catalog.components.some(
+          (c) => open.includes(c.kind) && trait in c.provides,
+        );
+        if (!pending) {
           problems.push({
             field: requirer.kind,
-            message: `${requirer.title} requires a component that provides ${trait} ${wanted}.`,
+            message: missingProviderMessage(catalog, requirer, trait, allowed),
             involves: [requirer.id],
           });
         }

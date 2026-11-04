@@ -2,8 +2,8 @@
  * Cross-check with the CLI (spec: Generated commands are accepted by the CLI).
  *
  * For every selection the CLI supports (`supported` in catalog.json, with and
- * without a frontend), this builds the configurator's command twice: with the defaults, and with every
- * flag explicit (module path, the Go range floor, each library pinned to its
+ * without a frontend and a CSS framework), this builds the configurator's
+ * command twice: with the defaults, and with every flag explicit (module path, the Go range floor, each library pinned to its
  * range floor). The commands are kept in `supported-commands.txt`, which the
  * Go test `TestWebsiteCommands` in internal/cli runs with `--dry-run`. The
  * command builder is thus exercised as it is, with no copy of it in Go; a
@@ -34,7 +34,7 @@ function floor(range: string, kind: VersionKind): string {
 function states(cat: Catalog): { label: string; state: ConfigState }[] {
   return cat.supported.flatMap((components) => {
     // The CLI's own spelling of a selection: one name per chosen kind, in
-    // flag order, so a selection without a frontend has four parts.
+    // flag order, so a selection without a frontend or CSS framework has four parts.
     const label = KIND_IDS.flatMap((kind) => components[kind] ?? []).join('/');
     const pins = Object.fromEntries(
       selectedModules(cat, { components, go: cat.go.default, pins: {} })

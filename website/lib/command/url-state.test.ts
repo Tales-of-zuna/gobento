@@ -168,4 +168,33 @@ describe('optional kinds in the URL', () => {
       'The link names frontend "react", which is not available; none is used.',
     ]);
   });
+
+  const tailwind: ConfigState = {
+    ...htmx,
+    components: { ...htmx.components, css: 'tailwind' },
+  };
+
+  it('encodes a chosen CSS framework after the frontend and leaves none out', () => {
+    expect(defaultState(fixture).components.css).toBeUndefined();
+    expect(encodeState(fixture, tailwind)).toBe('arch=mvc&data=sqlc&frontend=htmx&css=tailwind');
+    expect(encodeState(fixture, htmx)).not.toContain('css');
+  });
+
+  it('round-trips a chosen CSS framework', () => {
+    const decoded = decodeState(fixture, encodeState(fixture, tailwind));
+    expect(decoded.state).toEqual(tailwind);
+    expect(decoded.notices).toEqual([]);
+  });
+
+  it('reads css=none as plain CSS and falls back to none for an unknown CSS framework', () => {
+    expect(decodeState(fixture, 'css=none')).toEqual({
+      state: defaultState(fixture),
+      notices: [],
+    });
+    const decoded = decodeState(fixture, 'frontend=htmx&css=bootstrap');
+    expect(decoded.state.components.css).toBeUndefined();
+    expect(decoded.notices).toEqual([
+      'The link names CSS framework "bootstrap", which is not available; none is used.',
+    ]);
+  });
 });

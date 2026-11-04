@@ -1,13 +1,14 @@
 'use client';
 /**
  * The "packing" visual: a 2D bento tray with one compartment per component
- * kind, filling as each kind is chosen, and above it the mascot whose
- * box-body compartments pack in step with the first four (the mascot's box
- * has four; the optional frontend fills only the tray). The mascot follows the home page
- * hero's rules (MascotHero): its pre-rendered still holds the space from the
- * first paint, so nothing shifts, and the 3D scene is downloaded only on the
- * client, after the first interaction, when WebGL works and reduced motion is
- * off. The tray is the text alternative, so the mascot is decorative here.
+ * kind (as many as the catalog has kinds), filling as each kind is chosen,
+ * and above it the mascot whose box-body compartments pack in step with the
+ * first four (the mascot's box has four; the optional kinds after them fill
+ * only the tray). The mascot follows the home page hero's rules
+ * (MascotHero): its pre-rendered still holds the space from the first paint,
+ * so nothing shifts, and the 3D scene is downloaded only on the client,
+ * after the first interaction, when WebGL works and reduced motion is off.
+ * The tray is the text alternative, so the mascot is decorative here.
  * It is memoized, so typing in the configurator re-renders neither the tray
  * nor the scene.
  */
@@ -15,6 +16,7 @@ import { useReducedMotion as useMotionReduced } from 'motion/react';
 import * as m from 'motion/react-m';
 import { memo, useState } from 'react';
 import { MascotHero } from '@/components/mascot/MascotHero';
+import type { Packed } from '@/components/mascot/parts/bento';
 import styles from './configurator.module.css';
 import type { CellView } from './view-model';
 
@@ -28,6 +30,11 @@ export interface PackingStageProps {
 }
 
 const pop = { type: 'spring', stiffness: 420, damping: 14 } as const;
+
+/** The mascot's four food compartments follow the tray's first four. */
+function mascotPacked(packed: readonly boolean[]): Packed {
+  return [packed[0] === true, packed[1] === true, packed[2] === true, packed[3] === true];
+}
 
 export const PackingStage = memo(function PackingStage({
   cells,
@@ -47,7 +54,7 @@ export const PackingStage = memo(function PackingStage({
         <MascotHero
           className={styles.sceneMascot}
           sizes="(max-width: 899px) 300px, 390px"
-          packed={[packed[0] === true, packed[1] === true, packed[2] === true, packed[3] === true]}
+          packed={mascotPacked(packed)}
           decorative
           onSceneChange={setScene}
         />

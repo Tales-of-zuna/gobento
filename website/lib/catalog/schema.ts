@@ -81,6 +81,20 @@ const assetSchema = z.object({
 });
 
 /**
+ * A program generated projects download on demand (for example the standalone
+ * Tailwind CSS CLI), one file per platform, with a version fixed per gobento
+ * release: not a Go module and not pinnable.
+ */
+const binarySchema = z.object({
+  name: text,
+  /** Ids of the components that download this binary. */
+  components: z.array(text).min(1),
+  version: text,
+  /** Supported platforms as `<GOOS>/<GOARCH>`, sorted. */
+  platforms: z.array(z.string().regex(/^[a-z0-9]+\/[a-z0-9]+$/)).min(1),
+});
+
+/**
  * Versions of the project tooling that are not Go modules (container images,
  * GitHub Actions, tools), fixed per gobento release and not pinnable.
  */
@@ -127,11 +141,12 @@ const rawCatalogSchema = z.object({
   go: z.object({ range: text, default: text }),
   modules: z.array(moduleSchema),
   assets: z.array(assetSchema).default([]),
+  binaries: z.array(binarySchema).default([]),
   tooling: toolingSchema.default({ images: [], actions: [], tools: [] }),
   /**
    * The selections the CLI supports (compose.Supported): traits met, default
    * versions resolved, and composition without errors. CI builds every one
-   * without a frontend, and those with a frontend pairwise.
+   * without an optional component, and those with one pairwise.
    */
   supported: z.array(supportedSelectionSchema).min(1),
   rules: z.object({ projectName: projectNameRuleSchema, modulePath: ruleSchema }),
@@ -220,6 +235,15 @@ function checkConsistency(catalog: RawCatalog, ctx: z.RefinementCtx): void {
     });
   });
 
+  const binaryNames = new Set(catalog.binaries.map((binary) => binary.name));
+  if (binaryNames.size !== catalog.binaries.length) issue(['binaries'], 'duplicate binary name');
+  catalog.binaries.forEach((binary, i) => {
+    binary.components.forEach((id, j) => {
+      if (!componentIds.has(id))
+        issue(['binaries', i, 'components', j], `${binary.name}: unknown component "${id}"`);
+    });
+  });
+
   const optional = new Set(catalog.kinds.filter((k) => k.optional).map((k) => k.id));
   catalog.supported.forEach((selection, i) => {
     for (const kind of KIND_IDS) {
@@ -255,6 +279,8 @@ export type Component = Catalog['components'][number];
 export type Module = Catalog['modules'][number];
 /** A file vendored into generated projects, with a version fixed per release. */
 export type Asset = Catalog['assets'][number];
+/** A program generated projects download on demand, with a version fixed per release. */
+export type Binary = Catalog['binaries'][number];
 /** A component kind as described by the catalog. */
 export type Kind = Catalog['kinds'][number];
 /** A selection the CLI supports; an optional kind without a component is absent. */

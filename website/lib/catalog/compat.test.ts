@@ -5,6 +5,7 @@ import {
   moduleVersionReasons,
   resolvedVersions,
   selectedAssets,
+  selectedBinaries,
   selectedModules,
   selectionProblems,
   type Selection,
@@ -246,6 +247,59 @@ describe('optional kinds', () => {
   });
 });
 
+describe('a CSS framework (spec: CSS framework needs a frontend)', () => {
+  const fixture = catalogWith();
+  const base = {
+    components: { architecture: 'mvc', framework: 'nethttp', database: 'sqlite', data: 'sqlc' },
+    go: fixture.go.default,
+    pins: {},
+  } as const;
+  const message =
+    'Tailwind CSS requires a frontend that provides frontend-build go or vite, such as htmx + templ.';
+
+  it('needs a frontend that provides frontend-build', () => {
+    expect(componentReasons(fixture, base, 'css', 'tailwind')).toEqual([message]);
+    const htmx = { ...base, components: { ...base.components, frontend: 'htmx' } };
+    expect(componentReasons(fixture, htmx, 'css', 'tailwind')).toEqual([]);
+    expect(
+      selectionProblems(fixture, { ...base, components: { ...base.components, css: 'tailwind' } }),
+    ).toEqual([{ field: 'css', message, involves: ['css/tailwind'] }]);
+  });
+
+  it('is disabled before the required kinds are chosen, since no frontend is (an optional kind left out)', () => {
+    expect(componentReasons(fixture, { ...base, components: {} }, 'css', 'tailwind')).toEqual([
+      message,
+    ]);
+  });
+
+  it('waits for a required kind that may still provide the trait', () => {
+    // A frontend-build provider among the unchosen architectures keeps the choice open.
+    const lenient = catalogWith((data) => {
+      data.components.find((c) => c.id === 'architecture/mvc')!.provides['frontend-build'] = 'go';
+    });
+    expect(componentReasons(lenient, { ...base, components: {} }, 'css', 'tailwind')).toEqual([]);
+  });
+
+  it('reports a frontend that provides another frontend-build', () => {
+    const vite = catalogWith((data) => {
+      data.components.find((c) => c.id === 'frontend/htmx')!.provides['frontend-build'] = 'webpack';
+    });
+    const htmx = { ...base, components: { ...base.components, frontend: 'htmx' } };
+    expect(componentReasons(vite, htmx, 'css', 'tailwind')).toEqual([
+      'Tailwind CSS requires frontend-build go or vite, but htmx + templ provides webpack.',
+    ]);
+  });
+
+  it('downloads the Tailwind CLI only with Tailwind CSS', () => {
+    const htmx = { ...base, components: { ...base.components, frontend: 'htmx' } };
+    const both = { ...htmx, components: { ...htmx.components, css: 'tailwind' } };
+    expect(selectedBinaries(fixture, both).map((b) => [b.name, b.version])).toEqual([
+      ['tailwindcss', '4.3.4'],
+    ]);
+    expect(selectedBinaries(fixture, htmx)).toEqual([]);
+  });
+});
+
 describe('the real catalog', () => {
   // Compatibility comes from traits; it must agree with the CLI's list of
   // supported selections, with and without a frontend.
@@ -257,6 +311,18 @@ describe('the real catalog', () => {
         const name = components[kind];
         if (name === undefined) continue;
         expect(componentReasons(realCatalog, selection, kind, name)).toEqual([]);
+      }
+    }
+  });
+
+  it('offers a CSS framework only with a frontend, as the supported selections do', () => {
+    const withoutFrontend = realCatalog.supported.filter((s) => s.frontend === undefined);
+    expect(withoutFrontend.length).toBeGreaterThan(0);
+    for (const components of withoutFrontend) {
+      expect(components.css).toBeUndefined();
+      const selection = { components, go: realCatalog.go.default, pins: {} };
+      for (const css of realCatalog.components.filter((c) => c.kind === 'css')) {
+        expect(componentReasons(realCatalog, selection, 'css', css.name)).not.toEqual([]);
       }
     }
   });

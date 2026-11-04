@@ -66,6 +66,40 @@ describe('Configurator', () => {
     expect(screen.queryByText('Vendored')).toBeNull();
   });
 
+  it('offers Tailwind CSS only with a frontend and adds --css tailwind (spec: CSS framework with a frontend)', () => {
+    window.history.replaceState(null, '', '/configurator/?arch=mvc&data=sqlc');
+    render(<Configurator catalog={catalogWith()} />);
+    const plain = screen.getByRole('radio', { name: 'None (plain CSS)' });
+    const tailwind = screen.getByRole('radio', { name: 'Tailwind CSS' });
+    expect(plain).toBeChecked();
+    expect(tailwind).toBeDisabled();
+    expect(tailwind).toHaveAccessibleDescription(
+      /requires a frontend that provides frontend-build go or vite, such as htmx \+ templ/,
+    );
+    fireEvent.click(screen.getByRole('radio', { name: 'htmx + templ' }));
+    expect(tailwind).toBeEnabled();
+    fireEvent.click(tailwind);
+    expect(command()).toHaveTextContent(
+      /^gobento new myapp --arch mvc --data sqlc --frontend htmx --css tailwind$/,
+    );
+    expect(window.location.search).toBe('?arch=mvc&data=sqlc&frontend=htmx&css=tailwind');
+    const tray = screen.getByRole('list', { name: 'Bento: chosen parts' });
+    expect(within(tray).getAllByRole('listitem')).toHaveLength(6);
+    expect(within(tray).getByText('Tailwind CSS')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Advanced/ }));
+    expect(screen.getByText(/tailwindcss \(Tailwind CSS\)/)).toBeInTheDocument();
+    expect(screen.getByText('On demand')).toBeInTheDocument();
+
+    // Removing the frontend keeps the CSS choice, which is now incompatible.
+    fireEvent.click(screen.getByRole('radio', { name: 'None (API only)' }));
+    expect(tailwind).toBeChecked();
+    expect(screen.getAllByText(/No command yet. Fix the CSS framework choice/)[0]).toBeVisible();
+    expect(window.location.search).toBe('?arch=mvc&data=sqlc&css=tailwind');
+    fireEvent.click(plain);
+    expect(command()).toHaveTextContent(/^gobento new myapp --arch mvc --data sqlc$/);
+    expect(window.location.search).toBe('?arch=mvc&data=sqlc');
+  });
+
   it('explains an invalid name next to the field and offers no command', () => {
     render(<Configurator catalog={catalogWith()} />);
     const name = screen.getByLabelText('Project name');

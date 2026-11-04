@@ -1,9 +1,18 @@
+import type { CSSProperties } from 'react';
 import { catalog } from '@/lib/catalog/data';
 import { stackCells } from '@/lib/home/menu';
 import { configuratorRoute } from './links';
 import { KIND_CLASS } from './kinds';
 import { Item, PressLink, Stagger } from './motion';
 import s from './home.module.css';
+
+/**
+ * Columns of the stack tray on wide screens: one row for up to five kinds,
+ * otherwise two even rows (six kinds pack as three by two).
+ */
+function columns(kinds: number): number {
+  return kinds <= 5 ? kinds : Math.ceil(kinds / 2);
+}
 
 /** "Pick your stack": one compartment per kind, colored by kind. */
 export function Stack() {
@@ -27,7 +36,10 @@ export function Stack() {
           </div>
         </div>
         <Stagger inView>
-          <ul className={`${s.tray} ${s.five}`}>
+          <ul
+            className={`${s.tray} ${s.kinds}`}
+            style={{ '--cols': columns(cells.length) } as CSSProperties}
+          >
             {cells.map((cell) => (
               <Item as="li" kind="pop" key={cell.kind}>
                 <div className={`${s.cell} ${KIND_CLASS[cell.kind]}`}>
