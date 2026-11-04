@@ -14,18 +14,25 @@ of a list of values.
 
 Both are keys of `component.yaml`. In the current catalog:
 
-| Component            | `provides`                                                            | `requires`                                                                  |
-| -------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `sqlite` (database)  | `sql-dialect: sqlite`, `conn: database/sql`, `sql-schema: schema.sql` | none                                                                        |
-| `sqlc` (data access) | none                                                                  | `sql-dialect: [sqlite]`, `conn: [database/sql]`, `sql-schema: [schema.sql]` |
+| Component             | `provides`                                                                | `requires`                                                                              |
+| --------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `postgres` (database) | `sql-dialect: postgresql`, `conn: database/sql`, `sql-schema: schema.sql` | none                                                                                    |
+| `sqlite` (database)   | `sql-dialect: sqlite`, `conn: database/sql`, `sql-schema: schema.sql`     | none                                                                                    |
+| `sqlc` (data access)  | none                                                                      | `sql-dialect: [sqlite, postgresql]`, `conn: [database/sql]`, `sql-schema: [schema.sql]` |
 
 Trait names match `^[a-z][a-z0-9-]*$`. A provided value must not be empty,
 and a requirement lists at least one accepted value.
 
 ## The traits in use
 
-- **`sql-dialect`**: the SQL dialect the database speaks. A data-access
-  library that generates or runs SQL requires a dialect it supports.
+- **`sql-dialect`**: the SQL dialect the database speaks: `sqlite` or
+  `postgresql`, the engine names sqlc uses. A data-access library that
+  generates or runs SQL requires a dialect it supports. A component that
+  accepts several dialects adapts to the provided one through the trait value,
+  never through the database's name: sqlc's `sqlc.yaml` template says
+  `engine: {{index .Traits "sql-dialect"}}`, and its pre-generated code picks
+  the query placeholder (`?1` or `$1`) with
+  `{{if eq (index .Traits "sql-dialect") "postgresql"}}`.
 - **`conn`**: the Go type of the connection the database's `Open` returns,
   such as `database/sql`. The store's `New(db T)` must accept that type, so the
   data-access component requires a matching `conn`. See the
@@ -37,9 +44,10 @@ and a requirement lists at least one accepted value.
   few facts one component needs about another's files, without naming the
   other component.
 
-Future components declare their own values. For example, a pgx or GORM
-component would declare its own `conn` value, so an incompatible pair is
-rejected by data, without any code in gobento.
+Future components declare their own values. For example, a database that
+exposes pgx's native pool instead of `database/sql` would declare its own
+`conn` value, so an incompatible pair is rejected by data, without any code in
+gobento.
 
 ## When a trait is not met
 
@@ -61,9 +69,11 @@ provides, no selection containing it would be listed as supported. The
 website's configurator uses the same rules to disable incompatible options
 and explain why.
 
-Today the catalog has one supported selection:
+Today the catalog has two supported selections, because sqlc accepts both
+dialects:
 
 ```text
+mvc + nethttp + postgres + sqlc
 mvc + nethttp + sqlite + sqlc
 ```
 

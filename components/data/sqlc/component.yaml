@@ -2,6 +2,6 @@ name: sqlc
 title: sqlc
 description: Type-safe Go code generated from SQL queries by sqlc.
 requires:
-  sql-dialect: [sqlite]
+  sql-dialect: [sqlite, postgresql]
   conn: [database/sql]
   sql-schema: [schema.sql]

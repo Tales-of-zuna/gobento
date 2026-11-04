@@ -1,0 +1,62 @@
+package {{.Slots.database.Package}}_test
+
+import (
+	"context"
+	"strings"
+	"testing"
+
+	"{{.Slots.database.Import}}"
+	"{{.Slots.database.Import}}/dbtest"
+)
+
+func TestOpenAppliesSchema(t *testing.T) {
+	ctx := t.Context()
+	db := dbtest.Open(t)
+
+	if _, err := db.ExecContext(ctx, "INSERT INTO items (name) VALUES ('x')"); err != nil {
+		t.Fatalf("insert into items: %v", err)
+	}
+	var n int
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM items").Scan(&n); err != nil {
+		t.Fatalf("count items: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("items = %d, want 1", n)
+	}
+}
+
+func TestOpenTwiceKeepsData(t *testing.T) {
+	ctx := t.Context()
+	url := dbtest.URL(t)
+	for i := range 2 {
+		db, err := {{.Slots.database.Package}}.Open(ctx, url)
+		if err != nil {
+			t.Fatalf("Open() #%d error = %v", i+1, err)
+		}
+		if i == 0 {
+			if _, err := db.ExecContext(ctx, "INSERT INTO items (name) VALUES ('x')"); err != nil {
+				t.Fatal(err)
+			}
+		} else {
+			var n int
+			if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM items").Scan(&n); err != nil || n != 1 {
+				t.Errorf("after reopening: items = %d, err = %v, want 1", n, err)
+			}
+		}
+		if err := db.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// TestOpenHidesPassword needs no server: the URL is rejected before any
+// connection is made.
+func TestOpenHidesPassword(t *testing.T) {
+	_, err := {{.Slots.database.Package}}.Open(context.Background(), "postgres://app:s3cret@localhost:5432/app?sslmode=bogus")
+	if err == nil {
+		t.Fatal("Open() with an invalid sslmode succeeded")
+	}
+	if strings.Contains(err.Error(), "s3cret") {
+		t.Errorf("Open() error = %q, which contains the password", err)
+	}
+}

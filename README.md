@@ -67,8 +67,9 @@ The [installation guide](https://tales-of-zuna.github.io/gobento/docs/getting-st
 covers every platform, including Windows. To build from a clone instead, run
 `make build` or `go install ./cmd/gobento`.
 
-Generate a project. Every flag is optional: a component kind with a single
-option is chosen automatically, and versions come from gobento's
+Generate a project. Choose the database with `--db sqlite` or
+`--db postgres`; every other flag is optional, because a component kind with a
+single option is chosen automatically and versions come from gobento's
 compatibility rules.
 
 ```sh
@@ -81,14 +82,17 @@ go run ./cmd/shop
 More examples:
 
 ```sh
+# Use PostgreSQL; the project's README shows how to start a local server
+gobento new shop --db postgres
+
 # See the files gobento would create, without writing anything
-gobento new shop --dry-run
+gobento new shop --db sqlite --dry-run
 
 # Choose the Go version and a library version within the supported ranges
-gobento new shop --go 1.26 --pin modernc.org/sqlite=v1.61.0
+gobento new shop --db sqlite --go 1.26 --pin modernc.org/sqlite=v1.61.0
 
 # Fill the current directory, which must be empty
-mkdir shop && cd shop && gobento new shop --dir .
+mkdir shop && cd shop && gobento new shop --db sqlite --dir .
 
 # List every flag
 gobento new --help
@@ -105,11 +109,13 @@ digits, `-`, and `_`. Names that Windows reserves for devices, such as `con`,
 `nul`, `com1`, or `lpt1`, are rejected.
 
 The generated project's README describes its API, including its error
-responses (`400` for invalid JSON, `413` for bodies over 1 MiB), and how its
-schema and sqlc code are maintained.
+responses (`400` for invalid JSON, `413` for bodies over 1 MiB), its database
+and how to run the tests against it, and how its schema and sqlc code are
+maintained. With PostgreSQL, the database tests run when `TEST_DATABASE_URL`
+names a server and are skipped otherwise, so `go test ./...` passes anywhere.
 
-The first supported stack generates a project like this, with a health
-endpoint and one example resource that builds and passes its own tests:
+Every supported stack generates a project like this, with a health endpoint
+and one example resource that builds and passes its own tests:
 
 ```text
 shop/
@@ -117,7 +123,8 @@ shop/
 ├── internal/
 │   ├── models/            # domain types and store interface
 │   ├── controllers/       # router, health and items handlers, tests
-│   ├── database/          # opens SQLite, applies the embedded schema
+│   ├── database/          # opens SQLite or PostgreSQL, applies the embedded schema
+│   │   └── dbtest/        # a fresh database for each test
 │   └── store/             # sqlc queries, adapter, tests; generated code in sqlcgen/
 ├── sqlc.yaml
 ├── go.mod
@@ -150,7 +157,7 @@ flowchart LR
 - [x] First slice: MVC, `net/http`, SQLite, and sqlc (v0.1.0)
 - [ ] Interactive prompts
 - [ ] More frameworks: gin, chi
-- [ ] PostgreSQL
+- [x] PostgreSQL
 - [ ] GORM
 - [ ] Frontends: React, Vue, and Svelte via Vite; htmx + templ
 - [ ] Tailwind CSS

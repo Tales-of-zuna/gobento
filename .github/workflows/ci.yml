@@ -104,14 +104,36 @@ jobs:
           # The newest Go in the go range of components/versions.yaml.
           go-version: "1.27"
           cache: true
+      - name: Start PostgreSQL for the generated projects' tests
+        # Only Linux runners have Docker. Elsewhere TEST_DATABASE_URL stays
+        # unset, and the tests that need a server skip.
+        if: runner.os == 'Linux'
+        run: |
+          docker run --detach --name postgres --publish 5432:5432 \
+            --env POSTGRES_PASSWORD=postgres \
+            --health-cmd 'pg_isready --host 127.0.0.1' --health-interval 1s --health-retries 60 \
+            postgres:18-alpine
+          for _ in $(seq 60); do
+            [ "$(docker inspect --format '{{.State.Health.Status}}' postgres)" = healthy ] && break
+            sleep 1
+          done
+          # Over TCP: the server the image runs while initializing listens
+          # only on a Unix socket.
+          docker exec postgres pg_isready --host 127.0.0.1
+          echo "TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable" >> "$GITHUB_ENV"
       - name: Integration tests
         run: go test -count=1 -run TestIntegration ./internal/generate/
 
   sqlc-fresh:
-    # The sqlc component ships generated code. Regenerate it with the pinned
-    # sqlc inside a generated project and fail if anything changes.
-    name: sqlc output is current
+    # The sqlc component ships generated code, which differs per SQL dialect.
+    # Regenerate it with the pinned sqlc inside a generated project for each
+    # database and fail if anything changes.
+    name: sqlc output is current (${{ matrix.db }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        db: [sqlite, postgres]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -120,7 +142,9 @@ jobs:
         with:
           go-version: "1.27" # newest Go in versions.yaml: the reference project defaults to it
       - name: Generate the reference project
-        run: go run ./cmd/gobento new shop --module example.com/shop --dir "$RUNNER_TEMP/shop"
+        env:
+          DB: ${{ matrix.db }}
+        run: go run ./cmd/gobento new shop --module example.com/shop --db "$DB" --dir "$RUNNER_TEMP/shop"
       - name: Regenerate with the pinned sqlc and compare
         working-directory: ${{ runner.temp }}/shop
         run: |

@@ -3,7 +3,7 @@
 // Configuration comes from the environment:
 //
 //	PORT          port to listen on (default 8080)
-//	DATABASE_URL  database connection string (default shop.db)
+//	DATABASE_URL  database connection string (default database.DefaultURL)
 package main
 
 import (
@@ -35,7 +35,7 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	db, err := database.Open(ctx, getenv("DATABASE_URL", "shop.db"))
+	db, err := database.Open(ctx, getenv("DATABASE_URL", database.DefaultURL))
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}

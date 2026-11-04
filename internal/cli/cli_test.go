@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -76,16 +77,17 @@ func TestNew(t *testing.T) {
 		},
 		{
 			// Spec: Module path defaults to the project name, and
-			// Automatic selection of the only option.
+			// Automatic selection of the only option (every kind but
+			// the database has one).
 			name:       "defaults",
-			args:       []string{"new", "shop"},
+			args:       []string{"new", "shop", "--db", "sqlite"},
 			wantTarget: "shop",
 			wantModule: "shop",
 			wantGo:     "1.27",
 		},
 		{
 			name:       "versions and directory",
-			args:       []string{"new", "my-app", "--go", "1.26", "--pin", "modernc.org/sqlite=v1.61.0", "--dir", "out/app"},
+			args:       []string{"new", "my-app", "--db", "sqlite", "--go", "1.26", "--pin", "modernc.org/sqlite=v1.61.0", "--dir", "out/app"},
 			wantTarget: "out/app",
 			wantModule: "my-app",
 			wantGo:     "1.26",
@@ -125,13 +127,31 @@ func TestNewPinVersionIsUsed(t *testing.T) {
 	t.Parallel()
 
 	gen := &fakeGenerator{}
-	if _, _, err := run(t, components.FS(), gen, "new", "shop", "--pin", "modernc.org/sqlite=v1.61.0"); err != nil {
+	if _, _, err := run(t, components.FS(), gen, "new", "shop", "--db", "sqlite", "--pin", "modernc.org/sqlite=v1.61.0"); err != nil {
 		t.Fatal(err)
 	}
 	for _, m := range gen.calls[0].Modules {
 		if m.Path == "modernc.org/sqlite" && m.Version != "v1.61.0" {
 			t.Errorf("modernc.org/sqlite = %s, want v1.61.0", m.Version)
 		}
+	}
+}
+
+// TestNewPostgres follows the spec scenario "PostgreSQL project": the
+// project requires the PostgreSQL driver and no SQLite driver.
+func TestNewPostgres(t *testing.T) {
+	t.Parallel()
+
+	gen := &fakeGenerator{}
+	if _, _, err := run(t, components.FS(), gen, "new", "shop", "--module", "example.com/shop", "--db", "postgres", "--data", "sqlc"); err != nil {
+		t.Fatal(err)
+	}
+	var paths []string
+	for _, m := range gen.calls[0].Modules {
+		paths = append(paths, m.Path)
+	}
+	if !slices.Contains(paths, "github.com/jackc/pgx/v5") || slices.Contains(paths, "modernc.org/sqlite") {
+		t.Errorf("modules = %v, want github.com/jackc/pgx/v5 and not modernc.org/sqlite", paths)
 	}
 }
 
@@ -162,6 +182,12 @@ func TestNewErrors(t *testing.T) {
 			catalog: twoFrameworkFS(t),
 			args:    []string{"new", "shop"},
 			want:    []string{"--framework: choose a framework; supported: chi, nethttp"},
+		},
+		{
+			// Spec: Database is a choice.
+			name: "database is a choice",
+			args: []string{"new", "shop"},
+			want: []string{"--db: choose a database; supported: postgres, sqlite"},
 		},
 		{
 			name: "tool pin",
@@ -229,7 +255,7 @@ func TestNewGenerateFailure(t *testing.T) {
 	t.Parallel()
 
 	gen := &fakeGenerator{err: errors.New("go get: no network")}
-	_, _, err := run(t, components.FS(), gen, "new", "shop")
+	_, _, err := run(t, components.FS(), gen, "new", "shop", "--db", "sqlite")
 	if err == nil || !strings.Contains(err.Error(), "  - go get: no network") {
 		t.Errorf("error = %v, want the generation error in the report", err)
 	}
@@ -244,7 +270,7 @@ func TestNewDryRun(t *testing.T) {
 	t.Parallel()
 
 	gen := &fakeGenerator{}
-	out, _, err := run(t, components.FS(), gen, "new", "drytest", "--dry-run")
+	out, _, err := run(t, components.FS(), gen, "new", "drytest", "--db", "sqlite", "--dry-run")
 	if err != nil {
 		t.Fatalf("--dry-run error = %v", err)
 	}
@@ -325,7 +351,7 @@ func TestNewIntoCurrentDirectory(t *testing.T) {
 	t.Chdir(t.TempDir())
 
 	gen := &fakeGenerator{}
-	out, _, err := run(t, components.FS(), gen, "new", "shop", "--dir", ".")
+	out, _, err := run(t, components.FS(), gen, "new", "shop", "--db", "sqlite", "--dir", ".")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -397,7 +423,7 @@ func TestNewInterrupted(t *testing.T) {
 		stderr: &stderr,
 	}
 	cmd := newRootCommand("dev", a)
-	cmd.SetArgs([]string{"new", "shop"})
+	cmd.SetArgs([]string{"new", "shop", "--db", "sqlite"})
 	if got := a.exitStatus(ctx, cmd.ExecuteContext(ctx)); got != ExitInterrupted {
 		t.Errorf("exit status = %d, want %d", got, ExitInterrupted)
 	}

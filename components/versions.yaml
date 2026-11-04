@@ -7,7 +7,9 @@
 # per gobento release. CI generates every supported selection with the
 # defaults and with the range floors, so both ends of each range are tested.
 #
-# Last checked against the Go module proxy: 2026-11-03.
+# Last checked against the Go module proxy and https://vuln.go.dev: 2026-11-04.
+# Range floors exclude every release with a known advisory, in the module
+# itself or in the dependency versions it requires.
 
 go:
   range: ">=1.26 <1.28"
@@ -24,6 +26,17 @@ modules:
     constraints:
       - when: ">=v1.61.0"
         require: { go: ">=1.26" }
+
+  github.com/jackc/pgx/v5:
+    components: [database/postgres]
+    role: library
+    # Advisories affect pgx before v5.9.2 (GO-2026-5004 and earlier), and
+    # v5.9.2 to v5.11.0 require golang.org/x/text v0.29.0, which pgx's SCRAM
+    # authentication uses and which has GO-2026-6629 (fixed in v0.41.0).
+    # v5.12.0 is the first release whose requirements are all clean. It
+    # declares go 1.25.0, below the go floor, so it needs no go constraint.
+    range: ">=v5.12.0 <v6.0.0"
+    default: v5.12.0
 
   github.com/sqlc-dev/sqlc:
     components: [data/sqlc]

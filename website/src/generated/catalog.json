@@ -41,6 +41,19 @@
       "requires": {}
     },
     {
+      "id": "database/postgres",
+      "kind": "database",
+      "name": "postgres",
+      "title": "PostgreSQL",
+      "description": "PostgreSQL through pgx, a pure-Go driver, used with database/sql.",
+      "provides": {
+        "conn": "database/sql",
+        "sql-dialect": "postgresql",
+        "sql-schema": "schema.sql"
+      },
+      "requires": {}
+    },
+    {
       "id": "database/sqlite",
       "kind": "database",
       "name": "sqlite",
@@ -65,7 +78,8 @@
           "database/sql"
         ],
         "sql-dialect": [
-          "sqlite"
+          "sqlite",
+          "postgresql"
         ],
         "sql-schema": [
           "schema.sql"
@@ -78,6 +92,16 @@
     "default": "1.27"
   },
   "modules": [
+    {
+      "path": "github.com/jackc/pgx/v5",
+      "components": [
+        "database/postgres"
+      ],
+      "role": "library",
+      "range": ">=v5.12.0 <v6.0.0",
+      "default": "v5.12.0",
+      "constraints": []
+    },
     {
       "path": "github.com/sqlc-dev/sqlc",
       "components": [
@@ -108,6 +132,12 @@
     }
   ],
   "supported": [
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp"
+    },
     {
       "architecture": "mvc",
       "data": "sqlc",

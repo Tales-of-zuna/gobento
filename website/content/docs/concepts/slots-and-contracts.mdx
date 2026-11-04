@@ -48,7 +48,8 @@ into the same Go package or the same file.
 
 The owner may add its own subpackages below the slot directory. sqlc's
 generated code, for example, lives in `internal/store/sqlcgen`, a subpackage
-of the `store` slot. Other slots never import such subpackages.
+of the `store` slot. Other slots never import such subpackages, unless the
+contract names them, like the database slot's `dbtest` package below.
 
 Components may also add files at the project root, such as `sqlc.yaml`. Those
 paths are checked for conflicts like any other file.
@@ -61,16 +62,25 @@ slot's part of that contract, and imports other slots only through it.
 
 The `mvc` architecture's `main.go` calls these fixed functions:
 
-| Slot                    | Contract the filling component must provide                                                                                                                     |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `models` (architecture) | `type Item struct{ID int64; Name string; CreatedAt time.Time}`, `type ItemStore interface{ List(ctx) ([]Item, error); Create(ctx, name string) (Item, error) }` |
-| `database`              | `func Open(ctx context.Context, dsn string) (T, error)`, where `T` has `Close() error` and is named by the `conn` trait (`*sql.DB` for `database/sql`)          |
-| `store`                 | `func New(db T) models.ItemStore`                                                                                                                               |
-| `handlers`              | `func NewRouter(items models.ItemStore) http.Handler`                                                                                                           |
+| Slot                            | Contract the filling component must provide                                                                                                                                                                                           |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `models` (architecture)         | `type Item struct{ID int64; Name string; CreatedAt time.Time}`, `type ItemStore interface{ List(ctx) ([]Item, error); Create(ctx, name string) (Item, error) }`                                                                       |
+| `database`                      | `func Open(ctx context.Context, dsn string) (T, error)`, where `T` has `Close() error` and is named by the `conn` trait (`*sql.DB` for `database/sql`); `const DefaultURL string`, the `dsn` used when `DATABASE_URL` is unset        |
+| `database`, subpackage `dbtest` | `func URL(t testing.TB) string` and `func Open(t testing.TB) T`: an empty database of the test's own, with the schema applied, removed when the test ends; both skip the test when the database needs a server and none is configured |
+| `store`                         | `func New(db T) models.ItemStore`                                                                                                                                                                                                     |
+| `handlers`                      | `func NewRouter(items models.ItemStore) http.Handler`                                                                                                                                                                                 |
 
-`main.go` uses `db, err := database.Open(...)`, so it never names the
-connection type `T`. That type is described by the database's
+`main.go` uses `db, err := database.Open(ctx, getenv("DATABASE_URL",
+database.DefaultURL))`, so it never names the connection type `T`, nor any
+particular database: SQLite's `DefaultURL` is `<name>.db`, PostgreSQL's a
+local development server. The type is described by the database's
 [`conn` trait](/docs/concepts/traits).
+
+Tests of other slots, such as sqlc's store test, get their database from
+`dbtest.Open(t)`, so they run on every database. SQLite's `dbtest` uses a
+file in `t.TempDir()`. PostgreSQL's uses the server named by
+`TEST_DATABASE_URL`, creates a schema of the test's own there, and drops it at
+the end; without the variable, it skips the test. Only tests import `dbtest`.
 
 Because the contract is plain Go, **the compiler checks it** in every
 generated project. Each component also has its own package, so identifier

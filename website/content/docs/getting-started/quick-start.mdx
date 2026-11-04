@@ -12,8 +12,9 @@ Install gobento first, with
 [GitHub Releases](https://github.com/Tales-of-zuna/gobento/releases); see
 [Installation](/docs/getting-started/installation) for checksums and details.
 
-This guide generates a project called `shop` with the first supported stack:
-MVC, `net/http`, SQLite, and sqlc.
+This guide generates a project called `shop` with MVC, `net/http`, SQLite, and
+sqlc. SQLite needs no database server; [Use PostgreSQL](#use-postgresql) shows
+what changes with `--db postgres`.
 
 ## Generate and run it
 
@@ -26,7 +27,7 @@ MVC, `net/http`, SQLite, and sqlc.
 writes nothing and does not run the Go toolchain.
 
 ```sh
-gobento new shop --module example.com/shop --dry-run
+gobento new shop --module example.com/shop --db sqlite --dry-run
 ```
 
 It prints `Dry run: nothing was written.`, the module, the selection
@@ -39,11 +40,12 @@ It prints `Dry run: nothing was written.`, the module, the selection
 ### Generate it
 
 ```sh
-gobento new shop --module example.com/shop
+gobento new shop --module example.com/shop --db sqlite
 ```
 
-Each component kind has one option today, so gobento selects them for you. The
-same command with every choice spelled out is:
+The database is a choice between `sqlite` and `postgres`, so `--db` is
+required. Every other component kind has one option today, so gobento selects
+it for you. The same command with every choice spelled out is:
 
 ```sh
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
@@ -158,6 +160,9 @@ This is the list `--dry-run` prints for `shop`, as a tree:
         <File name="router_test.go" />
       </Folder>
       <Folder name="database" defaultOpen>
+        <Folder name="dbtest" defaultOpen>
+          <File name="dbtest.go" />
+        </Folder>
         <File name="database.go" />
         <File name="database_test.go" />
         <File name="schema.sql" />
@@ -186,15 +191,15 @@ This is the list `--dry-run` prints for `shop`, as a tree:
 
 Each directory is one Go package, filled by one component:
 
-| Path                                          | Filled by     | Contents                                                                                                                                  |
-| --------------------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `cmd/shop/main.go`                            | architecture  | Config from the environment (`PORT`, default `8080`; `DATABASE_URL`, default `shop.db`), wiring, graceful shutdown on Ctrl-C or `SIGTERM` |
-| `internal/models/`                            | architecture  | The `Item` type and the `ItemStore` interface                                                                                             |
-| `internal/controllers/`                       | framework     | `NewRouter` with `GET /health`, `GET /items`, and `POST /items`, and tests with a fake `ItemStore`                                        |
-| `internal/database/`                          | database      | `Open`, and an embedded `schema.sql` applied at startup                                                                                   |
-| `internal/store/`                             | data access   | `queries.sql`, the `New` adapter, and a test against real SQLite; sqlc's generated code is in the `sqlcgen` subpackage                    |
-| `sqlc.yaml`                                   | data access   | sqlc configuration                                                                                                                        |
-| `README.md`, `.gitignore`, `go.mod`, `go.sum` | project files | `go.mod` is rendered by gobento, `go.sum` comes from the Go toolchain, and the README includes notes from each component                  |
+| Path                                          | Filled by     | Contents                                                                                                                                                              |
+| --------------------------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cmd/shop/main.go`                            | architecture  | Config from the environment (`PORT`, default `8080`; `DATABASE_URL`, default `database.DefaultURL`, here `shop.db`), wiring, graceful shutdown on Ctrl-C or `SIGTERM` |
+| `internal/models/`                            | architecture  | The `Item` type and the `ItemStore` interface                                                                                                                         |
+| `internal/controllers/`                       | framework     | `NewRouter` with `GET /health`, `GET /items`, and `POST /items`, and tests with a fake `ItemStore`                                                                    |
+| `internal/database/`                          | database      | `Open`, `DefaultURL`, an embedded `schema.sql` applied at startup, and `dbtest`, which gives each test an empty database                                              |
+| `internal/store/`                             | data access   | `queries.sql`, the `New` adapter, and a test against a real database; sqlc's generated code is in the `sqlcgen` subpackage                                            |
+| `sqlc.yaml`                                   | data access   | sqlc configuration                                                                                                                                                    |
+| `README.md`, `.gitignore`, `go.mod`, `go.sum` | project files | `go.mod` is rendered by gobento, `go.sum` comes from the Go toolchain, and the README includes notes from each component                                              |
 
 `go.mod` requires every direct dependency at an exact version: the defaults
 from the [version rules](/docs/concepts/version-rules), or the versions you
@@ -213,6 +218,40 @@ The schema in `internal/database/schema.sql` is embedded in the binary and
 applied every time the server starts. It uses `CREATE TABLE IF NOT EXISTS`, so
 it creates missing tables but never changes existing ones; it is not a
 migration system.
+
+## Use PostgreSQL
+
+Generate the same project on PostgreSQL with `--db postgres`:
+
+```sh
+gobento new shop --module example.com/shop --db postgres
+```
+
+The files are the same, except that `internal/database` opens PostgreSQL
+through [pgx](https://github.com/jackc/pgx), a pure-Go driver, and
+`sqlc.yaml` uses sqlc's `postgresql` engine. What changes for you:
+
+- **Running the server.** `DATABASE_URL` defaults to
+  `postgres://postgres:postgres@localhost:5432/shop?sslmode=disable`, a local
+  development server. The generated README has a command that starts one with
+  Docker:
+
+  ```sh
+  docker run --rm -d --name shop-postgres -p 5432:5432 \
+    -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=shop postgres:18-alpine
+  go run ./cmd/shop
+  ```
+
+  For any other server, set `DATABASE_URL` to its URL.
+
+- **Running the tests.** `go test ./...` passes without a server: the
+  database and store tests are skipped. Set `TEST_DATABASE_URL` to run them
+  against a server. Each test works in a schema of its own, which it drops
+  when it ends:
+
+  ```sh
+  TEST_DATABASE_URL='postgres://postgres:postgres@localhost:5432/shop?sslmode=disable' go test ./...
+  ```
 
 ## Next steps
 

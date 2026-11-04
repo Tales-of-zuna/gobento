@@ -3,6 +3,7 @@ package generate
 import (
 	"errors"
 	"io/fs"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -70,15 +71,19 @@ func TestPrepare(t *testing.T) {
 		},
 		{
 			// Spec: Module path defaults to the project name, and
-			// Automatic selection of the only option.
+			// Automatic selection of the only option (every kind but
+			// the database has one).
 			name:       "defaults",
-			spec:       Spec{Name: "shop"},
+			spec:       Spec{Name: "shop", Components: map[catalog.Kind]string{catalog.KindDatabase: "sqlite"}},
 			wantModule: "shop",
 			wantGo:     "1.27",
 		},
 		{
-			name:       "version overrides",
-			spec:       Spec{Name: "my-app", Go: "1.26", Pins: map[string]string{"modernc.org/sqlite": "v1.61.0"}},
+			name: "version overrides",
+			spec: Spec{
+				Name: "my-app", Components: map[catalog.Kind]string{catalog.KindDatabase: "sqlite"},
+				Go: "1.26", Pins: map[string]string{"modernc.org/sqlite": "v1.61.0"},
+			},
 			wantModule: "my-app",
 			wantGo:     "1.26",
 		},
@@ -149,8 +154,11 @@ func TestPrepareErrors(t *testing.T) {
 			wantMsg: []string{"choose a framework; supported: chi, nethttp"},
 		},
 		{
-			name:    "version outside range",
-			spec:    Spec{Name: "shop", Pins: map[string]string{"modernc.org/sqlite": "v1.0.0"}},
+			name: "version outside range",
+			spec: Spec{
+				Name: "shop", Components: map[catalog.Kind]string{catalog.KindDatabase: "sqlite"},
+				Pins: map[string]string{"modernc.org/sqlite": "v1.0.0"},
+			},
 			wantMsg: []string{"modernc.org/sqlite v1.0.0", ">=v1.61.0 <v2.0.0"},
 		},
 		{
@@ -189,12 +197,12 @@ func TestPrepareErrors(t *testing.T) {
 func TestSelectionErrorAs(t *testing.T) {
 	t.Parallel()
 
-	_, err := Prepare(shippedCatalog(t), Spec{Name: "shop", Components: map[catalog.Kind]string{catalog.KindDatabase: "postgres"}})
+	_, err := Prepare(shippedCatalog(t), Spec{Name: "shop", Components: map[catalog.Kind]string{catalog.KindDatabase: "mysql"}})
 	var se *SelectionError
 	if !errors.As(err, &se) {
 		t.Fatalf("Prepare() error = %v, want a *SelectionError", err)
 	}
-	if se.Kind != catalog.KindDatabase || se.Value != "postgres" || len(se.Supported) != 1 || se.Supported[0] != "sqlite" {
+	if se.Kind != catalog.KindDatabase || se.Value != "mysql" || !slices.Equal(se.Supported, []string{"postgres", "sqlite"}) {
 		t.Errorf("SelectionError = %+v", se)
 	}
 }
@@ -204,11 +212,11 @@ func TestPrepareReportsVersionsWithSelectionProblems(t *testing.T) {
 
 	_, err := Prepare(shippedCatalog(t), Spec{
 		Name:       "shop",
-		Components: map[catalog.Kind]string{catalog.KindFramework: "express", catalog.KindDatabase: "postgres"},
+		Components: map[catalog.Kind]string{catalog.KindFramework: "express", catalog.KindDatabase: "mysql"},
 		Go:         "1.20",
 		Pins:       map[string]string{"modernc.org/sqlite": "v1.0.0"},
 	})
-	for _, w := range []string{`unknown framework "express"`, `unknown database "postgres"`, "go 1.20", "modernc.org/sqlite v1.0.0"} {
+	for _, w := range []string{`unknown framework "express"`, `unknown database "mysql"`, "go 1.20", "modernc.org/sqlite v1.0.0"} {
 		if err == nil || !strings.Contains(err.Error(), w) {
 			t.Errorf("Prepare() error = %v\nwant it to contain %q", err, w)
 		}
@@ -226,7 +234,8 @@ func TestPrepareRejectsWindowsReservedNames(t *testing.T) {
 		}
 	}
 	for _, name := range []string{"console", "com0", "com10", "lpt", "auxiliary", "nul-app"} {
-		if _, err := Prepare(cat, Spec{Name: name}); err != nil {
+		spec := Spec{Name: name, Components: map[catalog.Kind]string{catalog.KindDatabase: "sqlite"}}
+		if _, err := Prepare(cat, spec); err != nil {
 			t.Errorf("Prepare(%q) error = %v, want nil", name, err)
 		}
 	}
