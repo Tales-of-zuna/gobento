@@ -69,8 +69,8 @@ only:
 
 For example, `components/framework/nethttp/files/handlers/router.go.tmpl`
 becomes `internal/controllers/router.go`, because `mvc` puts the `handlers`
-slot in `internal/controllers`, and `internal/items/itemshttp/router.go` with
-`vertical-slice`, which puts it there.
+slot in `internal/controllers`, `internal/items/itemshttp/router.go` with
+`vertical-slice`, and `internal/adapters/httpapi/router.go` with `ddd`.
 
 ### The `.tmpl` rule
 
@@ -419,12 +419,13 @@ make test
 ### Golden test
 
 The golden tests compose the reference selection of each architecture and
-compare the whole project with `internal/compose/testdata/golden/` (`mvc`)
-and `internal/compose/testdata/golden-vertical-slice/` (`vertical-slice`).
-They also compose, for every component, the first supported selection that
-contains it, and compare the files that component contributes with
+compare the whole project with `internal/compose/testdata/golden/` (`mvc`),
+`internal/compose/testdata/golden-vertical-slice/` (`vertical-slice`), and
+`internal/compose/testdata/golden-ddd/` (`ddd`). They also compose, for every
+component, the first supported selection that contains it (with `mvc`, unless
+the component is an architecture), and compare the files that component contributes with
 `internal/compose/testdata/golden-components/<kind>/<name>/`. Another test
-checks that every framework's files are the same under both architectures
+checks that every framework's files are the same under every architecture
 apart from package names and import paths. A new component needs its golden
 files, and an intended output change needs them refreshed. Regenerate them
 and review the diff:

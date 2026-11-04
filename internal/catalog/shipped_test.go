@@ -72,7 +72,7 @@ func TestShippedCatalogCandidates(t *testing.T) {
 		got = append(got, s.String())
 	}
 	var want []string
-	for _, arch := range []string{"mvc", "vertical-slice"} {
+	for _, arch := range []string{"ddd", "mvc", "vertical-slice"} {
 		for _, fw := range []string{"chi", "gin", "nethttp"} {
 			for _, db := range []string{"postgres", "sqlite"} {
 				for _, data := range []string{"gorm", "sqlc"} {

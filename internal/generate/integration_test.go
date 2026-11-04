@@ -20,7 +20,8 @@ import (
 // command, and checks that each project builds (also with cgo disabled),
 // vets, passes its tests, is formatted, has exactly the chosen versions, and
 // keeps the handlers package independent of the database and store
-// packages. It needs network access to the module proxy and is skipped with
+// packages and the contract package independent of every other package. It
+// needs network access to the module proxy and is skipped with
 // -short.
 func TestIntegration(t *testing.T) {
 	skipIntegration(t)
@@ -78,6 +79,7 @@ func checkSelection(t *testing.T, cat *catalog.Catalog, sel catalog.Selection) {
 			}
 			checkPins(t, dir, p.Versions)
 			checkHandlersContract(t, dir, p)
+			checkLayers(t, dir, p)
 		})
 	}
 }
@@ -173,6 +175,46 @@ func checkHandlersContract(t *testing.T, dir string, p *Prepared) {
 		for line := range strings.SplitSeq(deps, "\n") {
 			if line == slot.Import || strings.HasPrefix(line, slot.Import+"/") {
 				t.Errorf("handlers package depends on %s", line)
+			}
+		}
+	}
+}
+
+// checkLayers asserts the spec "Domain layers depend inward" as far as it
+// applies to every architecture: the contract package (the models slot, the
+// domain in ddd) imports no other package of the project. With an
+// application slot, it also asserts that the application package imports
+// only the contract package, and that no adapter imports the application
+// package.
+func checkLayers(t *testing.T, dir string, p *Prepared) {
+	t.Helper()
+	models := p.Plan.Slots["models"]
+	module := strings.TrimSuffix(models.Import, "/"+models.Dir)
+	projectDeps := func(pkg string) []string {
+		var out []string
+		for line := range strings.SplitSeq(runIn(t, dir, "go", "list", "-deps", "./"+pkg), "\n") {
+			if line == module || strings.HasPrefix(line, module+"/") {
+				out = append(out, line)
+			}
+		}
+		return out
+	}
+	if deps := projectDeps(models.Dir); len(deps) != 1 || deps[0] != models.Import {
+		t.Errorf("package %s depends on %v, want no other package of the project", models.Import, deps)
+	}
+	app, ok := p.Plan.Slots["app"]
+	if !ok {
+		return
+	}
+	for _, dep := range projectDeps(app.Dir) {
+		if dep != app.Import && dep != models.Import {
+			t.Errorf("package %s depends on %s, want only %s", app.Import, dep, models.Import)
+		}
+	}
+	for _, adapter := range []string{"handlers", "store", "database"} {
+		for _, dep := range projectDeps(p.Plan.Slots[adapter].Dir + "/...") {
+			if dep == app.Import {
+				t.Errorf("the %s slot depends on %s", adapter, app.Import)
 			}
 		}
 	}

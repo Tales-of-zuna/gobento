@@ -113,6 +113,7 @@ test.describe('home page', () => {
     await page.goto('./');
     const belt = page.getByRole('list', { name: 'Components' });
     for (const name of [
+      'DDD',
       'MVC',
       'VS',
       'chi',

@@ -72,6 +72,9 @@ access to the Go module proxy. --dry-run needs neither.
   # Organize the code by feature instead of by layer, with PostgreSQL and GORM
   gobento new shop --arch vertical-slice --framework nethttp --db postgres --data gorm
 
+  # Use domain-driven design: a domain, an application service, and adapters
+  gobento new shop --arch ddd --framework gin --db sqlite --data sqlc
+
   # Choose every component and the module path explicitly
   gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
 
@@ -99,7 +102,7 @@ access to the Go module proxy. --dry-run needs neither.
 
 	fl := cmd.Flags()
 	fl.StringVar(&f.module, "module", "", "Go module path, for example example.com/shop (default: the project name)")
-	fl.StringVar(&f.arch, "arch", "", "architecture, for example mvc or vertical-slice (asked for in a terminal; required otherwise when several are supported)")
+	fl.StringVar(&f.arch, "arch", "", "architecture, for example mvc, vertical-slice, or ddd (asked for in a terminal; required otherwise when several are supported)")
 	fl.StringVar(&f.framework, "framework", "", "HTTP framework, for example chi, gin, or nethttp (asked for in a terminal; required otherwise when several are supported)")
 	fl.StringVar(&f.db, "db", "", "database, for example sqlite or postgres (asked for in a terminal; required otherwise when several are supported)")
 	fl.StringVar(&f.data, "data", "", "data-access library, for example sqlc or gorm (asked for in a terminal; required otherwise when several are supported)")

@@ -23,6 +23,15 @@
   ],
   "components": [
     {
+      "id": "architecture/ddd",
+      "kind": "architecture",
+      "name": "ddd",
+      "title": "Domain-driven design",
+      "description": "A domain package, an application service for the use cases, and adapters for HTTP, data access, and the database, with dependencies pointing inward.",
+      "provides": {},
+      "requires": {}
+    },
+    {
       "id": "architecture/mvc",
       "kind": "architecture",
       "name": "mvc",
@@ -261,6 +270,78 @@
     }
   ],
   "supported": [
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp"
+    },
     {
       "architecture": "mvc",
       "data": "gorm",

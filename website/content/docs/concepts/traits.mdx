@@ -89,13 +89,14 @@ website's configurator uses the same rules to disable incompatible options
 and explain why.
 
 Today every database provides what both data-access components require, so
-all 24 candidate selections (2 architectures × 3 frameworks × 2 databases × 2
+all 36 candidate selections (3 architectures × 3 frameworks × 2 databases × 2
 data-access components) are supported, for example:
 
 ```text
 mvc + nethttp + postgres + gorm
 mvc + nethttp + sqlite + sqlc
 vertical-slice + nethttp + sqlite + sqlc
+ddd + gin + postgres + sqlc
 ```
 
 The [Components reference](/docs/components) lists the traits of every

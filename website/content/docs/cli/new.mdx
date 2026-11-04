@@ -26,7 +26,7 @@ required when its kind has several supported components.
 | Flag           | Type                         | Default        | Description                                                                                                                                                                                                                    |
 | -------------- | ---------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `--module`     | string                       | `<name>`       | Go module path of the generated project, for example `example.com/shop`. It must be a valid Go import path, as checked by `module.CheckImportPath` from `golang.org/x/mod`. Paths without a dot, such as `shop`, are accepted. |
-| `--arch`       | string                       | auto           | Architecture component: `mvc` (by layer) or `vertical-slice` (by feature). There are several, so it is asked for in a terminal and required otherwise.                                                                         |
+| `--arch`       | string                       | auto           | Architecture component: `mvc` (by layer), `vertical-slice` (by feature), or `ddd` (domain-driven design). There are several, so it is asked for in a terminal and required otherwise.                                          |
 | `--framework`  | string                       | auto           | HTTP framework component: `chi`, `gin`, or `nethttp`. There are several, so it is asked for in a terminal and required otherwise.                                                                                              |
 | `--db`         | string                       | auto           | Database component: `sqlite` or `postgres`. There are several, so it is asked for in a terminal and required otherwise.                                                                                                        |
 | `--data`       | string                       | auto           | Data-access component: `sqlc` or `gorm`. There are several, so it is asked for in a terminal and required otherwise.                                                                                                           |
@@ -40,7 +40,7 @@ required when its kind has several supported components.
 **auto**: if the kind has exactly one supported component, it is selected. If
 it has several, gobento asks for one in a terminal (see
 [Questions](#questions)); otherwise it stops with a problem such as
-`--arch: choose an architecture; supported: mvc, vertical-slice`.
+`--arch: choose an architecture; supported: ddd, mvc, vertical-slice`.
 
 **rules default**: the default from the [version rules](/docs/concepts/version-rules).
 The current defaults and ranges are listed in the [Components reference](/docs/components)
@@ -65,6 +65,12 @@ Organize the code by feature instead of by layer, on PostgreSQL with GORM:
 
 ```sh
 gobento new shop --arch vertical-slice --framework nethttp --db postgres --data gorm
+```
+
+Use domain-driven design: a domain, an application service, and adapters:
+
+```sh
+gobento new shop --arch ddd --framework gin --db sqlite --data sqlc
 ```
 
 Choose every component and the module path explicitly:
@@ -242,7 +248,11 @@ gobento would create example.com/shop (mvc/nethttp/sqlite/sqlc, Go 1.27) in shop
 
 With `--arch vertical-slice`, the same files are listed under
 `internal/items/`, `internal/items/itemshttp/`, `internal/items/itemsstore/`,
-and `internal/platform/database/` instead.
+and `internal/platform/database/` instead. With `--arch ddd`, they are listed
+under `internal/domain/`, `internal/adapters/httpapi/`,
+`internal/adapters/persistence/`, and `internal/adapters/database/`, plus the
+application service in `internal/app/items.go`, its test, and the domain's
+test.
 
 - It writes nothing and creates no directory.
 - It does not run the Go toolchain, so it needs neither Go nor access to the

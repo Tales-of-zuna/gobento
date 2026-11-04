@@ -26,8 +26,8 @@ path, or the project name when `--module` is omitted.
 - **THEN** the generated module is named `shop`
 
 #### Scenario: Architecture must be chosen
-- **WHEN** the user runs `gobento new shop` without `--arch` while `mvc` and `vertical-slice` are both supported architectures
-- **THEN** gobento exits non-zero naming `--arch` and listing `mvc` and `vertical-slice`, and writes nothing
+- **WHEN** the user runs `gobento new shop` without `--arch` and without questions while `ddd`, `mvc`, and `vertical-slice` are the supported architectures
+- **THEN** gobento exits non-zero naming `--arch` and listing `ddd`, `mvc`, and `vertical-slice`, and writes nothing
 
 ### Requirement: Automatic selection of the only option
 When a selection flag is omitted and its component kind has exactly one
@@ -119,7 +119,7 @@ SHALL also compile with cgo disabled (`CGO_ENABLED=0`), so it needs no C
 compiler on Linux, macOS, or Windows.
 
 #### Scenario: Build check after generation
-- **WHEN** a project is generated with the selection mvc/nethttp/sqlite/sqlc, vertical-slice/nethttp/sqlite/sqlc, or mvc/nethttp/sqlite/gorm
+- **WHEN** a project is generated with the selection mvc/nethttp/sqlite/sqlc, vertical-slice/nethttp/sqlite/sqlc, ddd/nethttp/sqlite/sqlc, or mvc/nethttp/sqlite/gorm
 - **THEN** `go build ./...`, `go vet ./...` and `go test ./...` succeed inside it, and `gofmt -l .` lists no files
 
 #### Scenario: Build check without a database server

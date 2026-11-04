@@ -51,12 +51,12 @@ started.
 
 ## What you can choose today
 
-| Kind           | Components                                                               |
-| -------------- | ------------------------------------------------------------------------ |
-| Architecture   | `mvc` (Model-View-Controller, by layer) or `vertical-slice` (by feature) |
-| HTTP framework | `nethttp` (the standard library's `net/http`), `chi`, `gin`              |
-| Database       | `sqlite` (pure Go, no cgo), `postgres` (PostgreSQL through pgx, pure Go) |
-| Data access    | `sqlc` or `gorm` (GORM)                                                  |
+| Kind           | Components                                                                                              |
+| -------------- | ------------------------------------------------------------------------------------------------------- |
+| Architecture   | `mvc` (Model-View-Controller, by layer), `vertical-slice` (by feature), or `ddd` (domain-driven design) |
+| HTTP framework | `nethttp` (the standard library's `net/http`), `chi`, `gin`                                             |
+| Database       | `sqlite` (pure Go, no cgo), `postgres` (PostgreSQL through pgx, pure Go)                                |
+| Data access    | `sqlc` or `gorm` (GORM)                                                                                 |
 
 Every architecture uses the same framework, database, and data-access
 components, arranged in a different layout, and every framework serves

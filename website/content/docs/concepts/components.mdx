@@ -10,12 +10,12 @@ gobento.
 
 ## The four kinds
 
-| Kind           | Flag          | What it contributes                                                                                                       | Options                 |
-| -------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| Architecture   | `--arch`      | The project layout (its [slots](/docs/concepts/slots-and-contracts)), the entry point, and the Go contracts between slots | `mvc`, `vertical-slice` |
-| HTTP framework | `--framework` | The router and HTTP handlers                                                                                              | `nethttp`, `chi`, `gin` |
-| Database       | `--db`        | Opening the database connection and applying the schema                                                                   | `sqlite`, `postgres`    |
-| Data access    | `--data`      | The store that implements the data contract on top of the database                                                        | `sqlc`, `gorm`          |
+| Kind           | Flag          | What it contributes                                                                                                       | Options                        |
+| -------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| Architecture   | `--arch`      | The project layout (its [slots](/docs/concepts/slots-and-contracts)), the entry point, and the Go contracts between slots | `mvc`, `vertical-slice`, `ddd` |
+| HTTP framework | `--framework` | The router and HTTP handlers                                                                                              | `nethttp`, `chi`, `gin`        |
+| Database       | `--db`        | Opening the database connection and applying the schema                                                                   | `sqlite`, `postgres`           |
+| Data access    | `--data`      | The store that implements the data contract on top of the database                                                        | `sqlc`, `gorm`                 |
 
 ## A selection
 

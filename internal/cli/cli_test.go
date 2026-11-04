@@ -93,6 +93,15 @@ func TestNew(t *testing.T) {
 			wantOut:    []string{"go run ./cmd/shop"},
 		},
 		{
+			// Spec: Layered layout.
+			name:       "ddd",
+			args:       []string{"new", "shop", "--arch", "ddd", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc"},
+			wantTarget: "shop",
+			wantModule: "shop",
+			wantGo:     "1.27",
+			wantOut:    []string{"go run ./cmd/shop"},
+		},
+		{
 			// Spec: GORM data access.
 			name:       "gorm",
 			args:       []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "gorm"},
@@ -202,7 +211,7 @@ func TestNewErrors(t *testing.T) {
 			// Spec: Architecture must be chosen.
 			name: "architecture must be chosen",
 			args: []string{"new", "shop"},
-			want: []string{"--arch: choose an architecture; supported: mvc, vertical-slice"},
+			want: []string{"--arch: choose an architecture; supported: ddd, mvc, vertical-slice"},
 		},
 		{
 			// Spec: Database is a choice.

@@ -28,6 +28,7 @@ var goldens = []struct {
 }{
 	{dir: "testdata/golden", sel: [4]string{"mvc", "nethttp", "sqlite", "sqlc"}},
 	{dir: "testdata/golden-vertical-slice", sel: [4]string{"vertical-slice", "nethttp", "sqlite", "sqlc"}},
+	{dir: "testdata/golden-ddd", sel: [4]string{"ddd", "nethttp", "sqlite", "sqlc"}},
 }
 
 // goldenComponentsDir holds the files each component contributes, in
@@ -50,18 +51,27 @@ func TestGolden(t *testing.T) {
 // supported selection that contains it, and compares the files that
 // component contributes with testdata/golden-components/<kind>/<name>. This
 // reviews the output of every component without one golden project per
-// combination.
+// combination. Components other than architectures are composed with the
+// reference architecture (that of goldens[0]) when it supports them, so
+// adding an architecture leaves their goldens as they are.
 func TestGoldenComponents(t *testing.T) {
 	cat := shippedCatalog(t)
 	supported := Supported(cat)
+	refArch := goldens[0].sel[0]
 	var ids []string
 	for _, kind := range catalog.Kinds() {
 		for _, c := range cat.Components(kind) {
 			ids = append(ids, c.ID())
 			t.Run(c.ID(), func(t *testing.T) {
-				i := slices.IndexFunc(supported, func(sel catalog.Selection) bool {
+				contains := func(sel catalog.Selection) bool {
 					return slices.ContainsFunc(sel.Components(), func(s *catalog.Component) bool { return s.ID() == c.ID() })
+				}
+				i := slices.IndexFunc(supported, func(sel catalog.Selection) bool {
+					return contains(sel) && (kind == catalog.KindArchitecture || sel.Architecture.Name == refArch)
 				})
+				if i < 0 {
+					i = slices.IndexFunc(supported, contains)
+				}
 				if i < 0 {
 					t.Fatalf("%s is in no supported selection", c.ID())
 				}
@@ -193,65 +203,79 @@ func planFor(t *testing.T, cat *catalog.Catalog, sel catalog.Selection) *Plan {
 	return plan
 }
 
-// TestShippedFrameworksAreLayoutIndependent covers the spec scenario
-// "Shipped components are reused unchanged": for every framework, each file
-// generated for vertical-slice equals the one generated for mvc once the slot
-// directories, package names, and import paths of mvc are replaced by
-// vertical-slice's.
+// TestShippedFrameworksAreLayoutIndependent covers the spec scenarios
+// "Shipped components are reused unchanged" and "Shipped components are
+// reused unchanged in ddd": for every framework and every architecture other
+// than mvc, each file generated for that architecture equals the one
+// generated for mvc once the slot directories, package names, and import
+// paths of mvc are replaced by the architecture's.
 func TestShippedFrameworksAreLayoutIndependent(t *testing.T) {
 	t.Parallel()
 
 	cat := shippedCatalog(t)
-	for _, fw := range cat.Components(catalog.KindFramework) {
-		t.Run(fw.Name, func(t *testing.T) {
-			t.Parallel()
+	for _, arch := range cat.Components(catalog.KindArchitecture) {
+		if arch.Name == "mvc" {
+			continue
+		}
+		for _, fw := range cat.Components(catalog.KindFramework) {
+			t.Run(arch.Name+"/"+fw.Name, func(t *testing.T) {
+				t.Parallel()
+				checkLayoutIndependent(t, arch.Name, fw)
+			})
+		}
+	}
+}
 
-			mvc := referencePlan(t, [4]string{"mvc", fw.Name, "sqlite", "sqlc"})
-			vslice := referencePlan(t, [4]string{"vertical-slice", fw.Name, "sqlite", "sqlc"})
-			// Swap import paths and directories verbatim, and package names
-			// only where Go code or a doc comment names the package.
-			var pairs []string
-			type rename struct {
-				re *regexp.Regexp
-				to string
-			}
-			var renames []rename
-			for _, name := range slices.Sorted(maps.Keys(mvc.Slots)) {
-				from, to := mvc.Slots[name], vslice.Slots[name]
-				pairs = append(pairs, from.Import, to.Import, from.Dir+"/", to.Dir+"/")
-				renames = append(renames,
-					rename{regexp.MustCompile(`\b` + from.Package + `\.`), to.Package + "."},
-					rename{regexp.MustCompile(`\b([Pp]ackage) ` + from.Package + `\b`), "$1 " + to.Package})
-			}
-			paths := strings.NewReplacer(pairs...)
-			swap := func(s string) string {
-				s = paths.Replace(s)
-				for _, r := range renames {
-					s = r.re.ReplaceAllString(s, r.to)
-				}
-				return s
-			}
+// checkLayoutIndependent compares the files of framework fw under the
+// architecture arch with those under mvc, as described at
+// TestShippedFrameworksAreLayoutIndependent.
+func checkLayoutIndependent(t *testing.T, arch string, fw *catalog.Component) {
+	t.Helper()
 
-			var compared int
-			for _, f := range mvc.Files {
-				if f.Component != fw.ID() {
-					continue
-				}
-				want := swap(string(f.Content))
-				got, ok := vslice.File(paths.Replace(f.Path))
-				if !ok {
-					t.Errorf("vertical-slice plan has no counterpart of %s", f.Path)
-					continue
-				}
-				compared++
-				if string(got.Content) != want {
-					t.Errorf("%s differs from mvc's %s beyond slot names", got.Path, f.Path)
-				}
-			}
-			if compared == 0 {
-				t.Fatal("no framework files compared")
-			}
-		})
+	mvc := referencePlan(t, [4]string{"mvc", fw.Name, "sqlite", "sqlc"})
+	other := referencePlan(t, [4]string{arch, fw.Name, "sqlite", "sqlc"})
+	// Swap import paths and directories verbatim, and package names
+	// only where Go code or a doc comment names the package.
+	var pairs []string
+	type rename struct {
+		re *regexp.Regexp
+		to string
+	}
+	var renames []rename
+	for _, name := range slices.Sorted(maps.Keys(mvc.Slots)) {
+		from, to := mvc.Slots[name], other.Slots[name]
+		pairs = append(pairs, from.Import, to.Import, from.Dir+"/", to.Dir+"/")
+		renames = append(renames,
+			rename{regexp.MustCompile(`\b` + from.Package + `\.`), to.Package + "."},
+			rename{regexp.MustCompile(`\b([Pp]ackage) ` + from.Package + `\b`), "$1 " + to.Package})
+	}
+	paths := strings.NewReplacer(pairs...)
+	swap := func(s string) string {
+		s = paths.Replace(s)
+		for _, r := range renames {
+			s = r.re.ReplaceAllString(s, r.to)
+		}
+		return s
+	}
+
+	var compared int
+	for _, f := range mvc.Files {
+		if f.Component != fw.ID() {
+			continue
+		}
+		want := swap(string(f.Content))
+		got, ok := other.File(paths.Replace(f.Path))
+		if !ok {
+			t.Errorf("%s plan has no counterpart of %s", arch, f.Path)
+			continue
+		}
+		compared++
+		if string(got.Content) != want {
+			t.Errorf("%s differs from mvc's %s beyond slot names", got.Path, f.Path)
+		}
+	}
+	if compared == 0 {
+		t.Fatal("no framework files compared")
 	}
 }
 
@@ -265,7 +289,7 @@ func TestShippedCatalogSupported(t *testing.T) {
 		got = append(got, s.String())
 	}
 	var want []string
-	for _, arch := range []string{"mvc", "vertical-slice"} {
+	for _, arch := range []string{"ddd", "mvc", "vertical-slice"} {
 		for _, fw := range []string{"chi", "gin", "nethttp"} {
 			for _, db := range []string{"postgres", "sqlite"} {
 				for _, data := range []string{"gorm", "sqlc"} {
