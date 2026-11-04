@@ -61,7 +61,7 @@ jobs:
           # shellcheck disable=SC2086 # range holds two revisions
           changed=$(git diff --name-only $range)
           echo "$changed"
-          if echo "$changed" | grep -qE '^(website/|components/|internal/tools/catalogexport/|\.github/workflows/website\.yml$)'; then
+          if echo "$changed" | grep -qE '^(website/|components/|internal/catalogjson/|internal/tools/catalogexport/|\.github/workflows/website\.yml$)'; then
             echo "website=true" >> "$GITHUB_OUTPUT"
           else
             echo "website=false" >> "$GITHUB_OUTPUT"

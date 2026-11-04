@@ -1,6 +1,6 @@
 /**
  * Test helpers for building catalogs from `fixture-catalog.json`, a frozen
- * catalog in the format exported by `internal/tools/catalogexport`, filtered to
+ * catalog in the format of `internal/catalogjson` (`make catalog`), filtered to
  * mvc and vertical-slice, nethttp, sqlite, and gorm and sqlc: architecture and
  * data access have several options, framework and database one, and gorm's
  * driver modules carry trait conditions. Tests edit copies of it
