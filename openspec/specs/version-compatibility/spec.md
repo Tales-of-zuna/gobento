@@ -11,11 +11,10 @@ and rejecting combinations known not to work.
 gobento SHALL read supported versions from a rules file that lists the project's
 Go version range and, for each module, the components using it, optionally the
 trait values a selection must provide for the module to be used, its role
-(library or tool), supported range, default, and constraints on other versions.
-The rules file SHALL also list every vendored asset, a file that a component
-ships unmodified from an upstream release (such as a JavaScript library),
-with the components shipping it, its version, its upstream source, and its
-checksum. Templates SHALL NOT contain version numbers.
+(library or tool), supported range, default, and constraints on other versions,
+and every vendored asset (a file shipped unmodified from an upstream release)
+with its components, version, source, and checksum. Templates SHALL NOT
+contain version numbers.
 
 #### Scenario: Updating a supported version
 - **WHEN** a maintainer raises a library module's default version in the rules file

@@ -1,7 +1,9 @@
 # frontends Specification
 
 ## Purpose
-TBD - created by archiving change add-frontend-htmx-templ. Update Purpose after archive.
+Defines the optional frontend kind: how a project serves web pages next to its
+HTTP API without per-combination templates, the web slot contract every
+frontend implements, and the htmx + templ frontend.
 
 ## Requirements
 

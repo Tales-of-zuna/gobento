@@ -40,10 +40,7 @@ When a selection flag of a required kind is omitted and the kind has exactly
 one supported value, gobento SHALL select that value. When the kind has
 several values and gobento does not ask questions (see "Ask for missing input
 in a terminal"), gobento SHALL exit non-zero naming the flag and listing the
-values. When the flag of an optional kind is omitted, gobento SHALL select no
-component of that kind without asking for the flag; the value `none` SHALL
-select no component explicitly. An unknown value of an optional kind SHALL be
-reported with the supported values, including `none`.
+values.
 
 #### Scenario: Single option is chosen automatically
 - **WHEN** the user omits `--db` and `sqlite` is the only supported database
@@ -189,13 +186,23 @@ main module version recorded by the Go toolchain without its leading `v`, and
 - **WHEN** gobento runs without a build-time version and Go recorded `(devel)` or nothing
 - **THEN** it prints `gobento version dev`
 
+### Requirement: Optional kinds need no flag
+When the flag of an optional kind is omitted, gobento SHALL select no
+component of that kind without requiring the flag; the value `none` SHALL
+select no component explicitly. An unknown value of an optional kind SHALL be
+reported with the supported values, including `none`.
+
+#### Scenario: No flag for an optional kind
+- **WHEN** the user omits `--frontend` and stdin is not a terminal
+- **THEN** the project is generated without a frontend
+
 ### Requirement: Ask for missing input in a terminal
 In a terminal (stdin and stdout) without `--no-input`, `gobento new` SHALL
 ask, before validating, for the project name when no `<name>` is given, then
 for the module path (empty keeps the name), and for each kind whose flag is
-omitted and that has several compatible options, in kind order. For an
-optional kind, "none" counts as an option and SHALL be offered first, as the
-preselected answer. Answers SHALL follow the name and module path rules.
+omitted and that has several compatible options, in kind order; for an
+optional kind, "none" is an option, offered first. Answers SHALL follow the
+name and module path rules.
 Nothing given by a flag SHALL be asked, and `--dry-run` SHALL ask the same
 questions.
 
