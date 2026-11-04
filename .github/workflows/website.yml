@@ -1,4 +1,4 @@
-# Website checks (website/, see openspec/changes/add-project-website, D9):
+# Website checks (website/, see openspec/changes/archive/2026-11-04-add-project-website/design.md, D9):
 # lint, type-check, format, unit tests, static build, Playwright e2e with axe,
 # and the Lighthouse budget from the spec.
 #
