@@ -7,16 +7,20 @@ const { released } = releaseStatus();
 
 /**
  * Opens the configurator and waits until it has read the URL (after
- * hydration). The architecture and framework kinds have several options, so
- * tests start from mvc and net/http unless they pass their own query.
+ * hydration). Every component kind has several options, so tests start from
+ * the reference selection unless they pass their own query.
  */
-async function open(page: Page, query = '?arch=mvc&framework=nethttp') {
+async function open(page: Page, query = '?arch=mvc&framework=nethttp&db=sqlite&data=sqlc') {
   await page.goto(`configurator/${query}`);
   await expect(page.locator('[data-hydrated="true"]')).toBeAttached();
 }
 
 const command = (page: Page) => page.locator('[data-command]').locator('visible=true');
 const group = (page: Page, name: string) => page.getByRole('group', { name });
+
+/** Chooses a data access by clicking its card; with several options, none is preselected. */
+const chooseData = (page: Page, title: string) =>
+  group(page, 'Data access').getByText(title, { exact: true }).click();
 
 test.describe('configurator', () => {
   test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
@@ -28,27 +32,32 @@ test.describe('configurator', () => {
     const notice = page.getByText('Early development · not released yet');
     if (released) await expect(notice).toHaveCount(0);
     else await expect(notice).toBeVisible();
-    for (const [kind, option] of [
-      ['Database', 'SQLite'],
-      ['Data access', 'sqlc'],
-      ['Go version', 'Go 1.27'],
+    await expect(group(page, 'Go version').getByRole('radio', { name: 'Go 1.27' })).toBeChecked();
+    // Several options in every kind: none is preselected, and the CLI needs a
+    // flag for each.
+    for (const [kind, prompt] of [
+      ['Architecture', 'Choose one of: mvc, vertical-slice.'],
+      ['HTTP framework', 'Choose one of: chi, gin, nethttp.'],
+      ['Database', 'Choose one of: postgres, sqlite.'],
+      ['Data access', 'Choose one of: gorm, sqlc.'],
     ]) {
-      await expect(group(page, kind!).getByRole('radio', { name: option })).toBeChecked();
+      await expect(group(page, kind!).getByRole('radio', { checked: true })).toHaveCount(0);
+      await expect(group(page, kind!).getByText(prompt!)).toBeVisible();
     }
-    // Several architectures and frameworks: none is preselected, and the CLI
-    // needs --arch and --framework.
-    const architecture = group(page, 'Architecture');
-    const framework = group(page, 'HTTP framework');
-    await expect(architecture.getByRole('radio', { checked: true })).toHaveCount(0);
-    await expect(framework.getByRole('radio', { checked: true })).toHaveCount(0);
-    await expect(architecture.getByText('Choose one of: mvc, vertical-slice.')).toBeVisible();
-    await expect(framework.getByText('Choose one of: chi, gin, nethttp.')).toBeVisible();
     await expect(
       page.getByText('No command yet. Fix the architecture choice').locator('visible=true'),
     ).toBeVisible();
-    await architecture.getByText('Model-View-Controller', { exact: true }).click();
-    await framework.getByText('net/http', { exact: true }).click();
-    await expect(command(page)).toHaveText('gobento new myapp --arch mvc --framework nethttp');
+    for (const [kind, option] of [
+      ['Architecture', 'Model-View-Controller'],
+      ['HTTP framework', 'net/http'],
+      ['Database', 'SQLite'],
+      ['Data access', 'sqlc'],
+    ]) {
+      await group(page, kind!).getByText(option!, { exact: true }).click();
+    }
+    await expect(command(page)).toHaveText(
+      'gobento new myapp --arch mvc --framework nethttp --db sqlite --data sqlc',
+    );
     await page.getByRole('button', { name: /Advanced/ }).click();
     await expect(page.getByLabel('modernc.org/sqlite')).toHaveValue('v1.61.1');
     await expect(page.getByText('Tool versions are fixed per gobento release.')).toBeVisible();
@@ -59,11 +68,11 @@ test.describe('configurator', () => {
     await page.getByLabel('Project name').fill('shop');
     await page.getByLabel('Module path').fill('example.com/shop');
     await expect(command(page)).toHaveText(
-      'gobento new shop --module example.com/shop --arch mvc --framework nethttp',
+      'gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc',
     );
     await group(page, 'Go version').getByText('Go 1.26').click();
     await expect(command(page)).toHaveText(
-      'gobento new shop --module example.com/shop --arch mvc --framework nethttp --go 1.26',
+      'gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --go 1.26',
     );
     await expect(page.getByRole('list', { name: 'Generated files' })).toContainText(
       'cmd/shop/main.go',
@@ -73,7 +82,7 @@ test.describe('configurator', () => {
     await expect(files).toContainText('controllers/');
     await group(page, 'Architecture').getByText('Vertical slice', { exact: true }).click();
     await expect(command(page)).toHaveText(
-      'gobento new shop --module example.com/shop --arch vertical-slice --go 1.26',
+      'gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc --go 1.26',
     );
     await expect(files).toContainText('items/itemshttp/');
     await expect(files).not.toContainText('controllers/');
@@ -82,6 +91,7 @@ test.describe('configurator', () => {
   test('Copy command puts the displayed command on the clipboard', async ({ page }) => {
     await open(page);
     await page.getByLabel('Project name').fill('blog');
+    await chooseData(page, 'sqlc');
     const shown = await command(page).textContent();
     await page.getByRole('button', { name: 'Copy command' }).click();
     // Check the visible feedback first: it deliberately reverts after 2 seconds.
@@ -118,6 +128,7 @@ test.describe('configurator', () => {
     // Configurator.test.tsx and view-model.test.ts. This test checks the live
     // range validation the same field uses.
     await open(page);
+    await chooseData(page, 'sqlc');
     await page.getByRole('button', { name: /Advanced/ }).click();
     const sqlite = page.getByLabel('modernc.org/sqlite');
     await sqlite.fill('v2.1.0');
@@ -126,7 +137,7 @@ test.describe('configurator', () => {
     await sqlite.fill('v1.62.0');
     await expect(sqlite).toHaveAttribute('aria-invalid', 'false');
     await expect(command(page)).toHaveText(
-      'gobento new myapp --arch mvc --framework nethttp --pin modernc.org/sqlite=v1.62.0',
+      'gobento new myapp --arch mvc --framework nethttp --db sqlite --data sqlc --pin modernc.org/sqlite=v1.62.0',
     );
     await expect(group(page, 'Go version').getByRole('radio', { name: 'Go 1.26' })).toBeEnabled();
   });
@@ -135,6 +146,7 @@ test.describe('configurator', () => {
     await open(page);
     await page.getByLabel('Project name').fill('shop');
     await page.getByLabel('Module path').fill('example.com/shop');
+    await chooseData(page, 'sqlc');
     await group(page, 'Go version').getByText('Go 1.26').click();
     const shown = await command(page).textContent();
     await page.getByRole('button', { name: 'Share this configuration' }).click();
@@ -149,6 +161,7 @@ test.describe('configurator', () => {
     await expect(other.locator('[data-hydrated="true"]')).toBeAttached();
     await expect(other.getByLabel('Project name')).toHaveValue('shop');
     await expect(other.getByLabel('Module path')).toHaveValue('example.com/shop');
+    await expect(group(other, 'Data access').getByRole('radio', { name: 'sqlc' })).toBeChecked();
     await expect(group(other, 'Go version').getByRole('radio', { name: 'Go 1.26' })).toBeChecked();
     await expect(command(other)).toHaveText(shown!);
   });
@@ -167,7 +180,8 @@ test.describe('configurator', () => {
   });
 
   test('Keyboard only: fill, choose, expand, and copy without a pointer', async ({ page }) => {
-    await open(page);
+    // Data access is left unchosen so the keyboard makes that choice.
+    await open(page, '?arch=mvc&framework=nethttp&db=sqlite');
     const name = page.getByLabel('Project name');
     for (let i = 0; i < 30 && !(await name.evaluate((el) => el === document.activeElement)); i++) {
       await page.keyboard.press('Tab');
@@ -179,7 +193,17 @@ test.describe('configurator', () => {
     await expect(page.getByLabel('Module path')).toBeFocused();
     await page.keyboard.type('example.com/shop');
 
-    // Each radio group is one tab stop; the Go group is the last one.
+    // Each radio group is one tab stop. Data access has no choice yet, so Tab
+    // lands on its first card and an arrow key moves to and checks the next.
+    const gorm = group(page, 'Data access').getByRole('radio', { name: 'GORM' });
+    for (let i = 0; i < 10 && !(await gorm.evaluate((el) => el === document.activeElement)); i++) {
+      await page.keyboard.press('Tab');
+    }
+    await expect(gorm).toBeFocused();
+    await page.keyboard.press('ArrowRight');
+    await expect(group(page, 'Data access').getByRole('radio', { name: 'sqlc' })).toBeChecked();
+
+    // The Go group is the last one.
     const go127 = group(page, 'Go version').getByRole('radio', { name: 'Go 1.27' });
     for (let i = 0; i < 10 && !(await go127.evaluate((el) => el === document.activeElement)); i++) {
       await page.keyboard.press('Tab');
@@ -188,7 +212,7 @@ test.describe('configurator', () => {
     await page.keyboard.press('ArrowLeft');
     await expect(group(page, 'Go version').getByRole('radio', { name: 'Go 1.26' })).toBeChecked();
     await expect(command(page)).toHaveText(
-      'gobento new shop --module example.com/shop --arch mvc --framework nethttp --go 1.26',
+      'gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --go 1.26',
     );
 
     await page.keyboard.press('Tab');
@@ -208,7 +232,7 @@ test.describe('configurator', () => {
     expect(outline).toBe('3px');
     await page.keyboard.press('Enter');
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-      'gobento new shop --module example.com/shop --arch mvc --framework nethttp --go 1.26',
+      'gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --go 1.26',
     );
   });
 
@@ -236,7 +260,9 @@ test.describe('configurator', () => {
       const nameBox = await page.getByLabel('Project name').boundingBox();
       expect((await stage.boundingBox())!.y).toBeLessThan(nameBox!.y);
       const bar = command(page);
-      await expect(bar).toHaveText('gobento new myapp --arch mvc --framework nethttp');
+      await expect(bar).toHaveText(
+        'gobento new myapp --arch mvc --framework nethttp --db sqlite --data sqlc',
+      );
       const box = await bar.boundingBox();
       expect(box!.y + box!.height).toBeGreaterThan(844 - 100);
       await page.mouse.wheel(0, 1500);
@@ -245,6 +271,7 @@ test.describe('configurator', () => {
   });
 
   test('the 3D bento loads on interaction without moving the tray', async ({ page }) => {
+    // The reference selection fills every compartment.
     await open(page);
     const tray = page.getByRole('list', { name: 'Bento: chosen parts' });
     // The mascot still holds the scene's place from the first paint.

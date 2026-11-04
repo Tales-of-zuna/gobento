@@ -15,7 +15,8 @@ Install gobento first, with
 This guide generates a project called `shop` with MVC, `net/http`, SQLite, and
 sqlc. Swap `--framework nethttp` for `chi` or `gin` to use another router; the
 generated API is the same. SQLite needs no database server;
-[Use PostgreSQL](#use-postgresql) shows what changes with `--db postgres`.
+[Use PostgreSQL](#use-postgresql) shows what changes with `--db postgres`, and
+[With GORM](#with-gorm) what changes with `--data gorm`.
 
 ## Generate and run it
 
@@ -28,7 +29,7 @@ generated API is the same. SQLite needs no database server;
 writes nothing and does not run the Go toolchain.
 
 ```sh
-gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --dry-run
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --dry-run
 ```
 
 It prints `Dry run: nothing was written.`, the module, the selection
@@ -41,7 +42,7 @@ It prints `Dry run: nothing was written.`, the module, the selection
 ### Generate it
 
 ```sh
-gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
 ```
 
 `--arch` chooses the architecture: `mvc` organizes the code by layer, and
@@ -49,10 +50,10 @@ gobento new shop --module example.com/shop --arch mvc --framework nethttp --db s
 [With the vertical-slice architecture](#with-the-vertical-slice-architecture)).
 `--framework` picks the HTTP framework: `nethttp` (the standard library),
 `chi`, or `gin`. `--db` picks the database: `sqlite` or `postgres` (see
-[Use PostgreSQL](#use-postgresql)). The other kinds have one option each
-today, so gobento selects them for you. If you leave out one of these flags in
-a terminal, gobento asks you to choose; you can also run plain `gobento new`
-and answer the questions for the name, module path, and components. The same
+[Use PostgreSQL](#use-postgresql)). `--data` picks the data access: `sqlc` or
+`gorm` (see [With GORM](#with-gorm)). If you leave out one of these flags in a
+terminal, gobento asks you to choose; you can also run plain `gobento new` and
+answer the questions for the name, module path, and components. The same
 command with every choice spelled out, which never asks anything, is:
 
 ```sh
@@ -233,7 +234,7 @@ migration system.
 a layout organized by feature:
 
 ```sh
-gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db sqlite
+gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc
 ```
 
 | Path                          | Filled by    | Contents                                                                               |
@@ -249,10 +250,10 @@ such as `internal/orders`, beside `internal/items`.
 
 ## Use PostgreSQL
 
-Generate the same project on PostgreSQL with `--db postgres`:
+Generate the same project on PostgreSQL with `--db postgres`: --data sqlc
 
 ```sh
-gobento new shop --module example.com/shop --arch mvc --framework nethttp --db postgres
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db postgres --data sqlc
 ```
 
 The files are the same, except that `internal/database` opens PostgreSQL
@@ -280,6 +281,18 @@ through [pgx](https://github.com/jackc/pgx), a pure-Go driver, and
   ```sh
   TEST_DATABASE_URL='postgres://postgres:postgres@localhost:5432/shop?sslmode=disable' go test ./...
   ```
+
+## With GORM
+
+`gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data gorm` generates the same
+project with a [GORM](https://gorm.io/) store. `internal/store/` then holds
+only `store.go` (the `New` adapter, which wraps the `*sql.DB` from
+`internal/database`) and `store_test.go` (a test against real SQLite), and
+there is no `sqlc.yaml`. `go.mod` adds `gorm.io/gorm` and
+`github.com/libtnb/sqlite`, a pure-Go GORM dialect on the same
+`modernc.org/sqlite` driver, so the project still builds without cgo. The
+tables still come only from `schema.sql`: the store never calls
+`AutoMigrate`.
 
 ## Next steps
 

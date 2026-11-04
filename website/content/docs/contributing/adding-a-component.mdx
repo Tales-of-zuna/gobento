@@ -170,6 +170,14 @@ accepts several values of a trait may branch on the value, as sqlc does for
 its query placeholder with `{{if eq (index .Traits "sql-dialect") "postgresql"}}`,
 but never on another component's name. See [Traits](/docs/concepts/traits).
 
+A component may accept several values of a trait and choose its code from the
+value, never from the name of another component. `gorm` requires
+`sql-dialect: [sqlite, postgresql]` and picks its GORM dialect in
+`store.go.tmpl` with `{{if eq (index .Traits "sql-dialect") "postgresql"}}`,
+so a new database that provides one of those values works with it unchanged.
+Test every branch: `internal/compose` composes `gorm` with a test-only
+PostgreSQL database, and the integration test builds that project too.
+
 ## Slots and contracts
 
 Each slot is one directory, which means one Go package, and it has exactly one
@@ -259,7 +267,8 @@ Every component's rendered notes are appended to the root `README.md`, in kind
 order. `nethttp` documents the API and its error responses, each database
 starts with a `## Database` section (the architecture's README links to it)
 that explains the default `DATABASE_URL`, the tests, and how the schema is
-applied, and `sqlc` shows how to regenerate its code.
+applied, `sqlc` shows how to regenerate its code, and `gorm` explains that the
+schema file, not `AutoMigrate`, defines the tables.
 
 ### Composition errors
 
@@ -295,6 +304,13 @@ are in the [Components reference](/docs/components).
 
 - **`components`** lists every component that uses the module, as
   `<kind>/<name>`.
+- **`traits`** (optional) limits the module to selections that provide one of
+  the listed values for each listed trait, such as
+  `traits: { sql-dialect: [postgresql] }` for a driver only one dialect needs.
+  Otherwise the module is left out of `go.mod` and cannot be pinned. Prefer
+  this over listing a module that some selections never import: gobento fails
+  a generation in which a chosen library is not imported. See
+  [Trait conditions](/docs/concepts/version-rules#trait-conditions).
 - **`role`** is `library` for modules required in the generated `go.mod`;
   users may choose any version inside the range with `--pin`. It is `tool`
   for tools, such as sqlc, that are run with `go run` and never added to
@@ -363,7 +379,8 @@ use files close them in `t.Cleanup`, because Windows cannot remove open files.
 
 ### Add its versions
 
-Add the modules it uses to `versions.yaml`, with `components` naming it.
+Add the modules it uses to `versions.yaml`, with `components` naming it, and
+`traits` for modules that only some trait values need.
 
 </Step>
 <Step>
@@ -423,8 +440,10 @@ go test ./internal/compose -run TestGolden -update
 The integration test in `internal/generate` generates every supported
 selection twice, once with the default versions and once with the range
 floors. For each project it runs `go build`, `go vet`, `go test`, `gofmt -l`,
-and `go mod verify`, checks the `go.mod` pins, and checks with `go list -deps`
-that the handlers package does not import the database or store packages.
+`go mod verify`, and `go build` again with `CGO_ENABLED=0` (generated projects
+must build without a C compiler), checks the `go.mod` pins, and checks with
+`go list -deps` that the handlers package does not import the database or
+store packages.
 
 It needs network access and is skipped with `-short`. Run it with:
 

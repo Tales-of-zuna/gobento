@@ -43,22 +43,22 @@ func TestNewAsks(t *testing.T) {
 		{
 			name:       "components only",
 			args:       []string{"new", "shop", "--dry-run"},
-			answers:    map[string]string{"architecture": "vertical-slice", "framework": "chi", "database": "postgres"},
-			wantAsked:  []string{"architecture", "framework", "database"},
-			wantOut:    "gobento would create shop (vertical-slice/chi/postgres/sqlc, Go 1.27) in shop",
-			wantStderr: "Equivalent command: gobento new shop --arch vertical-slice --framework chi --db postgres --dry-run\n",
+			answers:    map[string]string{"architecture": "vertical-slice", "framework": "chi", "database": "postgres", "data": "gorm"},
+			wantAsked:  []string{"architecture", "framework", "database", "data"},
+			wantOut:    "gobento would create shop (vertical-slice/chi/postgres/gorm, Go 1.27) in shop",
+			wantStderr: "Equivalent command: gobento new shop --arch vertical-slice --framework chi --db postgres --data gorm --dry-run\n",
 		},
 		{
 			name:       "name, module, and framework",
 			args:       []string{"new", "--dry-run"},
-			answers:    map[string]string{"name": "shop", "module": "example.com/shop", "architecture": "mvc", "framework": "nethttp", "database": "sqlite"},
-			wantAsked:  []string{"name", "module", "architecture", "framework", "database"},
+			answers:    map[string]string{"name": "shop", "module": "example.com/shop", "architecture": "mvc", "framework": "nethttp", "database": "sqlite", "data": "sqlc"},
+			wantAsked:  []string{"name", "module", "architecture", "framework", "database", "data"},
 			wantOut:    "gobento would create example.com/shop (mvc/nethttp/sqlite/sqlc, Go 1.27) in shop",
-			wantStderr: "Equivalent command: gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --dry-run\n",
+			wantStderr: "Equivalent command: gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --dry-run\n",
 		},
 		{
 			name:      "flags skip their questions",
-			args:      []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--dry-run"},
+			args:      []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc", "--dry-run"},
 			wantAsked: nil,
 			wantOut:   "(mvc/nethttp/sqlite/sqlc, Go 1.27)",
 		},
@@ -92,7 +92,7 @@ func TestNewAsks(t *testing.T) {
 func TestNewAsksThenGenerates(t *testing.T) {
 	t.Parallel()
 
-	ask := &scriptedAsker{answers: map[string]string{"name": "shop", "module": "", "architecture": "mvc", "framework": "chi", "database": "sqlite"}}
+	ask := &scriptedAsker{answers: map[string]string{"name": "shop", "module": "", "architecture": "mvc", "framework": "chi", "database": "sqlite", "data": "sqlc"}}
 	gen := &fakeGenerator{}
 	out, _, err := runInteractive(t, components.FS(), gen, ask, "new")
 	if err != nil {

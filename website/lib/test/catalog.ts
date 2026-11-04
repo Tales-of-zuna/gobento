@@ -1,7 +1,9 @@
 /**
  * Test helpers for building catalogs from `fixture-catalog.json`, a frozen
- * catalog in the format exported by `internal/tools/catalogexport`: one
- * component per kind (mvc, nethttp, sqlite, sqlc). Tests edit copies of it
+ * catalog in the format exported by `internal/tools/catalogexport`, filtered to
+ * mvc and vertical-slice, nethttp, sqlite, and gorm and sqlc: architecture and
+ * data access have several options, framework and database one, and gorm's
+ * driver modules carry trait conditions. Tests edit copies of it
  * for the cases they need, so they do not change whenever a component ships.
  * Tests about the real catalog import `@/lib/catalog/data` instead.
  */
@@ -31,7 +33,11 @@ export function moduleOf(data: CatalogData, path: string): CatalogData['modules'
   return found;
 }
 
-/** A database whose traits do not satisfy sqlc, for unmet-trait tests. */
+/**
+ * A PostgreSQL database that connects through pgx rather than database/sql, so
+ * its traits do not satisfy sqlc or gorm: for unmet-trait tests and for a
+ * database kind with several options.
+ */
 export function addPostgres(data: CatalogData): void {
   data.components.push({
     id: 'database/postgres',

@@ -50,7 +50,7 @@ func TestShippedCatalog(t *testing.T) {
 				for _, c := range s.Components() {
 					ids = append(ids, c.ID())
 				}
-				if _, err := cat.Rules().Resolve(compat.Request{Components: ids}); err != nil {
+				if _, err := cat.Rules().Resolve(compat.Request{Components: ids, Traits: s.Traits()}); err != nil {
 					t.Errorf("Resolve(defaults) for %s error = %v", s, err)
 				}
 			}
@@ -75,7 +75,9 @@ func TestShippedCatalogCandidates(t *testing.T) {
 	for _, arch := range []string{"mvc", "vertical-slice"} {
 		for _, fw := range []string{"chi", "gin", "nethttp"} {
 			for _, db := range []string{"postgres", "sqlite"} {
-				want = append(want, arch+"/"+fw+"/"+db+"/sqlc")
+				for _, data := range []string{"gorm", "sqlc"} {
+					want = append(want, arch+"/"+fw+"/"+db+"/"+data)
+				}
 			}
 		}
 	}

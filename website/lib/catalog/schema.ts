@@ -48,6 +48,12 @@ const moduleSchema = z.object({
   path: text,
   /** Ids of the components that use this module. */
   components: z.array(text).min(1),
+  /**
+   * Trait conditions as trait → allowed values: the module is used only when
+   * the selection provides one of the values for every listed trait (for
+   * example a dialect-specific driver). Empty means no condition.
+   */
+  traits: z.record(text, z.array(text).min(1)).default({}),
   /** Libraries are pinned in go.mod and overridable; tools are fixed per release. */
   role: z.enum(['library', 'tool']),
   range: text,

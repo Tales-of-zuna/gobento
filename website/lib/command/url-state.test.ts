@@ -10,7 +10,7 @@ describe('defaultState (spec: Defaults)', () => {
     expect(defaultState(fixture)).toEqual({
       name: 'myapp',
       module: '',
-      components: { framework: 'nethttp', database: 'sqlite', data: 'sqlc' },
+      components: { framework: 'nethttp', database: 'sqlite' },
       go: '1.27',
       pins: {},
     });
@@ -18,6 +18,7 @@ describe('defaultState (spec: Defaults)', () => {
 
   it('leaves a kind with several options unchosen', () => {
     expect(defaultState(fixture).components.architecture).toBeUndefined();
+    expect(defaultState(fixture).components.data).toBeUndefined();
     expect(defaultState(catalogWith(addPostgres)).components.database).toBeUndefined();
   });
 });

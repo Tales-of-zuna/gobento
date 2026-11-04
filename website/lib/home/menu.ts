@@ -21,9 +21,7 @@ export interface RoadmapItem {
 }
 
 /** Components on the roadmap; they join once they pass the CI matrix. */
-export const ROADMAP: readonly RoadmapItem[] = [
-  { kind: 'data', name: 'GORM' },
-];
+export const ROADMAP: readonly RoadmapItem[] = [];
 
 /** One plate on the belt. */
 export interface Plate {

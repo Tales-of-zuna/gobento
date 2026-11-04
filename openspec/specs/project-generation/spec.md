@@ -16,8 +16,13 @@ path, or the project name when `--module` is omitted.
 - **THEN** a directory `shop` is created containing a Go module named `example.com/shop`
 - **AND** the command exits with status 0 and prints the next commands to run
 
+#### Scenario: GORM data access
+- **WHEN** the user runs `gobento new shop --arch mvc --framework nethttp --db sqlite --data gorm`
+- **THEN** a directory `shop` is created whose store is implemented with GORM on the SQLite database
+- **AND** the command exits with status 0
+
 #### Scenario: Module path defaults to the project name
-- **WHEN** the user runs `gobento new shop --arch mvc` without `--module`
+- **WHEN** the user runs `gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc` without `--module`
 - **THEN** the generated module is named `shop`
 
 #### Scenario: Architecture must be chosen
@@ -73,7 +78,7 @@ when the input is valid, and otherwise exit non-zero with the same problem
 report as a normal run.
 
 #### Scenario: Valid dry run
-- **WHEN** the user runs `gobento new shop --dry-run`
+- **WHEN** the user runs `gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --dry-run`
 - **THEN** gobento lists the planned files, exits 0, and creates no directory
 
 #### Scenario: Invalid dry run
@@ -109,10 +114,12 @@ downloaded.
 
 ### Requirement: Generated project builds and passes its tests
 A project generated from any supported selection SHALL compile, pass `go vet`
-and `gofmt -l`, and pass its own `go test ./...` without edits by the user.
+and `gofmt -l`, and pass its own `go test ./...` without edits by the user. It
+SHALL also compile with cgo disabled (`CGO_ENABLED=0`), so it needs no C
+compiler on Linux, macOS, or Windows.
 
 #### Scenario: Build check after generation
-- **WHEN** a project is generated with the selection mvc/nethttp/sqlite/sqlc or vertical-slice/nethttp/sqlite/sqlc
+- **WHEN** a project is generated with the selection mvc/nethttp/sqlite/sqlc, vertical-slice/nethttp/sqlite/sqlc, or mvc/nethttp/sqlite/gorm
 - **THEN** `go build ./...`, `go vet ./...` and `go test ./...` succeed inside it, and `gofmt -l .` lists no files
 
 #### Scenario: Build check without a database server
@@ -122,6 +129,10 @@ and `gofmt -l`, and pass its own `go test ./...` without edits by the user.
 #### Scenario: Database tests run against a server
 - **WHEN** a project is generated with the selection mvc/nethttp/postgres/sqlc and `TEST_DATABASE_URL` names a reachable PostgreSQL server
 - **THEN** `go test ./...` succeeds and its database and store tests run against that server instead of being skipped
+
+#### Scenario: Build without cgo
+- **WHEN** `CGO_ENABLED=0 go build ./...` runs in a project generated from any supported selection
+- **THEN** it succeeds
 
 #### Scenario: Example functionality is present
 - **WHEN** the generated project is running
@@ -257,7 +268,7 @@ local PostgreSQL server, how to point the application and its tests at a
 server, and how the schema is applied.
 
 #### Scenario: PostgreSQL project
-- **WHEN** the user runs `gobento new shop --module example.com/shop --db postgres --data sqlc`
+- **WHEN** the user runs `gobento new shop --module example.com/shop --arch mvc --framework nethttp --db postgres --data sqlc`
 - **THEN** a project is created whose `go.mod` requires the PostgreSQL driver at its default version and no SQLite driver
 - **AND** its README contains a command that starts a PostgreSQL server matching the default connection string
 

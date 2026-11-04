@@ -6,7 +6,8 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
  * Animations may only add to it once scripts run.
  */
 
-const QUICK_START = 'gobento new shop --module example.com/shop --arch mvc';
+const QUICK_START =
+  'gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres --data sqlc';
 
 const SECTION_HEADINGS = [
   "Today's menu, and what comes next.",

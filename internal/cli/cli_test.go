@@ -78,7 +78,7 @@ func TestNew(t *testing.T) {
 			// Spec: Module path defaults to the project name, and
 			// Single option is chosen automatically.
 			name:       "defaults",
-			args:       []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite"},
+			args:       []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc"},
 			wantTarget: "shop",
 			wantModule: "shop",
 			wantGo:     "1.27",
@@ -86,15 +86,24 @@ func TestNew(t *testing.T) {
 		{
 			// Spec: Feature layout.
 			name:       "vertical slice",
-			args:       []string{"new", "shop", "--arch", "vertical-slice", "--framework", "nethttp", "--db", "sqlite"},
+			args:       []string{"new", "shop", "--arch", "vertical-slice", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc"},
 			wantTarget: "shop",
 			wantModule: "shop",
 			wantGo:     "1.27",
 			wantOut:    []string{"go run ./cmd/shop"},
 		},
 		{
+			// Spec: GORM data access.
+			name:       "gorm",
+			args:       []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "gorm"},
+			wantTarget: "shop",
+			wantModule: "shop",
+			wantGo:     "1.27",
+			wantOut:    []string{"Created shop in shop."},
+		},
+		{
 			name:       "versions and directory",
-			args:       []string{"new", "my-app", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--go", "1.26", "--pin", "modernc.org/sqlite=v1.61.0", "--dir", "out/app"},
+			args:       []string{"new", "my-app", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc", "--go", "1.26", "--pin", "modernc.org/sqlite=v1.61.0", "--dir", "out/app"},
 			wantTarget: "out/app",
 			wantModule: "my-app",
 			wantGo:     "1.26",
@@ -134,7 +143,7 @@ func TestNewPinVersionIsUsed(t *testing.T) {
 	t.Parallel()
 
 	gen := &fakeGenerator{}
-	if _, _, err := run(t, components.FS(), gen, "new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--pin", "modernc.org/sqlite=v1.61.0"); err != nil {
+	if _, _, err := run(t, components.FS(), gen, "new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc", "--pin", "modernc.org/sqlite=v1.61.0"); err != nil {
 		t.Fatal(err)
 	}
 	for _, m := range gen.calls[0].Modules {
@@ -202,8 +211,26 @@ func TestNewErrors(t *testing.T) {
 			want: []string{"--db: choose a database; supported: postgres, sqlite"},
 		},
 		{
+			// Spec: Several options require a choice, for data access.
+			name: "data access is a choice",
+			args: []string{"new", "shop"},
+			want: []string{"--data: choose a data-access library; supported: gorm, sqlc"},
+		},
+		{
+			// Spec: Several options require a choice (shipped catalog).
+			name: "data access not chosen",
+			args: []string{"new", "shop"},
+			want: []string{"--data: choose a data-access library; supported: gorm, sqlc"},
+		},
+		{
+			// Spec: Pin for a module whose trait condition is not met.
+			name: "pin of a dialect driver the selection does not use",
+			args: []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "gorm", "--pin", "gorm.io/driver/postgres=v1.6.3"},
+			want: []string{"cannot pin gorm.io/driver/postgres, no selected component uses it"},
+		},
+		{
 			name: "tool pin",
-			args: []string{"new", "shop", "--arch", "mvc", "--pin", "github.com/sqlc-dev/sqlc=v1.30.0"},
+			args: []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc", "--pin", "github.com/sqlc-dev/sqlc=v1.30.0"},
 			want: []string{"github.com/sqlc-dev/sqlc", "fixed per gobento release"},
 		},
 		{
@@ -267,7 +294,7 @@ func TestNewGenerateFailure(t *testing.T) {
 	t.Parallel()
 
 	gen := &fakeGenerator{err: errors.New("go get: no network")}
-	_, _, err := run(t, components.FS(), gen, "new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite")
+	_, _, err := run(t, components.FS(), gen, "new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc")
 	if err == nil || !strings.Contains(err.Error(), "  - go get: no network") {
 		t.Errorf("error = %v, want the generation error in the report", err)
 	}
@@ -282,7 +309,7 @@ func TestNewDryRun(t *testing.T) {
 	t.Parallel()
 
 	gen := &fakeGenerator{}
-	out, _, err := run(t, components.FS(), gen, "new", "drytest", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--dry-run")
+	out, _, err := run(t, components.FS(), gen, "new", "drytest", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc", "--dry-run")
 	if err != nil {
 		t.Fatalf("--dry-run error = %v", err)
 	}
@@ -339,7 +366,7 @@ func TestNewIntoCurrentDirectory(t *testing.T) {
 	t.Chdir(t.TempDir())
 
 	gen := &fakeGenerator{}
-	out, _, err := run(t, components.FS(), gen, "new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--dir", ".")
+	out, _, err := run(t, components.FS(), gen, "new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc", "--dir", ".")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -411,7 +438,7 @@ func TestNewInterrupted(t *testing.T) {
 		stderr: &stderr,
 	}
 	cmd := newRootCommand("dev", a)
-	cmd.SetArgs([]string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite"})
+	cmd.SetArgs([]string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc"})
 	if got := a.exitStatus(ctx, cmd.ExecuteContext(ctx)); got != ExitInterrupted {
 		t.Errorf("exit status = %d, want %d", got, ExitInterrupted)
 	}

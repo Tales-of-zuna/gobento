@@ -135,6 +135,19 @@ function ComponentEntry({
                 <tr key={module.path}>
                   <td>
                     <code>{module.path}</code>
+                    {Object.entries(module.traits).map(([trait, values]) => (
+                      <span key={trait}>
+                        {' '}
+                        (only when <code>{trait}</code> is{' '}
+                        {values.map((value, i) => (
+                          <span key={value}>
+                            {i > 0 && ' or '}
+                            <code>{value}</code>
+                          </span>
+                        ))}
+                        )
+                      </span>
+                    ))}
                   </td>
                   <td>{module.role === 'tool' ? 'tool (fixed per release)' : 'library'}</td>
                   <td>

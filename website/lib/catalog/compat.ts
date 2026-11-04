@@ -42,10 +42,28 @@ export function selectedComponents(catalog: Catalog, selection: Selection): Comp
   });
 }
 
-/** Returns the modules used by the chosen components. */
+/**
+ * Returns the modules used by the chosen components: modules of a chosen
+ * component whose trait conditions, if any, the chosen components meet. A
+ * trait no chosen component provides fails its condition.
+ */
 export function selectedModules(catalog: Catalog, selection: Selection): Module[] {
-  const ids = new Set(selectedComponents(catalog, selection).map((c) => c.id));
-  return catalog.modules.filter((m) => m.components.some((id) => ids.has(id)));
+  const components = selectedComponents(catalog, selection);
+  const ids = new Set(components.map((c) => c.id));
+  const provided = new Map<string, string>();
+  for (const c of components) {
+    for (const [trait, value] of Object.entries(c.provides)) {
+      if (!provided.has(trait)) provided.set(trait, value);
+    }
+  }
+  return catalog.modules.filter(
+    (m) =>
+      m.components.some((id) => ids.has(id)) &&
+      Object.entries(m.traits).every(([trait, allowed]) => {
+        const value = provided.get(trait);
+        return value !== undefined && allowed.includes(value);
+      }),
+  );
 }
 
 /** Returns the version each selected module gets: its override, or else its default. */

@@ -116,6 +116,7 @@ func TestLoadInvalidCatalogs(t *testing.T) {
 			"requires: trait sql-dialect lists no accepted values",
 		}},
 		{"unknown-rules-component", []string{"versions.yaml", `module example.com/lib: unknown component "database/missing"`}},
+		{"unknown-rules-trait", []string{"versions.yaml", `module example.com/lib: trait condition on "sql-dialekt", which no component provides`}},
 		{"missing-rules", []string{"versions.yaml"}},
 		{"several-problems", []string{"framework/web: title is required", `database/db: manifest name "other"`}},
 	}

@@ -17,6 +17,7 @@ describe('beltPlates', () => {
       'VS',
       'net/http',
       'SQLite',
+      'GORM',
       'sqlc',
     ]);
     expect(plates.filter((p) => p.status === 'roadmap')).toHaveLength(ROADMAP.length);

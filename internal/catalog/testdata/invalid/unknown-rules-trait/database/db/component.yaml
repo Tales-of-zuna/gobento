@@ -1,0 +1,4 @@
+name: db
+title: DB
+provides:
+  sql-dialect: sqlite

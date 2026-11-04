@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"sort"
 
@@ -52,6 +53,10 @@ type Module struct {
 	// Components lists the components that use the module, as
 	// "<kind>/<name>" identifiers such as database/sqlite.
 	Components []string
+	// Traits optionally restricts the module to selections whose traits
+	// have one of the listed values, for example sql-dialect: [postgresql]
+	// for a dialect-specific driver. Empty means no restriction.
+	Traits map[string][]string
 	// Role says whether the module is a library or a tool.
 	Role Role
 	// Range is the supported range of versions.
@@ -81,14 +86,24 @@ type Requirement struct {
 	Range Range
 }
 
-// usedBy reports whether any of the selected component identifiers uses m.
-func (m Module) usedBy(components []string) bool {
-	for _, c := range m.Components {
-		if slices.Contains(components, c) {
-			return true
+// usedBy reports whether a selection with the given component identifiers
+// and traits uses m: one of its components is selected and every trait
+// condition holds. Nil traits mean the traits are not known yet, and the
+// conditions are not checked.
+func (m Module) usedBy(components []string, traits map[string]string) bool {
+	if !slices.ContainsFunc(m.Components, func(c string) bool { return slices.Contains(components, c) }) {
+		return false
+	}
+	if traits == nil {
+		return true
+	}
+	for trait, allowed := range m.Traits {
+		v, ok := traits[trait]
+		if !ok || !slices.Contains(allowed, v) {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 // rulesFile mirrors the YAML layout of the rules file.
@@ -101,11 +116,12 @@ type rulesFile struct {
 }
 
 type moduleFile struct {
-	Components  []string         `yaml:"components"`
-	Role        Role             `yaml:"role"`
-	Range       string           `yaml:"range"`
-	Default     string           `yaml:"default"`
-	Constraints []constraintFile `yaml:"constraints"`
+	Components  []string            `yaml:"components"`
+	Traits      map[string][]string `yaml:"traits"`
+	Role        Role                `yaml:"role"`
+	Range       string              `yaml:"range"`
+	Default     string              `yaml:"default"`
+	Constraints []constraintFile    `yaml:"constraints"`
 }
 
 type constraintFile struct {
@@ -177,7 +193,17 @@ func parseModule(path string, mf moduleFile, known map[string]moduleFile) (Modul
 		fail("role %q must be %q or %q", mf.Role, RoleLibrary, RoleTool)
 	}
 
-	m := Module{Path: path, Components: mf.Components, Role: mf.Role, Default: mf.Default}
+	m := Module{Path: path, Components: mf.Components, Traits: mf.Traits, Role: mf.Role, Default: mf.Default}
+	for _, trait := range slices.Sorted(maps.Keys(mf.Traits)) {
+		switch values := mf.Traits[trait]; {
+		case trait == "":
+			fail("traits: empty trait name")
+		case len(values) == 0:
+			fail("traits: %s lists no values", trait)
+		case slices.Contains(values, ""):
+			fail("traits: %s lists an empty value", trait)
+		}
+	}
 
 	rng, rangeErr := ParseRange(mf.Range)
 	if rangeErr != nil {
@@ -255,6 +281,20 @@ func (r *Rules) CheckComponents(exists func(id string) bool) error {
 		for _, c := range m.Components {
 			if !exists(c) {
 				errs = append(errs, fmt.Errorf("module %s: unknown component %q", m.Path, c))
+			}
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// CheckTraits reports every trait named in a module's trait conditions for
+// which known returns false, naming the module and the trait.
+func (r *Rules) CheckTraits(known func(trait string) bool) error {
+	var errs []error
+	for _, m := range r.Modules {
+		for _, trait := range slices.Sorted(maps.Keys(m.Traits)) {
+			if !known(trait) {
+				errs = append(errs, fmt.Errorf("module %s: trait condition on %q, which no component provides", m.Path, trait))
 			}
 		}
 	}

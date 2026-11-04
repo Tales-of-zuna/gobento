@@ -3,7 +3,8 @@ import { expect, test } from '@playwright/test';
 
 import { releaseStatus, waitForAnimationsToSettle } from './helpers';
 
-const QUICK_START = 'gobento new shop --module example.com/shop --arch mvc';
+const QUICK_START =
+  'gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres --data sqlc';
 const release = releaseStatus();
 
 test.describe('home page', () => {
@@ -111,7 +112,17 @@ test.describe('home page', () => {
   }) => {
     await page.goto('./');
     const belt = page.getByRole('list', { name: 'Components' });
-    for (const name of ['MVC', 'VS', 'net/http', 'SQLite', 'sqlc']) {
+    for (const name of [
+      'MVC',
+      'VS',
+      'chi',
+      'Gin',
+      'net/http',
+      'SQLite',
+      'PostgreSQL',
+      'GORM',
+      'sqlc',
+    ]) {
       await expect(belt.getByText(name, { exact: true }).first()).toBeAttached();
     }
     await expect(

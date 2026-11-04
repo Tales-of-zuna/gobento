@@ -26,7 +26,7 @@ func Check(cat *catalog.Catalog, sel catalog.Selection) error {
 	for _, c := range sel.Components() {
 		ids = append(ids, c.ID())
 	}
-	res, err := cat.Rules().Resolve(compat.Request{Components: ids})
+	res, err := cat.Rules().Resolve(compat.Request{Components: ids, Traits: sel.Traits()})
 	if err != nil {
 		return err
 	}

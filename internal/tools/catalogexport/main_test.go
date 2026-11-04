@@ -101,8 +101,9 @@ func TestExportShipped(t *testing.T) {
 }
 
 // TestExportFlattensConstraints checks that a constraint with several
-// requirements becomes one exported constraint per requirement, and that
-// ranges keep their written form.
+// requirements becomes one exported constraint per requirement, that
+// ranges keep their written form, and that trait conditions are exported
+// (as an empty object when there are none).
 func TestExportFlattensConstraints(t *testing.T) {
 	t.Parallel()
 
@@ -113,6 +114,7 @@ func TestExportFlattensConstraints(t *testing.T) {
 modules:
   example.com/a:
     components: [database/lite]
+    traits: { sql-dialect: [sqlite, postgresql] }
     role: library
     range: ">=v1.0.0 <v2.0.0"
     default: v1.2.0
@@ -142,6 +144,12 @@ modules:
 	}
 	if got := o.Modules[1]; got.Role != "tool" || got.Range != "=v0.3.0" || len(got.Constraints) != 0 {
 		t.Errorf("tool module = %+v", got)
+	}
+	if got, want := o.Modules[0].Traits, map[string][]string{"sql-dialect": {"sqlite", "postgresql"}}; !reflect.DeepEqual(got, want) {
+		t.Errorf("traits = %v, want %v", got, want)
+	}
+	if got := o.Modules[1].Traits; got == nil || len(got) != 0 {
+		t.Errorf("traits of an unconditioned module = %#v, want an empty, non-nil map", got)
 	}
 }
 

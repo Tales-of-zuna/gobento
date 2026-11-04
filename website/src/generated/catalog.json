@@ -94,6 +94,26 @@
       "requires": {}
     },
     {
+      "id": "data/gorm",
+      "kind": "data",
+      "name": "gorm",
+      "title": "GORM",
+      "description": "Data access through the GORM ORM, on the database's own connection and schema.",
+      "provides": {},
+      "requires": {
+        "conn": [
+          "database/sql"
+        ],
+        "sql-dialect": [
+          "sqlite",
+          "postgresql"
+        ],
+        "sql-schema": [
+          "schema.sql"
+        ]
+      }
+    },
+    {
       "id": "data/sqlc",
       "kind": "data",
       "name": "sqlc",
@@ -124,6 +144,7 @@
       "components": [
         "framework/gin"
       ],
+      "traits": {},
       "role": "library",
       "range": ">=v1.11.0 <v2.0.0",
       "default": "v1.12.0",
@@ -134,6 +155,7 @@
       "components": [
         "framework/chi"
       ],
+      "traits": {},
       "role": "library",
       "range": ">=v5.3.0 <v6.0.0",
       "default": "v5.5.0",
@@ -144,19 +166,78 @@
       "components": [
         "database/postgres"
       ],
+      "traits": {},
       "role": "library",
       "range": ">=v5.12.0 <v6.0.0",
       "default": "v5.12.0",
       "constraints": []
     },
     {
+      "path": "github.com/libtnb/sqlite",
+      "components": [
+        "data/gorm"
+      ],
+      "traits": {
+        "sql-dialect": [
+          "sqlite"
+        ]
+      },
+      "role": "library",
+      "range": ">=v1.1.0 <v2.0.0",
+      "default": "v1.2.2",
+      "constraints": [
+        {
+          "when": ">=v1.2.0",
+          "requires": {
+            "target": "gorm.io/gorm",
+            "range": ">=v1.31.2"
+          }
+        }
+      ]
+    },
+    {
       "path": "github.com/sqlc-dev/sqlc",
       "components": [
         "data/sqlc"
       ],
+      "traits": {},
       "role": "tool",
       "range": "=v1.31.1",
       "default": "v1.31.1",
+      "constraints": []
+    },
+    {
+      "path": "gorm.io/driver/postgres",
+      "components": [
+        "data/gorm"
+      ],
+      "traits": {
+        "sql-dialect": [
+          "postgresql"
+        ]
+      },
+      "role": "library",
+      "range": ">=v1.6.1 <v2.0.0",
+      "default": "v1.6.3",
+      "constraints": [
+        {
+          "when": ">=v1.6.2",
+          "requires": {
+            "target": "gorm.io/gorm",
+            "range": ">=v1.31.2"
+          }
+        }
+      ]
+    },
+    {
+      "path": "gorm.io/gorm",
+      "components": [
+        "data/gorm"
+      ],
+      "traits": {},
+      "role": "library",
+      "range": ">=v1.31.1 <v2.0.0",
+      "default": "v1.31.2",
       "constraints": []
     },
     {
@@ -164,6 +245,7 @@
       "components": [
         "database/sqlite"
       ],
+      "traits": {},
       "role": "library",
       "range": ">=v1.61.0 <v2.0.0",
       "default": "v1.61.1",
@@ -181,8 +263,20 @@
   "supported": [
     {
       "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi"
+    },
+    {
+      "architecture": "mvc",
       "data": "sqlc",
       "database": "postgres",
+      "framework": "chi"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "sqlite",
       "framework": "chi"
     },
     {
@@ -193,8 +287,20 @@
     },
     {
       "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin"
+    },
+    {
+      "architecture": "mvc",
       "data": "sqlc",
       "database": "postgres",
+      "framework": "gin"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "sqlite",
       "framework": "gin"
     },
     {
@@ -205,8 +311,20 @@
     },
     {
       "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "mvc",
       "data": "sqlc",
       "database": "postgres",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "sqlite",
       "framework": "nethttp"
     },
     {
@@ -217,8 +335,20 @@
     },
     {
       "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi"
+    },
+    {
+      "architecture": "vertical-slice",
       "data": "sqlc",
       "database": "postgres",
+      "framework": "chi"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "sqlite",
       "framework": "chi"
     },
     {
@@ -229,8 +359,20 @@
     },
     {
       "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin"
+    },
+    {
+      "architecture": "vertical-slice",
       "data": "sqlc",
       "database": "postgres",
+      "framework": "gin"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "sqlite",
       "framework": "gin"
     },
     {
@@ -241,8 +383,20 @@
     },
     {
       "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "vertical-slice",
       "data": "sqlc",
       "database": "postgres",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "sqlite",
       "framework": "nethttp"
     },
     {

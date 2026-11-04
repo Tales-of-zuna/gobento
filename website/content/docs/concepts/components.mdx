@@ -15,7 +15,7 @@ gobento.
 | Architecture   | `--arch`      | The project layout (its [slots](/docs/concepts/slots-and-contracts)), the entry point, and the Go contracts between slots | `mvc`, `vertical-slice` |
 | HTTP framework | `--framework` | The router and HTTP handlers                                                                                              | `nethttp`, `chi`, `gin` |
 | Database       | `--db`        | Opening the database connection and applying the schema                                                                   | `sqlite`, `postgres`    |
-| Data access    | `--data`      | The store that implements the data contract on top of the database                                                        | `sqlc`                  |
+| Data access    | `--data`      | The store that implements the data contract on top of the database                                                        | `sqlc`, `gorm`          |
 
 ## A selection
 
@@ -31,11 +31,10 @@ You choose with the flags above. If you omit a flag:
 - otherwise (in scripts and CI, or with `--no-input`), gobento stops, names
   the flag, and lists the supported values.
 
-Today every kind but data access has several options, so the project name,
-`--arch`, `--framework`, and `--db` are enough:
+Today every kind has several options, so name all four in scripts:
 
 ```sh
-gobento new shop --arch vertical-slice --framework chi --db postgres
+gobento new shop --arch vertical-slice --framework chi --db postgres --data gorm
 ```
 
 ## Supported selections

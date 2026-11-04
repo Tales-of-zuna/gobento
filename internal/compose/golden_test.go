@@ -174,7 +174,7 @@ func planFor(t *testing.T, cat *catalog.Catalog, sel catalog.Selection) *Plan {
 	for _, c := range sel.Components() {
 		ids = append(ids, c.ID())
 	}
-	res, err := cat.Rules().Resolve(compat.Request{Components: ids})
+	res, err := cat.Rules().Resolve(compat.Request{Components: ids, Traits: sel.Traits()})
 	if err != nil {
 		t.Fatalf("Resolve() error = %v", err)
 	}
@@ -268,7 +268,9 @@ func TestShippedCatalogSupported(t *testing.T) {
 	for _, arch := range []string{"mvc", "vertical-slice"} {
 		for _, fw := range []string{"chi", "gin", "nethttp"} {
 			for _, db := range []string{"postgres", "sqlite"} {
-				want = append(want, arch+"/"+fw+"/"+db+"/sqlc")
+				for _, data := range []string{"gorm", "sqlc"} {
+					want = append(want, arch+"/"+fw+"/"+db+"/"+data)
+				}
 			}
 		}
 	}

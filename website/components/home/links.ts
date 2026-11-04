@@ -8,4 +8,4 @@ export {
 
 /** The quick-start command shown in the hero. */
 export const QUICK_START =
-  'gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres';
+  'gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres --data sqlc';

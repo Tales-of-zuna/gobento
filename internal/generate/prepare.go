@@ -144,14 +144,18 @@ func (e *SelectionError) Error() string {
 	if supported == "" {
 		supported = "none"
 	}
+	noun := string(e.Kind)
+	if e.Kind == catalog.KindData {
+		noun = "data-access library" // "a data" does not read
+	}
 	if e.Value == "" {
 		article := "a"
-		if strings.ContainsRune("aeiou", rune(string(e.Kind)[0])) {
+		if strings.ContainsRune("aeiou", rune(noun[0])) {
 			article = "an"
 		}
-		return fmt.Sprintf("choose %s %s; supported: %s", article, e.Kind, supported)
+		return fmt.Sprintf("choose %s %s; supported: %s", article, noun, supported)
 	}
-	return fmt.Sprintf("unknown %s %q; supported: %s", e.Kind, e.Value, supported)
+	return fmt.Sprintf("unknown %s %q; supported: %s", noun, e.Value, supported)
 }
 
 // Prepare validates spec against cat and composes the project, entirely in
@@ -176,8 +180,13 @@ func Prepare(cat *catalog.Catalog, spec Spec) (*Prepared, error) {
 	errs = append(errs, selErrs...)
 
 	// Versions are checked even when a kind is not resolved yet; every
-	// component of such a kind then counts as possibly selected.
-	res, err := cat.Rules().Resolve(compat.Request{Components: ids, Go: spec.Go, Pins: spec.Pins})
+	// component of such a kind then counts as possibly selected, and so
+	// does every module with a trait condition (nil traits).
+	var traits map[string]string
+	if len(selErrs) == 0 {
+		traits = sel.Traits()
+	}
+	res, err := cat.Rules().Resolve(compat.Request{Components: ids, Go: spec.Go, Pins: spec.Pins, Traits: traits})
 	if err != nil || len(selErrs) > 0 {
 		return nil, errors.Join(append(errs, err)...)
 	}

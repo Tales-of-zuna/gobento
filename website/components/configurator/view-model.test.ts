@@ -16,9 +16,10 @@ import {
 
 const catalog = catalogWith();
 const defaults = defaultState(catalog);
+/** The defaults with an architecture and sqlc chosen, the kinds with several options. */
 const withArch = (architecture: string) => ({
   ...defaults,
-  components: { ...defaults.components, architecture },
+  components: { ...defaults.components, architecture, data: 'sqlc' },
 });
 const mvc = withArch('mvc');
 
@@ -55,15 +56,26 @@ describe('kindGroups', () => {
     ]);
   });
 
+  it('offers every option of a kind with several, none preselected', () => {
+    const data = kindGroups(catalog, defaults, new Map()).find((g) => g.kind === 'data')!;
+    expect(data.description).toBe('How the code reads and writes the database.');
+    expect(data.options.map((o) => [o.value, o.status])).toEqual([
+      ['gorm', 'available'],
+      ['sqlc', 'available'],
+    ]);
+  });
+
   it('lets a catalog component replace its roadmap card and explains incompatibility', () => {
     const withPostgres = catalogWith(addPostgres);
-    const database = kindGroups(withPostgres, defaultState(withPostgres), new Map()).find(
-      (g) => g.kind === 'database',
-    )!;
+    const state = {
+      ...defaultState(withPostgres),
+      components: { ...defaultState(withPostgres).components, data: 'sqlc' },
+    };
+    const database = kindGroups(withPostgres, state, new Map()).find((g) => g.kind === 'database')!;
     const postgres = database.options.filter((o) => o.value === 'postgres');
     expect(postgres).toHaveLength(1);
     expect(postgres[0]!.status).toBe('incompatible');
-    expect(postgres[0]!.reasons.join(' ')).toMatch(/sqlc requires sql-dialect sqlite/);
+    expect(postgres[0]!.reasons.join(' ')).toMatch(/sqlc requires conn database\/sql/);
   });
 });
 
@@ -99,9 +111,18 @@ describe('Version too new for Go', () => {
 
 describe('moduleFields', () => {
   it('shows tools as fixed', () => {
-    const fields = moduleFields(catalog, defaults, new Map());
+    const fields = moduleFields(catalog, mvc, new Map());
     expect(fields.map((f) => [f.path, f.fixed])).toEqual([
       ['github.com/sqlc-dev/sqlc', true],
+      ['modernc.org/sqlite', false],
+    ]);
+  });
+
+  it('lists only the modules whose trait conditions the selection meets', () => {
+    const gorm = { ...mvc, components: { ...mvc.components, data: 'gorm' } };
+    expect(moduleFields(catalog, gorm, new Map()).map((f) => [f.path, f.fixed])).toEqual([
+      ['github.com/libtnb/sqlite', false],
+      ['gorm.io/gorm', false],
       ['modernc.org/sqlite', false],
     ]);
   });
@@ -131,7 +152,7 @@ describe('trayCells and fileTree', () => {
   });
 
   it('names the tree after a valid project only', () => {
-    const tree = fileTree(catalog, { ...defaults, name: 'shop' }, true).map((l) => l.label);
+    const tree = fileTree(catalog, { ...mvc, name: 'shop' }, true).map((l) => l.label);
     expect(tree).toContain('cmd/shop/main.go');
     expect(tree).toContain('sqlc.yaml');
     expect(fileTree(catalog, { ...defaults, name: 'My App' }, false)[0]!.label).toBe('<name>/');

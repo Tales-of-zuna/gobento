@@ -4,9 +4,11 @@ import {
   goVersionReasons,
   moduleVersionReasons,
   resolvedVersions,
+  selectedModules,
   selectionProblems,
   type Selection,
 } from './compat';
+import type { Catalog } from './schema';
 import { addPostgres, catalogWith, type CatalogData, moduleOf } from '@/lib/test/catalog';
 
 const SQLITE = 'modernc.org/sqlite';
@@ -90,10 +92,7 @@ describe('selectionProblems', () => {
       name: 'unmet trait (provided with another value)',
       edit: addPostgres,
       selection: { ...firstSlice, components: { ...firstSlice.components, database: 'postgres' } },
-      expected: [
-        'sqlc requires conn database/sql, but PostgreSQL provides pgx.',
-        'sqlc requires sql-dialect sqlite, but PostgreSQL provides postgresql.',
-      ],
+      expected: ['sqlc requires conn database/sql, but PostgreSQL provides pgx.'],
     },
     {
       name: 'unmet trait (no provider in a complete selection)',
@@ -101,7 +100,7 @@ describe('selectionProblems', () => {
       selection: firstSlice,
       expected: [
         'sqlc requires a component that provides conn database/sql.',
-        'sqlc requires a component that provides sql-dialect sqlite.',
+        'sqlc requires a component that provides sql-dialect sqlite or postgresql.',
         'sqlc requires a component that provides sql-schema schema.sql.',
       ],
     },
@@ -144,6 +143,27 @@ describe('resolvedVersions', () => {
   });
 });
 
+describe('selectedModules', () => {
+  const paths = (catalog: Catalog, selection: Selection) =>
+    selectedModules(catalog, selection).map((m) => m.path);
+  const gorm = (database: string): Selection => ({
+    ...firstSlice,
+    components: { ...firstSlice.components, database, data: 'gorm' },
+  });
+
+  it('includes modules whose trait conditions the selection meets', () => {
+    const selected = paths(catalogWith(), gorm('sqlite'));
+    expect(selected).toEqual(expect.arrayContaining(['github.com/libtnb/sqlite', 'gorm.io/gorm']));
+    expect(selected).not.toContain('gorm.io/driver/postgres');
+  });
+
+  it('follows the dialect the database provides', () => {
+    const selected = paths(catalogWith(addPostgres), gorm('postgres'));
+    expect(selected).toEqual(expect.arrayContaining(['gorm.io/driver/postgres', 'gorm.io/gorm']));
+    expect(selected).not.toContain('github.com/libtnb/sqlite');
+  });
+});
+
 describe('option reasons', () => {
   it('disables a module version that needs a newer Go and names it (spec: Version too new for Go)', () => {
     const catalog = catalogWith((d) => {
@@ -171,14 +191,15 @@ describe('option reasons', () => {
     const catalog = catalogWith(addPostgres);
     expect(componentReasons(catalog, firstSlice, 'database', 'postgres')).toEqual([
       'sqlc requires conn database/sql, but PostgreSQL provides pgx.',
-      'sqlc requires sql-dialect sqlite, but PostgreSQL provides postgresql.',
     ]);
     expect(componentReasons(catalog, firstSlice, 'database', 'sqlite')).toEqual([]);
     const onPostgres = {
       ...firstSlice,
       components: { ...firstSlice.components, database: 'postgres' },
     };
-    expect(componentReasons(catalog, onPostgres, 'data', 'sqlc')).toHaveLength(2);
+    expect(componentReasons(catalog, onPostgres, 'data', 'sqlc')).toEqual([
+      'sqlc requires conn database/sql, but PostgreSQL provides pgx.',
+    ]);
   });
 
   it('rejects a component the catalog does not contain', () => {

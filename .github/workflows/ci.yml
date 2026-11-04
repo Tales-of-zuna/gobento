@@ -144,7 +144,7 @@ jobs:
       - name: Generate the reference project
         env:
           DB: ${{ matrix.db }}
-        run: go run ./cmd/gobento new shop --module example.com/shop --arch mvc --framework nethttp --db "$DB" --dir "$RUNNER_TEMP/shop"
+        run: go run ./cmd/gobento new shop --module example.com/shop --arch mvc --framework nethttp --db "$DB" --data sqlc --dir "$RUNNER_TEMP/shop"
       - name: Regenerate with the pinned sqlc and compare
         working-directory: ${{ runner.temp }}/shop
         run: |

@@ -7,6 +7,11 @@
 # per gobento release. CI generates every supported selection with the
 # defaults and with the range floors, so both ends of each range are tested.
 #
+# A module may add traits: {<trait>: [<values>]}. It is then used only when
+# one of its components is selected and the selection provides one of the
+# listed values for every listed trait, for example a driver needed only for
+# one SQL dialect. Otherwise it is not added to go.mod and cannot be pinned.
+#
 # Last checked against the Go module proxy and https://vuln.go.dev: 2026-11-04.
 # Range floors exclude every release with a known advisory, in the module
 # itself or in the dependency versions it requires.
@@ -58,3 +63,33 @@ modules:
     role: tool # run with go run; never added to go.mod
     range: "=v1.31.1"
     default: v1.31.1
+
+  gorm.io/gorm:
+    components: [data/gorm]
+    role: library
+    range: ">=v1.31.1 <v2.0.0"
+    default: v1.31.2
+
+  # Pure-Go SQLite dialect for GORM on modernc.org/sqlite (no cgo, and no
+  # second SQLite driver or engine next to the database component's).
+  github.com/libtnb/sqlite:
+    components: [data/gorm]
+    traits: { sql-dialect: [sqlite] }
+    role: library
+    range: ">=v1.1.0 <v2.0.0"
+    default: v1.2.2
+    constraints:
+      - when: ">=v1.2.0"
+        require: { gorm.io/gorm: ">=v1.31.2" }
+
+  gorm.io/driver/postgres:
+    components: [data/gorm]
+    traits: { sql-dialect: [postgresql] }
+    role: library
+    # v1.6.1 is the first release that requires github.com/jackc/pgx/v5
+    # v5.10.0, past every pgx advisory (the last was fixed in v5.9.2).
+    range: ">=v1.6.1 <v2.0.0"
+    default: v1.6.3
+    constraints:
+      - when: ">=v1.6.2"
+        require: { gorm.io/gorm: ">=v1.31.2" }
