@@ -142,7 +142,13 @@ function missingProviderMessage(
   const what = kinds
     .map((kind) => titleInSentence(catalog.kinds.find((k) => k.id === kind)?.title ?? kind))
     .join(' or ');
-  return `${requirer.title} requires a ${what} that provides ${trait} ${wanted}, such as ${titles.join(' or ')}.`;
+  return `${requirer.title} requires a ${what} that provides ${trait} ${wanted}, such as ${orList(titles)}.`;
+}
+
+/** Joins items as prose: "a", "a or b", or "a, b, or c". */
+function orList(items: readonly string[]): string {
+  if (items.length <= 2) return items.join(' or ');
+  return `${items.slice(0, -1).join(', ')}, or ${items.at(-1)}`;
 }
 
 function traitProblems(catalog: Catalog, selection: Selection): Problem[] {

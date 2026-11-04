@@ -186,7 +186,7 @@ test.describe('configurator', () => {
     await expect(tailwind).toBeDisabled();
     await expect(css).toContainText('Incompatible');
     await expect(css).toContainText(
-      'Tailwind CSS requires a frontend that provides frontend-build go or vite, such as htmx + templ.',
+      'Tailwind CSS requires a frontend that provides frontend-build go or vite, such as htmx + templ, React, Svelte, or Vue.',
     );
     await expect(command(page)).not.toContainText('--css');
     // The tray has a compartment for every kind, the CSS framework's empty.
