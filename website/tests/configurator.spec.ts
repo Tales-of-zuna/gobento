@@ -44,6 +44,10 @@ test.describe('configurator', () => {
       await expect(group(page, kind!).getByRole('radio', { checked: true })).toHaveCount(0);
       await expect(group(page, kind!).getByText(prompt!)).toBeVisible();
     }
+    // The frontend is optional: None (API only) is preselected (spec "Frontend is optional").
+    const frontend = group(page, 'Frontend');
+    await expect(frontend.getByRole('radio', { name: 'None (API only)' })).toBeChecked();
+    await expect(frontend.getByRole('radio', { name: 'htmx + templ' })).toBeEnabled();
     await expect(
       page.getByText('No command yet. Fix the architecture choice').locator('visible=true'),
     ).toBeVisible();
@@ -86,6 +90,52 @@ test.describe('configurator', () => {
     );
     await expect(files).toContainText('items/itemshttp/');
     await expect(files).not.toContainText('controllers/');
+  });
+
+  test('Choosing a frontend adds --frontend and None removes it', async ({ page }) => {
+    await open(page);
+    const frontend = group(page, 'Frontend');
+    const base = 'gobento new myapp --arch mvc --framework nethttp --db sqlite --data sqlc';
+    await expect(command(page)).toHaveText(base);
+    await frontend.getByText('htmx + templ', { exact: true }).click();
+    await expect(command(page)).toHaveText(`${base} --frontend htmx`);
+    await expect(page).toHaveURL(/[?&]frontend=htmx(&|$)/);
+    // The other kinds stay compatible with htmx.
+    await expect(page.getByText('Incompatible', { exact: true })).toHaveCount(0);
+    const files = page.getByRole('list', { name: 'Generated files' });
+    await expect(files).toContainText('views/pages.templ');
+    await expect(page.getByRole('list', { name: 'Bento: chosen parts' })).toContainText(
+      'htmx + templ',
+    );
+    await page.getByRole('button', { name: /Advanced/ }).click();
+    await expect(page.getByLabel('github.com/a-h/templ')).toHaveValue('v0.3.1100');
+    await expect(page.getByText('htmx.org (htmx + templ)')).toBeVisible();
+    await expect(page.getByText('Vendored', { exact: true })).toBeVisible();
+
+    await frontend.getByText('None (API only)', { exact: true }).click();
+    await expect(command(page)).toHaveText(base);
+    await expect(page).not.toHaveURL(/frontend=/);
+    await expect(page.getByLabel('github.com/a-h/templ')).toHaveCount(0);
+    await expect(files).not.toContainText('pages.templ');
+  });
+
+  test('A shared link restores the frontend, and an unknown one falls back to None', async ({
+    page,
+  }) => {
+    await open(page, '?arch=mvc&framework=nethttp&db=sqlite&data=sqlc&frontend=htmx');
+    const frontend = group(page, 'Frontend');
+    await expect(frontend.getByRole('radio', { name: 'htmx + templ' })).toBeChecked();
+    await expect(command(page)).toHaveText(
+      'gobento new myapp --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx',
+    );
+
+    await open(page, '?arch=mvc&framework=nethttp&db=sqlite&data=sqlc&frontend=react');
+    const notice = page.getByRole('status').filter({ hasText: 'shared link was reset' });
+    await expect(notice).toContainText('frontend "react", which is not available; none is used');
+    await expect(frontend.getByRole('radio', { name: 'None (API only)' })).toBeChecked();
+    await expect(command(page)).toHaveText(
+      'gobento new myapp --arch mvc --framework nethttp --db sqlite --data sqlc',
+    );
   });
 
   test('Copy command puts the displayed command on the clipboard', async ({ page }) => {

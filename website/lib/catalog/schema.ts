@@ -17,6 +17,11 @@ const kindSchema = z.object({
   id: z.enum(KIND_IDS),
   title: text,
   description: text,
+  /**
+   * An optional kind may be left without a component (its flag defaults to
+   * none); every other kind needs exactly one.
+   */
+  optional: z.boolean().default(false),
 });
 
 const componentSchema = z.object({
@@ -61,6 +66,19 @@ const moduleSchema = z.object({
   constraints: z.array(constraintSchema),
 });
 
+/**
+ * A file vendored into generated projects (for example htmx.org's script),
+ * with a version fixed per gobento release: not a Go module and not pinnable.
+ */
+const assetSchema = z.object({
+  name: text,
+  /** Ids of the components that vendor this asset. */
+  components: z.array(text).min(1),
+  version: text,
+  /** Where the release's copy was taken from. */
+  source: text,
+});
+
 const ruleSchema = z.object({
   /** Regular expression the value must match. */
   pattern: text,
@@ -75,18 +93,23 @@ const projectNameRuleSchema = ruleSchema.extend({
   reservedMessage: text,
 });
 
-/** One component name per kind, as `kind → name`. */
-const supportedSelectionSchema = z.record(z.enum(KIND_IDS), text);
+/**
+ * One component name per kind, as `kind → name`. An optional kind without a
+ * component is left out; every other kind is present (checked against the
+ * catalog's kinds in {@link checkConsistency}).
+ */
+const supportedSelectionSchema = z.partialRecord(z.enum(KIND_IDS), text);
 
 const rawCatalogSchema = z.object({
   kinds: z.array(kindSchema),
   components: z.array(componentSchema),
   go: z.object({ range: text, default: text }),
   modules: z.array(moduleSchema),
+  assets: z.array(assetSchema).default([]),
   /**
    * The selections the CLI supports (compose.Supported): traits met, default
-   * versions resolved, and composition without errors. Every one of them is
-   * generated and tested in gobento's CI.
+   * versions resolved, and composition without errors. CI builds every one
+   * without a frontend, and those with a frontend pairwise.
    */
   supported: z.array(supportedSelectionSchema).min(1),
   rules: z.object({ projectName: projectNameRuleSchema, modulePath: ruleSchema }),
@@ -166,11 +189,22 @@ function checkConsistency(catalog: RawCatalog, ctx: z.RefinementCtx): void {
     });
   });
 
+  const assetNames = new Set(catalog.assets.map((asset) => asset.name));
+  if (assetNames.size !== catalog.assets.length) issue(['assets'], 'duplicate asset name');
+  catalog.assets.forEach((asset, i) => {
+    asset.components.forEach((id, j) => {
+      if (!componentIds.has(id))
+        issue(['assets', i, 'components', j], `${asset.name}: unknown component "${id}"`);
+    });
+  });
+
+  const optional = new Set(catalog.kinds.filter((k) => k.optional).map((k) => k.id));
   catalog.supported.forEach((selection, i) => {
     for (const kind of KIND_IDS) {
       const name = selection[kind];
-      if (name === undefined) issue(['supported', i], `supported selection lacks a ${kind}`);
-      else if (!componentIds.has(`${kind}/${name}`)) {
+      if (name === undefined) {
+        if (!optional.has(kind)) issue(['supported', i], `supported selection lacks a ${kind}`);
+      } else if (!componentIds.has(`${kind}/${name}`)) {
         issue(
           ['supported', i, kind],
           `supported selection names unknown component "${kind}/${name}"`,
@@ -197,7 +231,11 @@ export type Catalog = z.infer<typeof catalogSchema>;
 export type Component = Catalog['components'][number];
 /** A Go module used by one or more components. */
 export type Module = Catalog['modules'][number];
-/** A selection the CLI supports. */
+/** A file vendored into generated projects, with a version fixed per release. */
+export type Asset = Catalog['assets'][number];
+/** A component kind as described by the catalog. */
+export type Kind = Catalog['kinds'][number];
+/** A selection the CLI supports; an optional kind without a component is absent. */
 export type SupportedSelection = Catalog['supported'][number];
 
 /** Parses and validates catalog data, throwing a ZodError that lists every problem. */

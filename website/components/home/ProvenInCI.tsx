@@ -6,7 +6,11 @@ const OSES = ['Linux', 'macOS', 'Windows'] as const;
 const GO = ['Go stable', 'Go oldstable'] as const;
 const STEPS = ['generate', 'build', 'test'] as const;
 
-/** "Proven in CI": the OS × Go matrix every combination passes, with a stamp. */
+/**
+ * "Proven in CI": the OS × Go matrix gobento's tests pass, with a stamp. The
+ * lead states the coverage rule of compose.Coverage: every supported
+ * selection without a frontend, and those with one pairwise.
+ */
 export function ProvenInCI() {
   return (
     <section className={`${s.band} ${s.bMatcha} ${s.edge}`} aria-labelledby="ci-title">
@@ -22,8 +26,9 @@ export function ProvenInCI() {
               Built on all three, before you ever run it.
             </h2>
             <p className={s.lead}>
-              Every supported combination is generated, built and tested on Linux, macOS and
-              Windows, against the current and previous Go release.
+              Every supported selection without a frontend is generated, built and tested on Linux,
+              macOS and Windows, with default and floor versions. With a frontend, every pair of
+              parts that can share a project is built together at least once.
             </p>
           </div>
           <Stagger inView>

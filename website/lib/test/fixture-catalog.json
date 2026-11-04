@@ -3,22 +3,32 @@
     {
       "id": "architecture",
       "title": "Architecture",
-      "description": "How the project's packages are laid out and wired together."
+      "description": "How the project's packages are laid out and wired together.",
+      "optional": false
     },
     {
       "id": "framework",
       "title": "HTTP framework",
-      "description": "Routes HTTP requests to handlers."
+      "description": "Routes HTTP requests to handlers.",
+      "optional": false
     },
     {
       "id": "database",
       "title": "Database",
-      "description": "Where the project stores its data."
+      "description": "Where the project stores its data.",
+      "optional": false
     },
     {
       "id": "data",
       "title": "Data access",
-      "description": "How the code reads and writes the database."
+      "description": "How the code reads and writes the database.",
+      "optional": false
+    },
+    {
+      "id": "frontend",
+      "title": "Frontend",
+      "description": "Web pages served next to the API, which then moves under /api.",
+      "optional": true
     }
   ],
   "components": [
@@ -87,6 +97,15 @@
         "sql-dialect": ["sqlite", "postgresql"],
         "sql-schema": ["schema.sql"]
       }
+    },
+    {
+      "id": "frontend/htmx",
+      "kind": "frontend",
+      "name": "htmx",
+      "title": "htmx + templ",
+      "description": "Server-rendered pages written as templ components, made interactive with htmx, and served by the Go binary with no build step.",
+      "provides": {},
+      "requires": {}
     }
   ],
   "go": {
@@ -94,6 +113,15 @@
     "default": "1.27"
   },
   "modules": [
+    {
+      "path": "github.com/a-h/templ",
+      "components": ["frontend/htmx"],
+      "traits": {},
+      "role": "library",
+      "range": "=v0.3.1100",
+      "default": "v0.3.1100",
+      "constraints": []
+    },
     {
       "path": "github.com/libtnb/sqlite",
       "components": ["data/gorm"],
@@ -168,6 +196,14 @@
       ]
     }
   ],
+  "assets": [
+    {
+      "name": "htmx.org",
+      "components": ["frontend/htmx"],
+      "version": "2.0.11",
+      "source": "https://registry.npmjs.org/htmx.org/-/htmx.org-2.0.11.tgz"
+    }
+  ],
   "supported": [
     {
       "architecture": "mvc",
@@ -177,9 +213,23 @@
     },
     {
       "architecture": "mvc",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
       "data": "sqlc",
       "database": "sqlite",
       "framework": "nethttp"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx"
     },
     {
       "architecture": "vertical-slice",
@@ -189,9 +239,23 @@
     },
     {
       "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
       "data": "sqlc",
       "database": "sqlite",
       "framework": "nethttp"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx"
     }
   ],
   "rules": {

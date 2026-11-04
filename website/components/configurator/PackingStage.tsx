@@ -2,7 +2,8 @@
 /**
  * The "packing" visual: a 2D bento tray with one compartment per component
  * kind, filling as each kind is chosen, and above it the mascot whose
- * box-body compartments pack in step. The mascot follows the home page
+ * box-body compartments pack in step with the first four (the mascot's box
+ * has four; the optional frontend fills only the tray). The mascot follows the home page
  * hero's rules (MascotHero): its pre-rendered still holds the space from the
  * first paint, so nothing shifts, and the 3D scene is downloaded only on the
  * client, after the first interaction, when WebGL works and reduced motion is
@@ -19,7 +20,7 @@ import type { CellView } from './view-model';
 export interface PackingStageProps {
   readonly cells: readonly CellView[];
   /** Which compartments show their food, in tray order. */
-  readonly packed: readonly [boolean, boolean, boolean, boolean];
+  readonly packed: readonly boolean[];
   /** Replays the packing animation. */
   readonly onRepack: () => void;
 }
@@ -40,7 +41,7 @@ export function PackingStage({ cells, packed, onRepack }: PackingStageProps) {
         <MascotHero
           className={styles.sceneMascot}
           sizes="(max-width: 899px) 300px, 390px"
-          packed={packed}
+          packed={[packed[0] === true, packed[1] === true, packed[2] === true, packed[3] === true]}
           decorative
           onSceneChange={setScene}
         />

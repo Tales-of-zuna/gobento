@@ -36,6 +36,26 @@ describe('Configurator', () => {
     expect(window.location.search).toBe('?name=shop&module=example.com%2Fshop&arch=mvc&data=sqlc');
   });
 
+  it('adds --frontend htmx for htmx and removes it again for None (spec: Choosing a frontend)', () => {
+    window.history.replaceState(null, '', '/configurator/?arch=mvc&data=sqlc');
+    render(<Configurator catalog={catalogWith()} />);
+    const none = screen.getByRole('radio', { name: 'None (API only)' });
+    expect(none).toBeChecked();
+    fireEvent.click(screen.getByRole('radio', { name: 'htmx + templ' }));
+    expect(command()).toHaveTextContent(
+      /^gobento new myapp --arch mvc --data sqlc --frontend htmx$/,
+    );
+    expect(window.location.search).toBe('?arch=mvc&data=sqlc&frontend=htmx');
+    fireEvent.click(screen.getByRole('button', { name: /Advanced/ }));
+    expect(screen.getByLabelText('github.com/a-h/templ')).toHaveValue('v0.3.1100');
+    expect(screen.getByText(/htmx\.org \(htmx \+ templ\)/)).toBeInTheDocument();
+    expect(screen.getByText('Vendored')).toBeInTheDocument();
+    fireEvent.click(none);
+    expect(command()).toHaveTextContent(/^gobento new myapp --arch mvc --data sqlc$/);
+    expect(window.location.search).toBe('?arch=mvc&data=sqlc');
+    expect(screen.queryByText('Vendored')).toBeNull();
+  });
+
   it('explains an invalid name next to the field and offers no command', () => {
     render(<Configurator catalog={catalogWith()} />);
     const name = screen.getByLabelText('Project name');

@@ -3,8 +3,8 @@
 ### Requirement: Frontends are optional
 gobento SHALL treat the frontend as an optional component kind: a selection
 SHALL contain at most one frontend, and a selection without one SHALL be
-valid. Leaving out the frontend SHALL produce an API-only project whose
-files are exactly those generated before frontends existed.
+valid. Leaving out the frontend SHALL produce an API-only project that
+serves the same API at the same paths as before frontends existed.
 
 #### Scenario: No frontend by default
 - **WHEN** the user runs `gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc` without `--frontend`

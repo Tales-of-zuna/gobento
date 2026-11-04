@@ -7,10 +7,11 @@
 import {
   componentReasons,
   goVersionReasons,
+  selectedAssets,
   selectedModules,
   type Selection,
 } from '@/lib/catalog/compat';
-import { KIND_IDS, titleInSentence } from '@/lib/catalog/kinds';
+import { isOptionalKind, KIND_IDS, titleInSentence } from '@/lib/catalog/kinds';
 import type { Catalog, KindId, Module } from '@/lib/catalog/schema';
 import {
   compareVersions,
@@ -54,12 +55,47 @@ export function errorsByField(result: BuildResult): ReadonlyMap<FieldError['fiel
   return map;
 }
 
-/** The choice cards for each component kind, in flag order. */
+/**
+ * Value of the "None" card of an optional kind; the CLI accepts the same word
+ * (`--frontend none`) and reserves it as a component name.
+ */
+export const NONE = 'none';
+
+/** Title of the "None" card, by kind. */
+const NONE_TITLES: Readonly<Partial<Record<KindId, string>>> = {
+  frontend: 'None (API only)',
+};
+
+/** Description of the "None" card, by kind. */
+const NONE_DESCRIPTIONS: Readonly<Partial<Record<KindId, string>>> = {
+  frontend: 'No web pages; the project serves only its API.',
+};
+
+/**
+ * Returns the components after choosing `value` for `kind`: {@link NONE}
+ * clears an optional kind's choice.
+ */
+export function withChoice(
+  catalog: Catalog,
+  components: Selection['components'],
+  kind: KindId,
+  value: string,
+): Selection['components'] {
+  if (value === NONE && isOptionalKind(catalog, kind)) {
+    return Object.fromEntries(Object.entries(components).filter(([k]) => k !== kind));
+  }
+  return { ...components, [kind]: value };
+}
+
+/**
+ * The choice cards for each component kind, in flag order. An optional kind
+ * starts with a "None" card, selected while no component of the kind is.
+ */
 export function kindGroups(
   catalog: Catalog,
   state: Selection,
   errors: ReadonlyMap<FieldError['field'], string>,
-  roadmap: Readonly<Record<KindId, readonly PlannedComponent[]>> = ROADMAP,
+  roadmap: Readonly<Partial<Record<KindId, readonly PlannedComponent[]>>> = ROADMAP,
 ): KindGroupView[] {
   return KIND_IDS.map((kind) => {
     const meta = catalog.kinds.find((k) => k.id === kind)!;
@@ -75,8 +111,18 @@ export function kindGroups(
         reasons,
       };
     });
+    const optional = isOptionalKind(catalog, kind);
+    if (optional) {
+      options.unshift({
+        value: NONE,
+        title: NONE_TITLES[kind] ?? 'None',
+        description: NONE_DESCRIPTIONS[kind] ?? 'Leave this part out.',
+        status: state.components[kind] === undefined ? 'selected' : 'available',
+        reasons: [],
+      });
+    }
     const known = new Set(components.map((c) => c.name));
-    for (const planned of roadmap[kind]) {
+    for (const planned of roadmap[kind] ?? []) {
       if (known.has(planned.name)) continue;
       options.push({
         value: planned.name,
@@ -89,7 +135,11 @@ export function kindGroups(
     return {
       kind,
       title: meta.title,
-      description: components.length === 1 ? 'One option today, preselected.' : meta.description,
+      description: optional
+        ? `Optional. ${meta.description}`
+        : components.length === 1
+          ? 'One option today, preselected.'
+          : meta.description,
       options,
       error: errors.get(kind),
     };
@@ -135,12 +185,15 @@ export function goOptions(catalog: Catalog, state: Selection): OptionView[] {
   });
 }
 
-/** A module version field in the Advanced section. */
+/** A module version field in the Advanced section, or a vendored asset's fixed version. */
 export interface ModuleFieldView {
+  /** The module path, or the asset name. */
   readonly path: string;
   /** The component titles using the module, for the label. */
   readonly usedBy: string;
   readonly fixed: boolean;
+  /** Tag shown next to a fixed version: a tool's `Fixed` or an asset's `Vendored`. */
+  readonly tag?: string;
   /** What the input shows: the override, or else the default. */
   readonly value: string;
   readonly hint: string;
@@ -154,21 +207,35 @@ function goNeeds(module: Module, version: string): string | undefined {
   return needs.length > 0 ? needs.join(' ') : undefined;
 }
 
-/** The version fields for the modules the chosen components use. */
+function titlesOf(catalog: Catalog, ids: readonly string[]): string {
+  return ids.map((id) => catalog.components.find((c) => c.id === id)?.title ?? id).join(', ');
+}
+
+/**
+ * The version fields for the modules the chosen components use, followed by
+ * the files they vendor (shown with their fixed version, never pinnable).
+ */
 export function moduleFields(
   catalog: Catalog,
   state: Selection,
   errors: ReadonlyMap<FieldError['field'], string>,
 ): ModuleFieldView[] {
-  return selectedModules(catalog, state).map((module) => {
-    const usedBy = module.components
-      .map((id) => catalog.components.find((c) => c.id === id)?.title ?? id)
-      .join(', ');
+  const assets = selectedAssets(catalog, state).map((asset): ModuleFieldView => ({
+    path: asset.name,
+    usedBy: titlesOf(catalog, asset.components),
+    fixed: true,
+    tag: 'Vendored',
+    value: asset.version,
+    hint: 'Vendored into the project; its version is fixed per gobento release.',
+  }));
+  const modules = selectedModules(catalog, state).map((module): ModuleFieldView => {
+    const usedBy = titlesOf(catalog, module.components);
     if (module.role === 'tool') {
       return {
         path: module.path,
         usedBy,
         fixed: true,
+        tag: 'Fixed',
         value: module.default,
         hint: 'Tool versions are fixed per gobento release.',
       };
@@ -181,6 +248,7 @@ export function moduleFields(
       (needs ? ` · this version needs Go ${needs}` : '');
     return { path: module.path, usedBy, fixed: false, value, hint, error };
   });
+  return [...modules, ...assets];
 }
 
 /** Returns the pins after the visitor typed `value` for `path`: a default clears the pin. */
@@ -202,6 +270,7 @@ export const COMPARTMENTS: Readonly<Record<KindId, { food: string; piece: string
   framework: { food: 'pickled plum', piece: 'ume' },
   database: { food: 'omelette', piece: 'tamago' },
   data: { food: 'edamame', piece: 'eda' },
+  frontend: { food: 'cucumber roll', piece: 'kappa' },
 };
 
 /** One compartment of the bento tray. */
@@ -214,7 +283,7 @@ export interface CellView {
   readonly piece: string;
 }
 
-/** The four tray compartments, one per kind. */
+/** The tray compartments, one per kind; an optional kind left at none stays empty. */
 export function trayCells(catalog: Catalog, state: Selection): CellView[] {
   return KIND_IDS.map((kind) => {
     const name = state.components[kind];
@@ -271,6 +340,20 @@ const COMPONENT_FILES: Readonly<Record<string, readonly string[]>> = {
   'data/sqlc': ['sqlc.yaml'],
 };
 
+/**
+ * Where each architecture puts the frontend's package (its `web` slot), so a
+ * frontend's files are previewed in the right place.
+ */
+const WEB_DIRS: Readonly<Record<string, string>> = {
+  'architecture/mvc': 'internal/views/',
+  'architecture/vertical-slice': 'internal/web/',
+};
+
+/** Files a frontend adds inside the architecture's web package, by component id. */
+const FRONTEND_FILES: Readonly<Record<string, readonly string[]>> = {
+  'frontend/htmx': ['pages.templ', 'static/'],
+};
+
 /** The project tree preview for the chosen components. */
 export function fileTree(catalog: Catalog, state: ConfigState, nameValid: boolean): TreeLine[] {
   const name = nameValid ? state.name : '<name>';
@@ -281,6 +364,11 @@ export function fileTree(catalog: Catalog, state: ConfigState, nameValid: boolea
     return component ? [component.id] : [];
   });
   const files = ids.flatMap((id) => COMPONENT_FILES[id] ?? []);
+  const web = ids.map((id) => WEB_DIRS[id]).find((dir) => dir !== undefined) ?? 'internal/web/';
+  for (const id of ids) {
+    const frontend = FRONTEND_FILES[id];
+    if (frontend) files.push(web, ...frontend.map((file) => `${web}${file}`));
+  }
   const internal = files
     .filter((f) => f.startsWith('internal/'))
     .map((f) => f.slice('internal/'.length))

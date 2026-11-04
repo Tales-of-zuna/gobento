@@ -23,7 +23,8 @@ exists).
   `web` (`internal/views` and `internal/web`) filled by the frontend. When it
   is filled, the entry point serves a root mux: the unchanged API router
   under `/api/` and the frontend's handler at every other path. Without a
-  frontend the API stays at `/`, byte-for-byte as today.
+  frontend the API stays at `/`, unchanged. In both shapes the entry point
+gains a small routing test.
 - Templates can see whether a slot is filled (`.Slots.<name>.Filled`) and the
   API's base path (`.APIPrefix`: `""` or `"/api"`).
 - A frontend component `frontend/htmx` ("htmx + templ"): server-rendered

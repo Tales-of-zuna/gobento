@@ -214,6 +214,10 @@
   --k: var(--matcha);
   --k-soft: var(--kind-data);
 }
+.root [data-kind='frontend'] {
+  --k: var(--hisui);
+  --k-soft: var(--kind-frontend);
+}
 .root [data-kind='go'] {
   --k: var(--sakura);
   --k-soft: var(--sakura-soft);
@@ -515,6 +519,12 @@
   transition: background-color 0.25s ease;
 }
 
+/* an odd last compartment (the optional frontend) spans the tray */
+.cell:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+  min-height: 84px;
+}
+
 .cell[data-filled='true'] {
   background: var(--k-soft);
   outline: 0;
@@ -574,6 +584,13 @@
   height: 26px;
   border-radius: 999px;
   background: var(--matcha);
+}
+.piece[data-piece='kappa'] {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--hisui);
+  box-shadow: inset 0 0 0 7px var(--nori);
 }
 
 .stageRow {

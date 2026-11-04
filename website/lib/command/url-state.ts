@@ -1,10 +1,11 @@
 /**
  * Configurator state in the page URL (design D4), so a shared link restores
  * the same choices. Parameters use the CLI's flag names: `name`, `module`,
- * `arch`, `framework`, `db`, `data`, `go`, and repeated `pin=<path>=<version>`.
- * Values equal to their default are left out to keep links short.
+ * `arch`, `framework`, `db`, `data`, `frontend`, `go`, and repeated
+ * `pin=<path>=<version>`. Values equal to their default are left out to keep
+ * links short; an optional kind set to none (the default) is absent.
  */
-import { KIND_IDS, titleInSentence } from '@/lib/catalog/kinds';
+import { isOptionalKind, KIND_IDS, titleInSentence } from '@/lib/catalog/kinds';
 import type { Catalog } from '@/lib/catalog/schema';
 import { parseGoVersion, parseModuleVersion, sameVersion, satisfies } from '@/lib/catalog/semver';
 import { KIND_FLAGS, type ConfigState } from './build';
@@ -12,10 +13,14 @@ import { KIND_FLAGS, type ConfigState } from './build';
 /** Project name a fresh configurator starts with. */
 export const DEFAULT_PROJECT_NAME = 'myapp';
 
-/** The state a first-time visitor sees: single-option kinds and default versions preselected. */
+/**
+ * The state a first-time visitor sees: single-option required kinds and
+ * default versions preselected, and optional kinds set to none.
+ */
 export function defaultState(catalog: Catalog): ConfigState {
   const components: ConfigState['components'] = Object.fromEntries(
     KIND_IDS.flatMap((kind) => {
+      if (isOptionalKind(catalog, kind)) return [];
       const options = catalog.components.filter((c) => c.kind === kind);
       return options.length === 1 ? [[kind, options[0]!.name]] : [];
     }),
@@ -62,13 +67,20 @@ export function decodeState(catalog: Catalog, query: string | URLSearchParams): 
   for (const kind of KIND_IDS) {
     const name = params.get(KIND_FLAGS[kind]);
     if (name === null) continue;
+    // `none` is how the CLI spells an optional kind left out, its default.
+    if (name === 'none' && isOptionalKind(catalog, kind)) continue;
     if (catalog.components.some((c) => c.kind === kind && c.name === name)) {
       components[kind] = name;
     } else {
       const title = catalog.kinds.find((k) => k.id === kind)?.title ?? kind;
       const single = catalog.components.filter((c) => c.kind === kind).length === 1;
+      const fallback = isOptionalKind(catalog, kind)
+        ? 'none is used'
+        : single
+          ? 'the default is used'
+          : 'choose one of the available options';
       notices.push(
-        `The link names ${titleInSentence(title)} "${name}", which is not available; ${single ? 'the default is used' : 'choose one of the available options'}.`,
+        `The link names ${titleInSentence(title)} "${name}", which is not available; ${fallback}.`,
       );
     }
   }

@@ -29,8 +29,8 @@ See proposal.md for the motivation. The relevant current state:
 
 **Goals:**
 
-- An optional `frontend` kind whose absence yields today's projects
-  byte-for-byte, so API-only remains the default and existing commands keep
+- An optional `frontend` kind whose absence yields today's API at today's
+  paths, so API-only remains the default and existing commands keep
   working.
 - One serving design that works for server-rendered frontends now and for
   Vite-built single-page apps later, without editing framework components or
@@ -236,7 +236,8 @@ starting from the set of component pairs that occur together in some
 selection with an optional component, it repeatedly takes the first selection
 (in `Supported` order) that covers the most uncovered pairs, until none is
 left. With two architectures, three frameworks, two databases, two data
-layers, and one frontend, that is 24 + 6 projects instead of 48, and the
+layers, and one frontend, that is 24 + 7 projects instead of 48 (the
+architecture × framework pairs alone need 6), and the
 frontend part grows with the largest pair product (architecture × framework)
 rather than with the product of all kinds.
 
@@ -307,8 +308,10 @@ Tailwind CSS stay on the roadmap lists.
 
 ## Migration Plan
 
-Additive for users: commands without `--frontend` generate the same files as
-before (checked by the existing goldens). The parallel DDD architecture
+Additive for users: commands without `--frontend` generate the same API at
+the same paths as before; the only difference in API-only projects is the
+entry point's `newHandler` function and its routing test (visible in the
+golden diff). The parallel DDD architecture
 change can merge before or after this one; to support frontends it follows
 the checklist in the contributor guide (declare `web`, use `newHandler`, add
 the entry test, list the web directory in its README), otherwise frontend

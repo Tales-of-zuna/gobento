@@ -5,13 +5,16 @@
  * add-generator-foundation): defaults, then overrides, then range checks,
  * then every matching constraint.
  */
-import type { Catalog, Component, KindId, Module } from './schema';
-import { KIND_IDS } from './kinds';
+import type { Asset, Catalog, Component, KindId, Module } from './schema';
+import { isOptionalKind, KIND_IDS } from './kinds';
 import { parseGoVersion, parseModuleVersion, satisfies } from './semver';
 
 /** Chosen components and versions. */
 export interface Selection {
-  /** Chosen component name per kind; a kind without a choice is undefined. */
+  /**
+   * Chosen component name per kind; a kind without a choice is undefined,
+   * which for an optional kind means none (for example no frontend).
+   */
   readonly components: Readonly<Partial<Record<KindId, string>>>;
   /** Chosen Go version, for example `1.27`. */
   readonly go: string;
@@ -66,6 +69,12 @@ export function selectedModules(catalog: Catalog, selection: Selection): Module[
   );
 }
 
+/** Returns the vendored assets of the chosen components, whose versions are fixed per release. */
+export function selectedAssets(catalog: Catalog, selection: Selection): Asset[] {
+  const ids = new Set(selectedComponents(catalog, selection).map((c) => c.id));
+  return catalog.assets.filter((a) => a.components.some((id) => ids.has(id)));
+}
+
 /** Returns the version each selected module gets: its override, or else its default. */
 export function resolvedVersions(catalog: Catalog, selection: Selection): Map<string, string> {
   return new Map(
@@ -75,7 +84,9 @@ export function resolvedVersions(catalog: Catalog, selection: Selection): Map<st
 
 function traitProblems(catalog: Catalog, selection: Selection): Problem[] {
   const components = selectedComponents(catalog, selection);
-  const complete = KIND_IDS.every((kind) => selection.components[kind] !== undefined);
+  const complete = KIND_IDS.every(
+    (kind) => isOptionalKind(catalog, kind) || selection.components[kind] !== undefined,
+  );
   const problems: Problem[] = [];
   for (const requirer of components) {
     for (const [trait, allowed] of Object.entries(requirer.requires)) {

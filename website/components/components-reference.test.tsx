@@ -30,6 +30,23 @@ describe('CatalogReference', () => {
     );
   });
 
+  it('marks the frontend kind optional and lists htmx with templ and its vendored asset (spec: Vendored asset)', () => {
+    render(<CatalogReference catalog={catalogWith()} />);
+    const kind = screen.getByRole('heading', { level: 2, name: /^Frontend/ });
+    expect(kind).toHaveTextContent('optional');
+    expect(screen.getByText(/without/, { selector: 'p' })).toHaveTextContent(
+      'without --frontend (or with --frontend none) the project has none',
+    );
+    expect(screen.getByRole('table', { name: 'Modules of htmx' })).toHaveTextContent(
+      'github.com/a-h/templ',
+    );
+    const assets = screen.getByRole('table', { name: 'Vendored assets of htmx' });
+    const row = within(assets).getByRole('row', { name: /htmx\.org/ });
+    expect(row).toHaveTextContent('vendored');
+    expect(row).toHaveTextContent('2.0.11');
+    expect(screen.getAllByRole('heading', { level: 2, name: /optional/ })).toHaveLength(1);
+  });
+
   // Spec "Version bump": a changed default appears without editing docs content.
   it('shows a changed module default from the catalog', () => {
     const catalog = catalogWith((data) => {

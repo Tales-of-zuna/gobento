@@ -1,8 +1,8 @@
 /**
  * Cross-check with the CLI (spec: Generated commands are accepted by the CLI).
  *
- * For every selection the CLI supports (`supported` in catalog.json), this
- * builds the configurator's command twice: with the defaults, and with every
+ * For every selection the CLI supports (`supported` in catalog.json, with and
+ * without a frontend), this builds the configurator's command twice: with the defaults, and with every
  * flag explicit (module path, the Go range floor, each library pinned to its
  * range floor). The commands are kept in `supported-commands.txt`, which the
  * Go test `TestWebsiteCommands` in internal/cli runs with `--dry-run`. The
@@ -12,7 +12,7 @@
 import { describe, expect, it } from 'vitest';
 import { selectedModules } from '@/lib/catalog/compat';
 import { catalog } from '@/lib/catalog/data';
-import type { Catalog } from '@/lib/catalog/schema';
+import { KIND_IDS, type Catalog } from '@/lib/catalog/schema';
 import { compareVersions, parseVersion, type VersionKind } from '@/lib/catalog/semver';
 import { buildCommand, type ConfigState } from './build';
 
@@ -33,7 +33,9 @@ function floor(range: string, kind: VersionKind): string {
 /** The configurator states whose commands are cross-checked. */
 function states(cat: Catalog): { label: string; state: ConfigState }[] {
   return cat.supported.flatMap((components) => {
-    const label = `${components.architecture}/${components.framework}/${components.database}/${components.data}`;
+    // The CLI's own spelling of a selection: one name per chosen kind, in
+    // flag order, so a selection without a frontend has four parts.
+    const label = KIND_IDS.flatMap((kind) => components[kind] ?? []).join('/');
     const pins = Object.fromEntries(
       selectedModules(cat, { components, go: cat.go.default, pins: {} })
         .filter((m) => m.role === 'library')

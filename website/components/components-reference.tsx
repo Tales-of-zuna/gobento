@@ -1,10 +1,17 @@
 /**
  * The Components reference (design D5): every component of the catalog with
- * its traits and module versions, rendered at build time so that no docs
- * content contains a version number.
+ * its traits, module versions, and vendored assets, rendered at build time so
+ * that no docs content contains a version number. Optional kinds are marked.
  */
 import { catalog as builtCatalog } from '@/lib/catalog/data';
-import { KIND_IDS, type Catalog, type Component, type Module } from '@/lib/catalog/schema';
+import {
+  KIND_IDS,
+  type Asset,
+  type Catalog,
+  type Component,
+  type Module,
+} from '@/lib/catalog/schema';
+import { KIND_FLAGS } from '@/lib/command/build';
 
 /** Renders the reference for `catalog`. */
 export function CatalogReference({ catalog }: { catalog: Catalog }) {
@@ -48,14 +55,22 @@ export function CatalogReference({ catalog }: { catalog: Catalog }) {
             <h2 id={`kind-${kindId}`}>
               <i className="docs-mk" aria-hidden="true" />
               {kind.title}
+              {kind.optional && <span className="docs-optional">optional</span>}
             </h2>
             <p>{kind.description}</p>
+            {kind.optional && (
+              <p>
+                Optional: without <code>--{KIND_FLAGS[kindId]}</code> (or with{' '}
+                <code>--{KIND_FLAGS[kindId]} none</code>) the project has none.
+              </p>
+            )}
             {components.map((component) => (
               <ComponentEntry
                 key={component.id}
                 component={component}
                 kindTitle={kind.title}
                 modules={catalog.modules.filter((m) => m.components.includes(component.id))}
+                assets={catalog.assets.filter((a) => a.components.includes(component.id))}
               />
             ))}
           </section>
@@ -69,10 +84,12 @@ function ComponentEntry({
   component,
   kindTitle,
   modules,
+  assets,
 }: {
   component: Component;
   kindTitle: string;
   modules: Module[];
+  assets: Asset[];
 }) {
   const provides = Object.entries(component.provides);
   const requires = Object.entries(component.requires);
@@ -171,6 +188,37 @@ function ComponentEntry({
                             <code>{constraint.requires.range}</code>
                           </span>
                         ))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {assets.length > 0 && (
+        <div
+          className="docs-table"
+          tabIndex={0}
+          role="region"
+          aria-label={`Vendored assets of ${component.name} table`}
+        >
+          <table aria-label={`Vendored assets of ${component.name}`}>
+            <thead>
+              <tr>
+                <th scope="col">Asset</th>
+                <th scope="col">Role</th>
+                <th scope="col">Version</th>
+              </tr>
+            </thead>
+            <tbody>
+              {assets.map((asset) => (
+                <tr key={asset.name}>
+                  <td>
+                    <code>{asset.name}</code>
+                  </td>
+                  <td>vendored (fixed per release)</td>
+                  <td>
+                    <code>{asset.version}</code>
                   </td>
                 </tr>
               ))}

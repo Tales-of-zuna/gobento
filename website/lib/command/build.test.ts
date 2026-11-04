@@ -56,6 +56,35 @@ describe('buildCommand', () => {
     },
   ];
 
+  it.each([
+    {
+      name: 'no frontend omits the flag (spec: Choosing a frontend)',
+      state: state(),
+      command: 'gobento new myapp --arch mvc --data sqlc',
+    },
+    {
+      name: 'a frontend adds its flag after the required kinds, even as the only option',
+      state: state({
+        components: {
+          framework: 'nethttp',
+          database: 'sqlite',
+          architecture: 'mvc',
+          data: 'sqlc',
+          frontend: 'htmx',
+        },
+        go: '1.26',
+      }),
+      command: 'gobento new myapp --arch mvc --data sqlc --frontend htmx --go 1.26',
+    },
+  ])('$name', ({ state: input, command }) => {
+    expect(buildCommand(fixture, input)).toEqual({ ok: true, command });
+  });
+
+  it('never asks for an optional kind to be chosen', () => {
+    const result = buildCommand(fixture, state());
+    expect(result.ok).toBe(true);
+  });
+
   it.each(cases)('$name', ({ state: input, command }) => {
     expect(buildCommand(fixture, input)).toEqual({ ok: true, command });
   });
