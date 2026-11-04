@@ -8,6 +8,7 @@ describe('catalog schema', () => {
     expect(result.error?.issues).toBeUndefined();
     expect(result.data?.components.map((c) => c.id)).toEqual([
       'architecture/mvc',
+      'architecture/vertical-slice',
       'framework/nethttp',
       'database/sqlite',
       'data/sqlc',

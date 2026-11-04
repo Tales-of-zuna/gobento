@@ -27,7 +27,7 @@ generated API is the same.
 writes nothing and does not run the Go toolchain.
 
 ```sh
-gobento new shop --module example.com/shop --framework nethttp --dry-run
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --dry-run
 ```
 
 It prints `Dry run: nothing was written.`, the module, the selection
@@ -40,15 +40,18 @@ It prints `Dry run: nothing was written.`, the module, the selection
 ### Generate it
 
 ```sh
-gobento new shop --module example.com/shop --framework nethttp
+gobento new shop --module example.com/shop --arch mvc --framework nethttp
 ```
 
+`--arch` chooses the architecture: `mvc` organizes the code by layer, and
+`vertical-slice` by feature (see
+[With the vertical-slice architecture](#with-the-vertical-slice-architecture)).
 `--framework` picks the HTTP framework: `nethttp` (the standard library),
-`chi`, or `gin`. The other kinds have one option each today, so gobento selects
-them for you. If you leave out `--framework` in a terminal, gobento asks you to
-choose; you can also run plain `gobento new` and answer the questions for the
-name, module path, and components. The same command with every choice spelled
-out, which never asks anything, is:
+`chi`, or `gin`. The other kinds have one option each today, so gobento
+selects them for you. If you leave out `--arch` or `--framework` in a
+terminal, gobento asks you to choose; you can also run plain `gobento new` and
+answer the questions for the name, module path, and components. The same
+command with every choice spelled out, which never asks anything, is:
 
 ```sh
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
@@ -218,6 +221,26 @@ The schema in `internal/database/schema.sql` is embedded in the binary and
 applied every time the server starts. It uses `CREATE TABLE IF NOT EXISTS`, so
 it creates missing tables but never changes existing ones; it is not a
 migration system.
+
+## With the vertical-slice architecture
+
+`--arch vertical-slice` generates the same files from the same components, in
+a layout organized by feature:
+
+```sh
+gobento new shop --module example.com/shop --arch vertical-slice
+```
+
+| Path                          | Filled by    | Contents                                                                               |
+| ----------------------------- | ------------ | -------------------------------------------------------------------------------------- |
+| `cmd/shop/main.go`            | architecture | The same entry point and wiring                                                        |
+| `internal/items/`             | architecture | The items feature: the `Item` type and the `ItemStore` interface (`items.go`)          |
+| `internal/items/itemshttp/`   | framework    | The feature's handlers, `NewRouter` with `/health`, and their tests                    |
+| `internal/items/itemsstore/`  | data access  | The feature's `queries.sql`, the `New` adapter, its test, and the `sqlcgen` subpackage |
+| `internal/platform/database/` | database     | `Open` and `schema.sql`, shared by every feature                                       |
+
+The generated README explains the layout and how to add a second feature,
+such as `internal/orders`, beside `internal/items`.
 
 ## Next steps
 

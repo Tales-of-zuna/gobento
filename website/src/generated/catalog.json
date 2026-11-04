@@ -32,6 +32,15 @@
       "requires": {}
     },
     {
+      "id": "architecture/vertical-slice",
+      "kind": "architecture",
+      "name": "vertical-slice",
+      "title": "Vertical slice",
+      "description": "One directory per feature, holding its types, HTTP handlers, and data access; shared infrastructure in internal/platform.",
+      "provides": {},
+      "requires": {}
+    },
+    {
       "id": "framework/chi",
       "kind": "framework",
       "name": "chi",
@@ -160,6 +169,24 @@
     },
     {
       "architecture": "mvc",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin"
+    },
+    {
+      "architecture": "vertical-slice",
       "data": "sqlc",
       "database": "sqlite",
       "framework": "nethttp"

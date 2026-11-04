@@ -10,13 +10,14 @@ describe('defaultState (spec: Defaults)', () => {
     expect(defaultState(fixture)).toEqual({
       name: 'myapp',
       module: '',
-      components: { architecture: 'mvc', framework: 'nethttp', database: 'sqlite', data: 'sqlc' },
+      components: { framework: 'nethttp', database: 'sqlite', data: 'sqlc' },
       go: '1.27',
       pins: {},
     });
   });
 
   it('leaves a kind with several options unchosen', () => {
+    expect(defaultState(fixture).components.architecture).toBeUndefined();
     expect(defaultState(catalogWith(addPostgres)).components.database).toBeUndefined();
   });
 });
@@ -31,11 +32,12 @@ describe('encodeState', () => {
       ...defaultState(fixture),
       name: 'shop',
       module: 'example.com/shop',
+      components: { ...defaultState(fixture).components, architecture: 'vertical-slice' },
       go: '1.26',
       pins: { 'modernc.org/sqlite': 'v1.62.0' },
     };
     expect(encodeState(fixture, state)).toBe(
-      'name=shop&module=example.com%2Fshop&go=1.26&pin=modernc.org%2Fsqlite%3Dv1.62.0',
+      'name=shop&module=example.com%2Fshop&arch=vertical-slice&go=1.26&pin=modernc.org%2Fsqlite%3Dv1.62.0',
     );
   });
 });
@@ -46,7 +48,7 @@ describe('decodeState', () => {
     const chosen: ConfigState = {
       name: 'shop',
       module: 'example.com/shop',
-      components: { ...defaultState(catalog).components, database: 'sqlite' },
+      components: { ...defaultState(catalog).components, architecture: 'mvc', database: 'sqlite' },
       go: '1.26',
       pins: { 'modernc.org/sqlite': 'v1.62.0' },
     };

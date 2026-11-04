@@ -145,7 +145,11 @@ func (e *SelectionError) Error() string {
 		supported = "none"
 	}
 	if e.Value == "" {
-		return fmt.Sprintf("choose a %s; supported: %s", e.Kind, supported)
+		article := "a"
+		if strings.ContainsRune("aeiou", rune(string(e.Kind)[0])) {
+			article = "an"
+		}
+		return fmt.Sprintf("choose %s %s; supported: %s", article, e.Kind, supported)
 	}
 	return fmt.Sprintf("unknown %s %q; supported: %s", e.Kind, e.Value, supported)
 }

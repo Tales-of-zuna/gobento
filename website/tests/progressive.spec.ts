@@ -6,6 +6,8 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
  * Animations may only add to it once scripts run.
  */
 
+const QUICK_START = 'gobento new shop --module example.com/shop --arch mvc';
+
 const SECTION_HEADINGS = [
   "Today's menu, and what comes next.",
   'Three steps, one box.',
@@ -56,9 +58,7 @@ test.describe('without JavaScript', () => {
       page.getByRole('heading', { level: 1, name: 'Pack your Go project like a bento.' }),
     );
     await expectShown(page.getByText(/gobento picks versions that are known to work/));
-    await expectShown(
-      page.locator('main code').filter({ hasText: 'gobento new shop --module example.com/shop' }),
-    );
+    await expectShown(page.locator('main code').filter({ hasText: QUICK_START }));
     for (const name of SECTION_HEADINGS) {
       await expectShown(page.getByRole('heading', { level: 2, name }));
     }

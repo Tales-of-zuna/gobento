@@ -7,6 +7,7 @@ import (
 	"go/format"
 	"go/token"
 	"io/fs"
+	"maps"
 	"path"
 	"slices"
 	"strings"
@@ -298,6 +299,11 @@ func (c *composer) render(comp *catalog.Component, f catalog.File) {
 			return
 		}
 		out = s.Dir + "/" + f.Path
+		if inner, ok := c.nestedSlot(f.Slot, out); ok {
+			c.fail("%w: %s: %s would be written to %s, inside slot %s (%s); only that slot's owner writes there",
+				ErrSlotOwner, comp.ID(), f.Source, out, inner, c.data.Slots[inner].Dir)
+			return
+		}
 	}
 
 	content, err := c.execute(f.Source, f.Template)
@@ -323,6 +329,21 @@ func (c *composer) render(comp *catalog.Component, f catalog.File) {
 	}
 	c.owner[out] = comp.ID()
 	c.files = append(c.files, File{Path: out, Mode: fileMode, Content: content, Component: comp.ID()})
+}
+
+// nestedSlot reports the slot whose directory lies inside the directory of
+// slot owner and contains out, the output path of one of owner's files. A
+// slot directory may be nested inside another one, but the outer slot's
+// files must stay out of it, so that every package has exactly one owner.
+func (c *composer) nestedSlot(owner, out string) (string, bool) {
+	outer := c.data.Slots[owner].Dir
+	for _, name := range slices.Sorted(maps.Keys(c.data.Slots)) {
+		dir := c.data.Slots[name].Dir
+		if name != owner && strings.HasPrefix(dir, outer+"/") && strings.HasPrefix(out, dir+"/") {
+			return name, true
+		}
+	}
+	return "", false
 }
 
 // appendNotes renders every component's notes, in kind order, and appends

@@ -21,15 +21,16 @@ type itemHandler struct {
 }
 
 func (h *itemHandler) list(c *gin.Context) {
-	items, err := h.items.List(c.Request.Context())
+	// Local names avoid "items": it may be the name of the contract package.
+	list, err := h.items.List(c.Request.Context())
 	if err != nil {
 		serverError(c, err)
 		return
 	}
-	if items == nil {
-		items = []models.Item{}
+	if list == nil {
+		list = []models.Item{}
 	}
-	c.JSON(http.StatusOK, items)
+	c.JSON(http.StatusOK, list)
 }
 
 type createItemRequest struct {

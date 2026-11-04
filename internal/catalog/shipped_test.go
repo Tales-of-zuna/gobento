@@ -58,6 +58,8 @@ func TestShippedCatalog(t *testing.T) {
 	}
 }
 
+// TestShippedCatalogCandidates checks the shipped candidates: every
+// architecture with every framework, database, and data access.
 func TestShippedCatalogCandidates(t *testing.T) {
 	t.Parallel()
 
@@ -69,7 +71,10 @@ func TestShippedCatalogCandidates(t *testing.T) {
 	for _, s := range cat.Candidates() {
 		got = append(got, s.String())
 	}
-	want := []string{"mvc/chi/sqlite/sqlc", "mvc/gin/sqlite/sqlc", "mvc/nethttp/sqlite/sqlc"}
+	want := []string{
+		"mvc/chi/sqlite/sqlc", "mvc/gin/sqlite/sqlc", "mvc/nethttp/sqlite/sqlc",
+		"vertical-slice/chi/sqlite/sqlc", "vertical-slice/gin/sqlite/sqlc", "vertical-slice/nethttp/sqlite/sqlc",
+	}
 	if !slices.Equal(got, want) {
 		t.Errorf("Candidates() = %v, want %v", got, want)
 	}

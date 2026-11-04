@@ -17,7 +17,7 @@ you pick: an architecture, an HTTP framework, a database, and a data-access
 library.
 
 ```sh
-gobento new shop --module example.com/shop --framework chi
+gobento new shop --module example.com/shop --arch mvc --framework chi
 ```
 
 The generated project builds, passes `go vet` and `gofmt`, and passes its own
@@ -51,17 +51,18 @@ started.
 
 ## What you can choose today
 
-| Kind           | Components                                                  |
-| -------------- | ----------------------------------------------------------- |
-| Architecture   | `mvc` (Model-View-Controller)                               |
-| HTTP framework | `nethttp` (the standard library's `net/http`), `chi`, `gin` |
-| Database       | `sqlite` (pure Go, no cgo)                                  |
-| Data access    | `sqlc`                                                      |
+| Kind           | Components                                                               |
+| -------------- | ------------------------------------------------------------------------ |
+| Architecture   | `mvc` (Model-View-Controller, by layer) or `vertical-slice` (by feature) |
+| HTTP framework | `nethttp` (the standard library's `net/http`), `chi`, `gin`              |
+| Database       | `sqlite` (pure Go, no cgo)                                               |
+| Data access    | `sqlc`                                                                   |
 
-Every selection generates a project with a health endpoint and one example
-resource, `/items`, stored in SQLite. All frameworks serve exactly the same
-API. More databases, data-access libraries, and architectures are on the
-roadmap; the
+Every architecture uses the same framework, database, and data-access
+components, arranged in a different layout, and every framework serves
+exactly the same API. Either way, the project has a health endpoint and one
+example resource, `/items`, stored in SQLite. More databases, data-access
+libraries, and architectures are on the roadmap; the
 [Components](/docs/components) reference always lists exactly what the
 catalog supports.
 

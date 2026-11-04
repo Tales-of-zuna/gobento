@@ -1,0 +1,9 @@
+name: vertical-slice
+title: Vertical slice
+description: One directory per feature, holding its types, HTTP handlers, and data access; shared infrastructure in internal/platform.
+slots:
+  entry:    { dir: "cmd/{{.Project.Name}}",      package: main, filled_by: architecture }
+  models:   { dir: internal/items,               filled_by: architecture }
+  handlers: { dir: internal/items/itemshttp,     filled_by: framework, required: true }
+  database: { dir: internal/platform/database,   filled_by: database,  required: true }
+  store:    { dir: internal/items/itemsstore,    filled_by: data,      required: true }

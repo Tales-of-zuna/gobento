@@ -232,6 +232,16 @@ requires:
 			wantMsg: []string{"root file internal/controllers/extra.go from data/query lies inside slot handlers"},
 		},
 		{
+			// Spec: File inside a nested slot.
+			name: "file inside a nested slot",
+			files: map[string]string{
+				"architecture/layered/component.yaml":                       nestedArch,
+				"architecture/layered/files/models/itemshttp/extra.go.tmpl": "package itemshttp\n",
+			},
+			wantIs:  []error{ErrSlotOwner},
+			wantMsg: []string{"architecture/layered", "internal/items/itemshttp/extra.go", "inside slot handlers (internal/items/itemshttp)"},
+		},
+		{
 			name:    "incomplete selection",
 			sel:     [4]string{"layered", "web", "lite", ""},
 			wantIs:  []error{ErrSelection, ErrUnfilledSlot},
@@ -434,5 +444,37 @@ func TestComposePlanSlots(t *testing.T) {
 	}
 	if got := plan.Slots["entry"]; got.Dir != "cmd/shop" || got.Package != "main" {
 		t.Errorf("Slots[entry] = %+v", got)
+	}
+}
+
+// nestedArch is the layered fixture architecture with the handlers and
+// store slots nested inside the models directory, as in a vertical slice.
+const nestedArch = `name: layered
+title: Layered
+slots:
+  entry:    { dir: "cmd/{{.Project.Name}}", package: main, filled_by: architecture }
+  models:   { dir: internal/items,            filled_by: architecture }
+  handlers: { dir: internal/items/itemshttp,  filled_by: framework, required: true }
+  database: { dir: internal/platform/db,      filled_by: database,  required: true }
+  store:    { dir: internal/items/itemsstore, filled_by: data,      required: true }
+`
+
+// TestComposeNestedSlots checks that slot directories may be nested as
+// long as each component writes only into its own slot.
+func TestComposeNestedSlots(t *testing.T) {
+	t.Parallel()
+
+	cat := loadCatalog(t, withFiles(map[string]string{"architecture/layered/component.yaml": nestedArch}))
+	plan, err := Compose(input(pick(t, cat, "layered", "web", "lite", "query")))
+	if err != nil {
+		t.Fatalf("Compose() error = %v", err)
+	}
+	for _, p := range []string{"internal/items/models.go", "internal/items/itemshttp/router.go", "internal/items/itemsstore/store.go"} {
+		if _, ok := plan.File(p); !ok {
+			t.Errorf("plan has no %s: %v", p, plan.Paths())
+		}
+	}
+	if got := plan.Slots["handlers"].Package; got != "itemshttp" {
+		t.Errorf("handlers package = %q, want itemshttp", got)
 	}
 }

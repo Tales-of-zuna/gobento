@@ -19,15 +19,16 @@ type itemHandler struct {
 }
 
 func (h *itemHandler) list(w http.ResponseWriter, r *http.Request) {
-	items, err := h.items.List(r.Context())
+	// Local names avoid "items": it may be the name of the contract package.
+	list, err := h.items.List(r.Context())
 	if err != nil {
 		serverError(w, r, err)
 		return
 	}
-	if items == nil {
-		items = []models.Item{}
+	if list == nil {
+		list = []models.Item{}
 	}
-	writeJSON(w, http.StatusOK, items)
+	writeJSON(w, http.StatusOK, list)
 }
 
 type createItemRequest struct {

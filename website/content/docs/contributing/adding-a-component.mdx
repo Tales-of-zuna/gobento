@@ -69,7 +69,8 @@ only:
 
 For example, `components/framework/nethttp/files/handlers/router.go.tmpl`
 becomes `internal/controllers/router.go`, because `mvc` puts the `handlers`
-slot in `internal/controllers`.
+slot in `internal/controllers`, and `internal/items/itemshttp/router.go` with
+`vertical-slice`, which puts it there.
 
 ### The `.tmpl` rule
 
@@ -235,6 +236,10 @@ go run github.com/sqlc-dev/sqlc/cmd/sqlc@{{index .Versions "github.com/sqlc-dev/
   not import the database or store packages, directly or transitively.
 - **Use slot data, not directories.** Write `.Slots.store.Import`, never a
   hard-coded path, so your component works with any architecture.
+- **Do not reuse package names as local names.** The contract package may be
+  called `models` or `items`, depending on the architecture, so a variable
+  named `items` would shadow it. Name local identifiers after their role,
+  such as `list`, `got`, or `store`.
 - **Produce valid, formatted Go.** Every `.go` output is run through
   `go/format`. A failure is reported as a composition error naming your
   component and the file. Generated files must also have no unused imports.
@@ -252,7 +257,8 @@ how the schema is applied, and `sqlc` shows how to regenerate its code.
 
 Composition reports every problem at once: unknown or unfilled slots, slots
 with two owners or an owner of the wrong kind, two slots in one directory,
-file conflicts, root files inside a slot directory, components that produce
+file conflicts, root files inside a slot directory, files written into a
+slot nested inside their own slot's directory, components that produce
 `go.mod` or `go.sum`, unmet traits, and templates that fail to render. See
 [When composition fails](/docs/concepts/slots-and-contracts#when-composition-fails).
 
@@ -386,13 +392,16 @@ make test
 
 ### Golden test
 
-The golden tests compose the reference selection and compare the whole
-project with `internal/compose/testdata/golden/`. They also compose, for every
-component, the first supported selection that contains it, and compare the
-files that component contributes with
-`internal/compose/testdata/golden-components/<kind>/<name>/`. A new component
-needs its golden files, and an intended output change needs them refreshed.
-Regenerate them and review the diff:
+The golden tests compose the reference selection of each architecture and
+compare the whole project with `internal/compose/testdata/golden/` (`mvc`)
+and `internal/compose/testdata/golden-vertical-slice/` (`vertical-slice`).
+They also compose, for every component, the first supported selection that
+contains it, and compare the files that component contributes with
+`internal/compose/testdata/golden-components/<kind>/<name>/`. Another test
+checks that every framework's files are the same under both architectures
+apart from package names and import paths. A new component needs its golden
+files, and an intended output change needs them refreshed. Regenerate them
+and review the diff:
 
 ```sh
 go test ./internal/compose -run TestGolden -update

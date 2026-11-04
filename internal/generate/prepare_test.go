@@ -18,6 +18,10 @@ func shippedCatalog(t *testing.T) *catalog.Catalog {
 	return cat
 }
 
+// reference selects the components of the reference selection whose kinds
+// have several options; the other kinds are left to automatic selection.
+var reference = map[catalog.Kind]string{catalog.KindArchitecture: "mvc", catalog.KindFramework: "nethttp"}
+
 func TestPrepare(t *testing.T) {
 	t.Parallel()
 
@@ -39,15 +43,15 @@ func TestPrepare(t *testing.T) {
 		},
 		{
 			// Spec: Module path defaults to the project name, and
-			// Automatic selection of the only option.
+			// Single option is chosen automatically.
 			name:       "defaults",
-			spec:       Spec{Name: "shop", Components: map[catalog.Kind]string{catalog.KindFramework: "nethttp"}},
+			spec:       Spec{Name: "shop", Components: reference},
 			wantModule: "shop",
 			wantGo:     "1.27",
 		},
 		{
 			name:       "version overrides",
-			spec:       Spec{Name: "my-app", Components: map[catalog.Kind]string{catalog.KindFramework: "nethttp"}, Go: "1.26", Pins: map[string]string{"modernc.org/sqlite": "v1.61.0"}},
+			spec:       Spec{Name: "my-app", Components: reference, Go: "1.26", Pins: map[string]string{"modernc.org/sqlite": "v1.61.0"}},
 			wantModule: "my-app",
 			wantGo:     "1.26",
 		},
@@ -152,7 +156,7 @@ func TestPrepareErrors(t *testing.T) {
 func TestSelectionErrorAs(t *testing.T) {
 	t.Parallel()
 
-	_, err := Prepare(shippedCatalog(t), Spec{Name: "shop", Components: map[catalog.Kind]string{catalog.KindFramework: "nethttp", catalog.KindDatabase: "postgres"}})
+	_, err := Prepare(shippedCatalog(t), Spec{Name: "shop", Components: map[catalog.Kind]string{catalog.KindArchitecture: "mvc", catalog.KindFramework: "nethttp", catalog.KindDatabase: "postgres"}})
 	var se *SelectionError
 	if !errors.As(err, &se) {
 		t.Fatalf("Prepare() error = %v, want a *SelectionError", err)
@@ -189,7 +193,7 @@ func TestPrepareRejectsWindowsReservedNames(t *testing.T) {
 		}
 	}
 	for _, name := range []string{"console", "com0", "com10", "lpt", "auxiliary", "nul-app"} {
-		if _, err := Prepare(cat, Spec{Name: name, Components: map[catalog.Kind]string{catalog.KindFramework: "nethttp"}}); err != nil {
+		if _, err := Prepare(cat, Spec{Name: name, Components: reference}); err != nil {
 			t.Errorf("Prepare(%q) error = %v, want nil", name, err)
 		}
 	}

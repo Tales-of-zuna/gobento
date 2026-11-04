@@ -252,11 +252,22 @@ export interface TreeLine {
 /**
  * Files and folders each component adds to the generated project, by
  * component id. Illustrative: the generator owns the real layout, and a
- * component missing here simply adds nothing to the preview.
+ * component missing here simply adds nothing to the preview. The database
+ * package sits where the architecture puts it, so it is listed there.
  */
 const COMPONENT_FILES: Readonly<Record<string, readonly string[]>> = {
-  'architecture/mvc': ['internal/models/', 'internal/controllers/', 'internal/store/'],
-  'database/sqlite': ['internal/database/'],
+  'architecture/mvc': [
+    'internal/models/',
+    'internal/controllers/',
+    'internal/store/',
+    'internal/database/',
+  ],
+  'architecture/vertical-slice': [
+    'internal/items/',
+    'internal/items/itemshttp/',
+    'internal/items/itemsstore/',
+    'internal/platform/database/',
+  ],
   'data/sqlc': ['sqlc.yaml'],
 };
 

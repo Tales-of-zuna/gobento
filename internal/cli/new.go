@@ -52,10 +52,9 @@ func newNewCommand(a *app) *cobra.Command {
 
 A component kind with a single supported option is selected automatically;
 for a kind with several, choose one with its flag. Versions default to
-gobento's compatibility rules.
-All input is checked before anything is written, and every problem is
-reported at once. If generation fails or is interrupted, nothing is left
-behind.
+gobento's compatibility rules. All input is checked before anything is
+written, and every problem is reported at once. If generation fails or is
+interrupted, nothing is left behind.
 
 In a terminal, gobento asks for what is missing: the name (and then the module
 path) when <name> is omitted, and each component kind with several options
@@ -65,23 +64,26 @@ options needs its flag. Set ACCESSIBLE=1 for plain-text questions.
 
 Generation runs the go command (go get and go mod tidy), so it needs Go and
 access to the Go module proxy. --dry-run needs neither.`,
-		Example: `  # Create ./shop with the chi router and the default components and versions
-  gobento new shop --framework chi
+		Example: `  # Create ./shop with mvc, the chi router, and the default components and versions
+  gobento new shop --arch mvc --framework chi
+
+  # Organize the code by feature instead of by layer
+  gobento new shop --arch vertical-slice --framework nethttp
 
   # Choose every component and the module path explicitly
   gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
 
   # Choose versions within the supported ranges
-  gobento new shop --framework nethttp --go 1.26 --pin modernc.org/sqlite=v1.61.0
+  gobento new shop --arch mvc --framework nethttp --go 1.26 --pin modernc.org/sqlite=v1.61.0
 
   # Fill the current, empty directory
-  gobento new shop --framework nethttp --dir .
+  gobento new shop --arch mvc --framework nethttp --dir .
 
   # Show the files that would be created, without writing anything
-  gobento new shop --framework gin --dry-run
+  gobento new shop --arch mvc --framework gin --dry-run
 
   # Never ask a question, even in a terminal (as in scripts)
-  gobento new shop --framework nethttp --no-input`,
+  gobento new shop --arch mvc --framework nethttp --no-input`,
 		Args: func(_ *cobra.Command, args []string) error {
 			if len(args) > 1 {
 				return nameArgError(len(args))
@@ -95,7 +97,7 @@ access to the Go module proxy. --dry-run needs neither.`,
 
 	fl := cmd.Flags()
 	fl.StringVar(&f.module, "module", "", "Go module path, for example example.com/shop (default: the project name)")
-	fl.StringVar(&f.arch, "arch", "", "architecture, for example mvc (default: the only supported one)")
+	fl.StringVar(&f.arch, "arch", "", "architecture, for example mvc or vertical-slice (default: the only supported one)")
 	fl.StringVar(&f.framework, "framework", "", "HTTP framework, for example chi, gin, or nethttp (default: the only supported one)")
 	fl.StringVar(&f.db, "db", "", "database, for example sqlite (default: the only supported one)")
 	fl.StringVar(&f.data, "data", "", "data-access library, for example sqlc (default: the only supported one)")

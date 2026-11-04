@@ -14,6 +14,7 @@ describe('beltPlates', () => {
     const plates = beltPlates(catalogWith());
     expect(plates.filter((p) => p.status === 'ready').map((p) => p.name)).toEqual([
       'MVC',
+      'VS',
       'net/http',
       'SQLite',
       'sqlc',

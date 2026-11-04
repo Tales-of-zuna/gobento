@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"flag"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/Tales-of-zuna/gobento/components"
@@ -14,24 +17,33 @@ import (
 	"github.com/Tales-of-zuna/gobento/internal/compat"
 )
 
-var update = flag.Bool("update", false, "rewrite testdata/golden from the current templates")
+var update = flag.Bool("update", false, "rewrite testdata/golden* from the current templates")
 
-// goldenDir holds the expected plan for the reference selection, and
-// goldenComponentsDir the files each component contributes, in
+// goldens maps each full-project golden directory to the reference selection
+// it holds: one per architecture, with the same framework, database, and
+// data access.
+var goldens = []struct {
+	dir string
+	sel [4]string // architecture, framework, database, data
+}{
+	{dir: "testdata/golden", sel: [4]string{"mvc", "nethttp", "sqlite", "sqlc"}},
+	{dir: "testdata/golden-vertical-slice", sel: [4]string{"vertical-slice", "nethttp", "sqlite", "sqlc"}},
+}
+
+// goldenComponentsDir holds the files each component contributes, in
 // <kind>/<name>/ subdirectories.
-const (
-	goldenDir           = "testdata/golden"
-	goldenComponentsDir = "testdata/golden-components"
-)
+const goldenComponentsDir = "testdata/golden-components"
 
-// TestGolden composes the reference selection mvc/nethttp/sqlite/sqlc from
-// the shipped catalog with default versions and compares every planned file
-// with testdata/golden. Run go test ./internal/compose -run TestGolden
+// TestGolden composes the reference selection of each architecture from the
+// shipped catalog with default versions and compares every planned file with
+// its golden directory. Run go test ./internal/compose -run TestGolden
 // -update to accept intended changes, and review the diff.
 func TestGolden(t *testing.T) {
-	cat := shippedCatalog(t)
-	plan := planFor(t, cat, pick(t, cat, "mvc", "nethttp", "sqlite", "sqlc"))
-	checkGolden(t, goldenDir, plan.Files)
+	for _, g := range goldens {
+		t.Run(g.sel[0], func(t *testing.T) {
+			checkGolden(t, g.dir, referencePlan(t, g.sel).Files)
+		})
+	}
 }
 
 // TestGoldenComponents composes, for every shipped component, the first
@@ -48,7 +60,7 @@ func TestGoldenComponents(t *testing.T) {
 			ids = append(ids, c.ID())
 			t.Run(c.ID(), func(t *testing.T) {
 				i := slices.IndexFunc(supported, func(sel catalog.Selection) bool {
-					return slices.Contains(sel.Components(), c)
+					return slices.ContainsFunc(sel.Components(), func(s *catalog.Component) bool { return s.ID() == c.ID() })
 				})
 				if i < 0 {
 					t.Fatalf("%s is in no supported selection", c.ID())
@@ -87,7 +99,7 @@ func TestGoldenComponents(t *testing.T) {
 	}
 }
 
-// checkGolden compares files with the golden directory dir, or rewrites
+// checkGolden compares files with the golden directory dir, after rewriting
 // dir from files with -update.
 func checkGolden(t *testing.T, dir string, files []File) {
 	t.Helper()
@@ -147,6 +159,14 @@ func shippedCatalog(t *testing.T) *catalog.Catalog {
 	return cat
 }
 
+// referencePlan composes the named selection of the shipped catalog for the
+// example project shop, with default versions.
+func referencePlan(t *testing.T, names [4]string) *Plan {
+	t.Helper()
+	cat := shippedCatalog(t)
+	return planFor(t, cat, pick(t, cat, names[0], names[1], names[2], names[3]))
+}
+
 // planFor composes sel with default versions for the example project shop.
 func planFor(t *testing.T, cat *catalog.Catalog, sel catalog.Selection) *Plan {
 	t.Helper()
@@ -173,6 +193,68 @@ func planFor(t *testing.T, cat *catalog.Catalog, sel catalog.Selection) *Plan {
 	return plan
 }
 
+// TestShippedFrameworksAreLayoutIndependent covers the spec scenario
+// "Shipped components are reused unchanged": for every framework, each file
+// generated for vertical-slice equals the one generated for mvc once the slot
+// directories, package names, and import paths of mvc are replaced by
+// vertical-slice's.
+func TestShippedFrameworksAreLayoutIndependent(t *testing.T) {
+	t.Parallel()
+
+	cat := shippedCatalog(t)
+	for _, fw := range cat.Components(catalog.KindFramework) {
+		t.Run(fw.Name, func(t *testing.T) {
+			t.Parallel()
+
+			mvc := referencePlan(t, [4]string{"mvc", fw.Name, "sqlite", "sqlc"})
+			vslice := referencePlan(t, [4]string{"vertical-slice", fw.Name, "sqlite", "sqlc"})
+			// Swap import paths and directories verbatim, and package names
+			// only where Go code or a doc comment names the package.
+			var pairs []string
+			type rename struct {
+				re *regexp.Regexp
+				to string
+			}
+			var renames []rename
+			for _, name := range slices.Sorted(maps.Keys(mvc.Slots)) {
+				from, to := mvc.Slots[name], vslice.Slots[name]
+				pairs = append(pairs, from.Import, to.Import, from.Dir+"/", to.Dir+"/")
+				renames = append(renames,
+					rename{regexp.MustCompile(`\b` + from.Package + `\.`), to.Package + "."},
+					rename{regexp.MustCompile(`\b([Pp]ackage) ` + from.Package + `\b`), "$1 " + to.Package})
+			}
+			paths := strings.NewReplacer(pairs...)
+			swap := func(s string) string {
+				s = paths.Replace(s)
+				for _, r := range renames {
+					s = r.re.ReplaceAllString(s, r.to)
+				}
+				return s
+			}
+
+			var compared int
+			for _, f := range mvc.Files {
+				if f.Component != fw.ID() {
+					continue
+				}
+				want := swap(string(f.Content))
+				got, ok := vslice.File(paths.Replace(f.Path))
+				if !ok {
+					t.Errorf("vertical-slice plan has no counterpart of %s", f.Path)
+					continue
+				}
+				compared++
+				if string(got.Content) != want {
+					t.Errorf("%s differs from mvc's %s beyond slot names", got.Path, f.Path)
+				}
+			}
+			if compared == 0 {
+				t.Fatal("no framework files compared")
+			}
+		})
+	}
+}
+
 // TestShippedCatalogSupported lists the selections the shipped catalog
 // supports.
 func TestShippedCatalogSupported(t *testing.T) {
@@ -182,7 +264,10 @@ func TestShippedCatalogSupported(t *testing.T) {
 	for _, s := range Supported(shippedCatalog(t)) {
 		got = append(got, s.String())
 	}
-	want := []string{"mvc/chi/sqlite/sqlc", "mvc/gin/sqlite/sqlc", "mvc/nethttp/sqlite/sqlc"}
+	want := []string{
+		"mvc/chi/sqlite/sqlc", "mvc/gin/sqlite/sqlc", "mvc/nethttp/sqlite/sqlc",
+		"vertical-slice/chi/sqlite/sqlc", "vertical-slice/gin/sqlite/sqlc", "vertical-slice/nethttp/sqlite/sqlc",
+	}
 	if !slices.Equal(got, want) {
 		t.Errorf("Supported() = %v, want %v", got, want)
 	}
