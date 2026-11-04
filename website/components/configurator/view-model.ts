@@ -283,8 +283,12 @@ export interface CellView {
   readonly piece: string;
 }
 
-/** The tray compartments, one per kind; an optional kind left at none stays empty. */
-export function trayCells(catalog: Catalog, state: Selection): CellView[] {
+/**
+ * The tray compartments, one per kind; an optional kind left at none stays
+ * empty. Only the chosen components matter, so the configurator can keep the
+ * tray (and the 3D scene it feeds) unchanged while the visitor types.
+ */
+export function trayCells(catalog: Catalog, state: Pick<Selection, 'components'>): CellView[] {
   return KIND_IDS.map((kind) => {
     const name = state.components[kind];
     const component = catalog.components.find((c) => c.kind === kind && c.name === name);

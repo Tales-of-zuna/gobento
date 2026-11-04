@@ -3,6 +3,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { catalogWith, moduleOf } from '@/lib/test/catalog';
 import { Configurator } from './Configurator';
 
+// The mascot stands in for the 3D scene: counting its renders shows whether
+// an edit reaches the scene.
+const mascotRenders = vi.hoisted(() => ({ count: 0 }));
+vi.mock('@/components/mascot/MascotHero', () => ({
+  MascotHero: () => {
+    mascotRenders.count++;
+    return null;
+  },
+}));
+
 beforeEach(() => {
   window.history.replaceState(null, '', '/configurator/');
   vi.stubGlobal(
@@ -110,5 +120,19 @@ describe('Configurator', () => {
     unmount();
     render(<Configurator catalog={catalogWith()} released />);
     expect(screen.queryByText('Early development · not released yet')).toBeNull();
+  });
+
+  it('leaves the packing stage and its 3D scene alone while the visitor types', () => {
+    render(<Configurator catalog={catalogWith()} />);
+    fireEvent.click(screen.getByRole('radio', { name: 'Model-View-Controller' }));
+    const before = mascotRenders.count;
+    fireEvent.change(screen.getByLabelText('Project name'), { target: { value: 'shop' } });
+    fireEvent.change(screen.getByLabelText('Module path'), {
+      target: { value: 'example.com/shop' },
+    });
+    expect(mascotRenders.count).toBe(before);
+    fireEvent.click(screen.getByRole('radio', { name: 'sqlc' }));
+    expect(mascotRenders.count).toBeGreaterThan(before);
+    expect(command()).toHaveTextContent(/^gobento new shop --module example\.com\/shop/);
   });
 });

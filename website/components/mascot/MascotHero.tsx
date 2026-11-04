@@ -4,7 +4,10 @@
  * HTML from the start (sized, so nothing shifts); the 3D scene is downloaded
  * once the visitor first interacts with the page and cross-fades in once its
  * first frame is drawn. The still stays when WebGL is missing, the scene
- * fails, reduced motion is on, or nobody interacts.
+ * fails, reduced motion is on, or nobody interacts. The scene holds its
+ * static pose, drawing only when something changes, under reduced motion and
+ * when a software rasterizer draws WebGL: there, every animated frame blocks
+ * the page's main thread (and so its input) until it is drawn.
  */
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
@@ -42,7 +45,8 @@ export function MascotHero({
   onSceneChange,
 }: MascotHeroProps) {
   const reducedMotion = useReducedMotion();
-  const webgl = useWebGLSupport();
+  const support = useWebGLSupport();
+  const webgl = support === null ? null : support !== 'none';
   const interacted = useHasInteracted();
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -85,7 +89,7 @@ export function MascotHero({
         >
           <MascotErrorBoundary onError={fail}>
             <MascotScene
-              animate={!reducedMotion}
+              animate={!reducedMotion && support === 'hardware'}
               packed={packed}
               onReady={() => setReady(true)}
               onError={fail}

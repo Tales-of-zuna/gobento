@@ -98,6 +98,9 @@ lid behind it as a backrest and four food compartments beside it, in sora blue.
   shading and outlines.
 - Rendered stills are the fallback for reduced motion, missing WebGL, and the
   loading state.
+- On software-rendered WebGL (SwiftShader, llvmpipe, and similar) the scene
+  holds its static pose and draws only when it changes: there, every animated
+  frame blocks the page's input until it is drawn.
 - A head-only render is used at small sizes: the favicon and avatar.
 - Its four compartments are the configurator's packing animation (`packed`).
 

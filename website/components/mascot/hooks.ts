@@ -9,7 +9,12 @@ import {
   type RefObject,
 } from 'react';
 import { clamp, type LookTarget } from './math';
-import { prefersReducedMotion, REDUCED_MOTION_QUERY, supportsWebGL } from './support';
+import {
+  prefersReducedMotion,
+  probeWebGL,
+  REDUCED_MOTION_QUERY,
+  type WebGLSupport,
+} from './support';
 
 const noSubscription = () => () => {};
 
@@ -26,13 +31,16 @@ export function useReducedMotion(): boolean | null {
   );
 }
 
-let webglProbe: boolean | undefined;
+let webglProbe: WebGLSupport | undefined;
 
-/** Whether WebGL works here, probed once per page load; null during the server render. */
-export function useWebGLSupport(): boolean | null {
+/**
+ * Whether WebGL works here and whether a GPU or a software rasterizer draws
+ * it, probed once per page load; null during the server render.
+ */
+export function useWebGLSupport(): WebGLSupport | null {
   return useSyncExternalStore(
     noSubscription,
-    () => (webglProbe ??= supportsWebGL(() => document.createElement('canvas'))),
+    () => (webglProbe ??= probeWebGL(() => document.createElement('canvas'))),
     () => null,
   );
 }
