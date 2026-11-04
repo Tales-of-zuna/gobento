@@ -1,0 +1,128 @@
+{
+  "go": {
+    "range": ">=1.26 <1.28",
+    "default": "1.27"
+  },
+  "modules": [
+    {
+      "path": "github.com/gin-gonic/gin",
+      "components": [
+        "framework/gin"
+      ],
+      "traits": {},
+      "role": "library",
+      "range": ">=v1.11.0 <v2.0.0",
+      "default": "v1.12.0",
+      "constraints": []
+    },
+    {
+      "path": "github.com/go-chi/chi/v5",
+      "components": [
+        "framework/chi"
+      ],
+      "traits": {},
+      "role": "library",
+      "range": ">=v5.3.0 <v6.0.0",
+      "default": "v5.5.0",
+      "constraints": []
+    },
+    {
+      "path": "github.com/jackc/pgx/v5",
+      "components": [
+        "database/postgres"
+      ],
+      "traits": {},
+      "role": "library",
+      "range": ">=v5.12.0 <v6.0.0",
+      "default": "v5.12.0",
+      "constraints": []
+    },
+    {
+      "path": "github.com/libtnb/sqlite",
+      "components": [
+        "data/gorm"
+      ],
+      "traits": {
+        "sql-dialect": [
+          "sqlite"
+        ]
+      },
+      "role": "library",
+      "range": ">=v1.1.0 <v2.0.0",
+      "default": "v1.2.2",
+      "constraints": [
+        {
+          "when": ">=v1.2.0",
+          "requires": {
+            "target": "gorm.io/gorm",
+            "range": ">=v1.31.2"
+          }
+        }
+      ]
+    },
+    {
+      "path": "github.com/sqlc-dev/sqlc",
+      "components": [
+        "data/sqlc"
+      ],
+      "traits": {},
+      "role": "tool",
+      "range": "=v1.31.1",
+      "default": "v1.31.1",
+      "constraints": []
+    },
+    {
+      "path": "gorm.io/driver/postgres",
+      "components": [
+        "data/gorm"
+      ],
+      "traits": {
+        "sql-dialect": [
+          "postgresql"
+        ]
+      },
+      "role": "library",
+      "range": ">=v1.6.1 <v2.0.0",
+      "default": "v1.6.3",
+      "constraints": [
+        {
+          "when": ">=v1.6.2",
+          "requires": {
+            "target": "gorm.io/gorm",
+            "range": ">=v1.31.2"
+          }
+        }
+      ]
+    },
+    {
+      "path": "gorm.io/gorm",
+      "components": [
+        "data/gorm"
+      ],
+      "traits": {},
+      "role": "library",
+      "range": ">=v1.31.1 <v2.0.0",
+      "default": "v1.31.2",
+      "constraints": []
+    },
+    {
+      "path": "modernc.org/sqlite",
+      "components": [
+        "database/sqlite"
+      ],
+      "traits": {},
+      "role": "library",
+      "range": ">=v1.61.0 <v2.0.0",
+      "default": "v1.61.1",
+      "constraints": [
+        {
+          "when": ">=v1.61.0",
+          "requires": {
+            "target": "go",
+            "range": ">=1.26"
+          }
+        }
+      ]
+    }
+  ]
+}

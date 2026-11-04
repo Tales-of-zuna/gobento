@@ -1,0 +1,37 @@
+{
+  "kinds": [
+    {
+      "id": "database",
+      "title": "Database",
+      "description": "Where the project stores its data."
+    }
+  ],
+  "components": [
+    {
+      "id": "database/postgres",
+      "kind": "database",
+      "name": "postgres",
+      "title": "PostgreSQL",
+      "description": "PostgreSQL through pgx, a pure-Go driver, used with database/sql.",
+      "provides": {
+        "conn": "database/sql",
+        "sql-dialect": "postgresql",
+        "sql-schema": "schema.sql"
+      },
+      "requires": {}
+    },
+    {
+      "id": "database/sqlite",
+      "kind": "database",
+      "name": "sqlite",
+      "title": "SQLite",
+      "description": "SQLite through modernc.org/sqlite, a pure-Go driver that needs no cgo.",
+      "provides": {
+        "conn": "database/sql",
+        "sql-dialect": "sqlite",
+        "sql-schema": "schema.sql"
+      },
+      "requires": {}
+    }
+  ]
+}

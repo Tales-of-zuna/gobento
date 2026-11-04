@@ -1,9 +1,10 @@
 /**
  * Schema of `src/generated/catalog.json`, the component catalog and version
  * rules the CLI uses, exported for the website (design D3) by
- * `internal/tools/catalogexport` (`make catalog`). The exporter's Go types
- * mirror this schema; this schema is the contract between the two, and both
- * change together.
+ * `internal/tools/catalogexport` (`make catalog`). The Go types in
+ * `internal/catalogjson` mirror this schema; `gobento list --json` prints the
+ * same document. This schema is the contract between them, and both change
+ * together.
  */
 import { z } from 'zod';
 import { KIND_IDS } from './kinds';

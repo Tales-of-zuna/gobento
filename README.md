@@ -112,6 +112,17 @@ gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --no-inp
 gobento new --help
 ```
 
+See what your gobento binary supports, from the catalog built into it: the
+components of each kind, the supported selections, and the Go and module
+versions. Add `--json` for scripts.
+
+```sh
+gobento list                              # everything
+gobento list components --kind framework  # one kind, with descriptions and traits
+gobento list selections --data gorm       # the supported selections that use GORM
+gobento list versions --json              # version ranges and defaults as JSON
+```
+
 Generation runs `go get` and `go mod tidy`, so it needs access to the Go module
 proxy. gobento checks every input before writing anything, refuses non-empty
 directories, and removes everything it created if a step fails or you press
