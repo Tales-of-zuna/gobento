@@ -216,7 +216,8 @@ from the database's embedded schema (no `AutoMigrate`). Both stacks build
 without cgo.
 
 With `--frontend htmx`, the project also serves web pages: `internal/views/`
-(`internal/web/` with `vertical-slice`) holds [templ](https://templ.guide)
+(`internal/web/` with `vertical-slice`, `internal/adapters/web/` with `ddd`)
+holds [templ](https://templ.guide)
 components with their generated Go code, so no templ command is needed to
 build, and [htmx](https://htmx.org) 2 vendored as a static file embedded in
 the binary, so the pages work offline. The page lists the items and adds one

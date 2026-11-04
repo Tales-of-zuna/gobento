@@ -21,6 +21,7 @@ import (
 	"example.com/shop/internal/adapters/httpapi"
 	"example.com/shop/internal/adapters/persistence"
 	"example.com/shop/internal/app"
+	"example.com/shop/internal/domain"
 )
 
 func main() {
@@ -50,7 +51,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              ":" + getenv("PORT", "8080"),
-		Handler:           httpapi.NewRouter(app.NewItemService(persistence.New(db))),
+		Handler:           newHandler(app.NewItemService(persistence.New(db))),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,
@@ -83,6 +84,13 @@ func run() error {
 		return err
 	}
 	return nil
+}
+
+// newHandler returns the application's HTTP handler: the API router, which
+// reaches service, the application service, only through the
+// domain.ItemStore port.
+func newHandler(service domain.ItemStore) http.Handler {
+	return httpapi.NewRouter(service)
 }
 
 // getenv returns the value of the environment variable key, or fallback if

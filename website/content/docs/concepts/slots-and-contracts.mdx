@@ -72,6 +72,7 @@ slots:
   handlers: { dir: internal/adapters/httpapi, filled_by: framework, required: true }
   database: { dir: internal/adapters/database, filled_by: database, required: true }
   store: { dir: internal/adapters/persistence, filled_by: data, required: true }
+  web: { dir: internal/adapters/web, filled_by: frontend }
 ```
 
 | Slot       | `mvc`                  | `vertical-slice`             | `ddd`                           |
@@ -82,7 +83,7 @@ slots:
 | `handlers` | `internal/controllers` | `internal/items/itemshttp`   | `internal/adapters/httpapi`     |
 | `database` | `internal/database`    | `internal/platform/database` | `internal/adapters/database`    |
 | `store`    | `internal/store`       | `internal/items/itemsstore`  | `internal/adapters/persistence` |
-| `web`      | `internal/views`       | `internal/web`               | —                               |
+| `web`      | `internal/views`       | `internal/web`               | `internal/adapters/web`         |
 
 `nethttp`, `sqlite`, and `sqlc` are the same components under all three: with
 `vertical-slice`, the handlers are in package `itemshttp` and import
@@ -181,6 +182,11 @@ func newHandler(itemStore models.ItemStore) http.Handler {
 	return mux
 }
 ```
+
+In `ddd`, `newHandler` takes the application service instead of the store,
+`newHandler(app.NewItemService(persistence.New(db)))`, and gives it to both
+`httpapi.NewRouter` and `web.NewHandler` through the `domain.ItemStore` port,
+so the web adapter, like every adapter, never imports `app`.
 
 The API router itself is unchanged: `GET /api/items` reaches its
 `GET /items`, with the same status codes and bodies, and the framework's

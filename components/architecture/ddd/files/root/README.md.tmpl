@@ -10,11 +10,16 @@ go run ./{{.Slots.entry.Dir}}
 
 The server listens on port 8080; set `PORT` to change it. It connects to the
 database named by `DATABASE_URL`, as described in [Database](#database).
+{{- if .Slots.web.Filled}}
+
+Open <http://localhost:8080/> in a browser for the web pages. The HTTP API is
+served under `{{.APIPrefix}}`:
+{{- end}}
 
 ```sh
-curl localhost:8080/health
-curl -X POST localhost:8080/items -d '{"name":"first"}'
-curl localhost:8080/items
+curl localhost:8080{{.APIPrefix}}/health
+curl -X POST localhost:8080{{.APIPrefix}}/items -d '{"name":"first"}'
+curl localhost:8080{{.APIPrefix}}/items
 ```
 
 ## Test
@@ -37,15 +42,20 @@ every piece of input and output is an adapter around them.
 | `{{.Slots.handlers.Dir}}` | HTTP adapter: the router, the items handlers, and `/health` |
 | `{{.Slots.store.Dir}}` | Persistence adapter: data access, implementing `ItemStore` |
 | `{{.Slots.database.Dir}}` | Database adapter: connection and schema, used by the persistence adapter |
+{{- if .Slots.web.Filled}}
+| `{{.Slots.web.Dir}}` | Web adapter: the web pages and their static files, served at `/` |
+{{- end}}
 
 Dependencies point inward: the adapters and `{{.Slots.app.Package}}` import
 `{{.Slots.models.Package}}` and use or implement its ports, the adapters never
 import `{{.Slots.app.Package}}`, and `{{.Slots.models.Package}}`
 imports no other package of the project. Only `{{.Slots.entry.Dir}}` knows
-every package and connects them: the HTTP adapter gets the application
+every package and connects them: the HTTP adapter
+{{- if .Slots.web.Filled}} and the web adapter get{{else}} gets{{end}} the application
 service, which stores items through the persistence adapter.
 
-The HTTP adapter depends only on the `{{.Slots.models.Package}}.ItemStore`
+The HTTP adapter
+{{- if .Slots.web.Filled}} and the web adapter depend{{else}} depends{{end}} only on the `{{.Slots.models.Package}}.ItemStore`
 port, which the application service implements. When the use cases grow
 beyond storing and listing, give the handlers an interface of their own with
 the service's methods. The handlers encode `{{.Slots.models.Package}}.Item`
@@ -65,4 +75,4 @@ To add, for example, orders next to items:
    store, and add its tables to the schema in `{{.Slots.database.Dir}}`.
 4. Add the order handlers to `{{.Slots.handlers.Dir}}` and their routes to
    `NewRouter`, and in `{{.Slots.entry.Dir}}/main.go` create the store and the
-   service and pass the service to the router.
+   service and pass the service to `newHandler`, which gives it to the router.

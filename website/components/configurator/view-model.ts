@@ -352,6 +352,7 @@ const COMPONENT_FILES: Readonly<Record<string, readonly string[]>> = {
  * frontend's files are previewed in the right place.
  */
 const WEB_DIRS: Readonly<Record<string, string>> = {
+  'architecture/ddd': 'internal/adapters/web/',
   'architecture/mvc': 'internal/views/',
   'architecture/vertical-slice': 'internal/web/',
 };

@@ -292,4 +292,25 @@ describe('optional frontend (spec: Frontend is optional)', () => {
     );
     expect(lines(mvc).some((l) => l.startsWith('views/'))).toBe(false);
   });
+
+  it('previews the pages in the web adapter for ddd', () => {
+    // The frozen fixture predates ddd, so add it the way catalog.json lists it.
+    const withDDD = catalogWith((data) => {
+      data.components.unshift({
+        id: 'architecture/ddd',
+        kind: 'architecture',
+        name: 'ddd',
+        title: 'Domain-driven design',
+        description: 'A domain package, an application service, and adapters.',
+        provides: {},
+        requires: {},
+      });
+    });
+    const lines = fileTree(withDDD, htmx(withArch('ddd')), true).flatMap((l) =>
+      l.depth === 2 ? [l.label] : [],
+    );
+    expect(lines).toEqual(
+      expect.arrayContaining(['adapters/web/', 'adapters/web/pages.templ', 'adapters/web/static/']),
+    );
+  });
 });

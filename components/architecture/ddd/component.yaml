@@ -8,3 +8,4 @@ slots:
   handlers: { dir: internal/adapters/httpapi,       filled_by: framework, required: true }
   database: { dir: internal/adapters/database,      filled_by: database,  required: true }
   store:    { dir: internal/adapters/persistence,   filled_by: data,      required: true }
+  web:      { dir: internal/adapters/web,           filled_by: frontend }

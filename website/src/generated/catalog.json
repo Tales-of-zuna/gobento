@@ -318,13 +318,40 @@
     },
     {
       "architecture": "ddd",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
       "data": "sqlc",
       "database": "postgres",
       "framework": "chi"
     },
     {
       "architecture": "ddd",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
       "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
       "database": "sqlite",
       "framework": "chi"
     },
@@ -332,7 +359,8 @@
       "architecture": "ddd",
       "data": "sqlc",
       "database": "sqlite",
-      "framework": "chi"
+      "framework": "chi",
+      "frontend": "htmx"
     },
     {
       "architecture": "ddd",
@@ -342,9 +370,23 @@
     },
     {
       "architecture": "ddd",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
       "data": "sqlc",
       "database": "postgres",
       "framework": "gin"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "htmx"
     },
     {
       "architecture": "ddd",
@@ -354,15 +396,36 @@
     },
     {
       "architecture": "ddd",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
       "data": "sqlc",
       "database": "sqlite",
       "framework": "gin"
     },
     {
       "architecture": "ddd",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
       "data": "gorm",
       "database": "postgres",
       "framework": "nethttp"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "htmx"
     },
     {
       "architecture": "ddd",
@@ -372,7 +435,27 @@
     },
     {
       "architecture": "ddd",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
       "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
       "database": "sqlite",
       "framework": "nethttp"
     },
@@ -380,7 +463,8 @@
       "architecture": "ddd",
       "data": "sqlc",
       "database": "sqlite",
-      "framework": "nethttp"
+      "framework": "nethttp",
+      "frontend": "htmx"
     },
     {
       "architecture": "mvc",

@@ -526,7 +526,7 @@ must not contain `{{`; the checksum test fails otherwise.
 
 A frontend fills the `web` slot, so an architecture supports frontends by
 declaring that slot and wiring it. Without these steps, selections with a
-frontend are simply not supported with it. Both shipped architectures do the
+frontend are simply not supported with it. Every shipped architecture does the
 following; copy them:
 
 1. **Declare the slot.** Add an optional slot filled by the frontend kind,
@@ -539,11 +539,15 @@ following; copy them:
    `{{.APIPrefix}}/` to
    `http.StripPrefix("{{.APIPrefix}}", handlers.NewRouter(itemStore))` and
    `/` to `web.NewHandler(itemStore)`; without one, `NewRouter(itemStore)`.
-   Import the web package only inside the same condition.
+   Import the web package only inside the same condition. With an
+   application layer, as in `ddd`, pass the application service instead
+   (`newHandler(app.NewItemService(store.New(db)))`), so that the web pages
+   go through the same use cases as the API.
 3. **Ship the routing test.** Add `files/entry/main_test.go.tmpl`, which calls
    `newHandler` with an in-memory `ItemStore` and checks
    `{{.APIPrefix}}/health` and `{{.APIPrefix}}/items`, plus `/` returning HTML
-   when the slot is filled. Copy it from `mvc`.
+   when the slot is filled. Copy it from `mvc` (or from `ddd`, which runs it
+   through the application service).
 4. **Document it.** In the README template, add the web directory to the
    layout when the slot is filled, tell the reader to open
    `http://localhost:8080/`, and write the `curl` paths as

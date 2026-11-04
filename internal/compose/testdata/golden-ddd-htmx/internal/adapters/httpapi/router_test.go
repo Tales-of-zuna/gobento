@@ -1,0 +1,138 @@
+package httpapi
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"mime"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"example.com/shop/internal/domain"
+)
+
+// fakeStore is an in-memory domain.ItemStore for tests.
+type fakeStore struct {
+	mu    sync.Mutex
+	items []domain.Item
+	err   error
+}
+
+func (s *fakeStore) List(context.Context) ([]domain.Item, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.items, s.err
+}
+
+func (s *fakeStore) Create(_ context.Context, name string) (domain.Item, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.err != nil {
+		return domain.Item{}, s.err
+	}
+	item := domain.Item{ID: int64(len(s.items) + 1), Name: name, CreatedAt: time.Now()}
+	s.items = append(s.items, item)
+	return item, nil
+}
+
+func serve(t *testing.T, h http.Handler, method, target, body string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(method, target, strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestHealth(t *testing.T) {
+	rec := serve(t, NewRouter(&fakeStore{}), http.MethodGet, "/health", "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /health status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	if mt, _, err := mime.ParseMediaType(rec.Header().Get("Content-Type")); err != nil || mt != "application/json" {
+		t.Errorf("Content-Type = %q, want application/json", rec.Header().Get("Content-Type"))
+	}
+}
+
+func TestItemsRoundTrip(t *testing.T) {
+	h := NewRouter(&fakeStore{})
+
+	rec := serve(t, h, http.MethodGet, "/items", "")
+	if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != "[]" {
+		t.Fatalf("GET /items on an empty store = %d %q, want 200 []", rec.Code, rec.Body)
+	}
+
+	rec = serve(t, h, http.MethodPost, "/items", `{"name":"first"}`)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("POST /items status = %d, want %d; body %s", rec.Code, http.StatusCreated, rec.Body)
+	}
+
+	rec = serve(t, h, http.MethodGet, "/items", "")
+	var got []domain.Item
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode GET /items: %v", err)
+	}
+	if len(got) != 1 || got[0].Name != "first" {
+		t.Errorf("GET /items = %+v, want one item named first", got)
+	}
+}
+
+func TestCreateItemErrors(t *testing.T) {
+	tests := []struct {
+		name  string
+		store *fakeStore
+		body  string
+		want  int
+	}{
+		{name: "invalid JSON", store: &fakeStore{}, body: `{`, want: http.StatusBadRequest},
+		{name: "unknown field", store: &fakeStore{}, body: `{"title":"x"}`, want: http.StatusBadRequest},
+		{name: "trailing data", store: &fakeStore{}, body: `{"name":"x"} {"name":"y"}`, want: http.StatusBadRequest},
+		{name: "too large", store: &fakeStore{}, body: `{"name":"` + strings.Repeat("a", maxBodyBytes) + `"}`, want: http.StatusRequestEntityTooLarge},
+		{name: "empty name", store: &fakeStore{}, body: `{"name":"  "}`, want: http.StatusBadRequest},
+		{name: "store fails", store: &fakeStore{err: errors.New("disk full")}, body: `{"name":"x"}`, want: http.StatusInternalServerError},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := serve(t, NewRouter(tt.store), http.MethodPost, "/items", tt.body)
+			if rec.Code != tt.want {
+				t.Errorf("POST /items status = %d, want %d; body %s", rec.Code, tt.want, rec.Body)
+			}
+			for _, internal := range []string{"disk full", "invalid character", "json:"} {
+				if strings.Contains(rec.Body.String(), internal) {
+					t.Errorf("response exposes an internal error: %s", rec.Body)
+				}
+			}
+		})
+	}
+}
+
+func TestListItemsStoreError(t *testing.T) {
+	rec := serve(t, NewRouter(&fakeStore{err: errors.New("boom")}), http.MethodGet, "/items", "")
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("GET /items status = %d, want %d", rec.Code, http.StatusInternalServerError)
+	}
+}
+
+func TestRouting(t *testing.T) {
+	tests := []struct {
+		method, target string
+		want           int
+	}{
+		{http.MethodHead, "/health", http.StatusOK},
+		{http.MethodHead, "/items", http.StatusOK},
+		{http.MethodDelete, "/items", http.StatusMethodNotAllowed},
+		{http.MethodGet, "/items/", http.StatusNotFound},
+		{http.MethodPost, "/items/", http.StatusNotFound},
+		{http.MethodGet, "/ITEMS", http.StatusNotFound},
+		{http.MethodGet, "/nowhere", http.StatusNotFound},
+	}
+	for _, tt := range tests {
+		rec := serve(t, NewRouter(&fakeStore{}), tt.method, tt.target, "")
+		if rec.Code != tt.want {
+			t.Errorf("%s %s status = %d, want %d", tt.method, tt.target, rec.Code, tt.want)
+		}
+	}
+}

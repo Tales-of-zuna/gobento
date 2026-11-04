@@ -21,9 +21,6 @@ func TestShippedFrontendLeavesFrameworkUntouched(t *testing.T) {
 	cat := shippedCatalog(t)
 	for _, ui := range cat.Components(catalog.KindFrontend) {
 		for _, arch := range cat.Components(catalog.KindArchitecture) {
-			if !slices.ContainsFunc(arch.Slots, func(s catalog.Slot) bool { return s.Name == "web" }) {
-				continue // ddd has no web slot yet
-			}
 			for _, fw := range cat.Components(catalog.KindFramework) {
 				names := [4]string{arch.Name, fw.Name, "sqlite", "sqlc"}
 				without, with := referencePlan(t, names), referencePlanWith(t, names, ui.Name)
@@ -46,13 +43,14 @@ func TestShippedFrontendLeavesFrameworkUntouched(t *testing.T) {
 	}
 }
 
-// TestShippedFrontendMount checks that both shipped architectures mount the
+// TestShippedFrontendMount checks that every shipped architecture mounts the
 // API under the API prefix and the web handler at the root when a frontend
-// is selected, and leave the web slot empty otherwise.
+// is selected, and leaves the web slot empty otherwise.
 func TestShippedFrontendMount(t *testing.T) {
 	t.Parallel()
 
-	for _, arch := range []string{"mvc", "vertical-slice"} {
+	for _, a := range shippedCatalog(t).Components(catalog.KindArchitecture) {
+		arch := a.Name
 		names := [4]string{arch, "nethttp", "sqlite", "sqlc"}
 		with := referencePlanWith(t, names, "htmx")
 		web := with.Slots["web"]
@@ -62,7 +60,7 @@ func TestShippedFrontendMount(t *testing.T) {
 		main, _ := with.File(with.Slots["entry"].Dir + "/main.go")
 		for _, want := range []string{
 			`mux.Handle("/api/", http.StripPrefix("/api", `,
-			`mux.Handle("/", ` + web.Package + `.NewHandler(itemStore))`,
+			`mux.Handle("/", ` + web.Package + `.NewHandler(`,
 			`"` + web.Import + `"`,
 		} {
 			if !strings.Contains(string(main.Content), want) {

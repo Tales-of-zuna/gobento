@@ -65,7 +65,7 @@ To add, for example, orders next to items:
    store, and add its tables to the schema in `internal/adapters/database`.
 4. Add the order handlers to `internal/adapters/httpapi` and their routes to
    `NewRouter`, and in `cmd/shop/main.go` create the store and the
-   service and pass the service to the router.
+   service and pass the service to `newHandler`, which gives it to the router.
 
 ## API
 
