@@ -1,0 +1,3 @@
+name: htmx
+title: htmx + templ
+description: Server-rendered pages written as templ components, made interactive with htmx, and served by the Go binary with no build step.

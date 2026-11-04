@@ -20,7 +20,7 @@ import (
 // errors.Is.
 var (
 	// ErrSelection reports a selection without exactly one component of
-	// each kind.
+	// each required kind, or with a component in the wrong field.
 	ErrSelection = errors.New("incomplete selection")
 	// ErrUnknownSlot reports templates for a slot the architecture does not
 	// declare.
@@ -60,6 +60,9 @@ type Input struct {
 	Selection catalog.Selection
 	// Versions maps module paths to the chosen versions.
 	Versions map[string]string
+	// Assets maps the names of the selected components' vendored assets
+	// to their versions.
+	Assets map[string]string
 }
 
 // Plan is the composed project: every file to write, in path order. It
@@ -147,9 +150,16 @@ func (c *composer) run() {
 		Slots:    make(map[string]SlotData),
 		Traits:   sel.Traits(),
 		Versions: c.in.Versions,
+		Assets:   c.in.Assets,
 	}
 	if c.data.Versions == nil {
 		c.data.Versions = map[string]string{}
+	}
+	if c.data.Assets == nil {
+		c.data.Assets = map[string]string{}
+	}
+	if sel.Frontend != nil {
+		c.data.APIPrefix = FrontendAPIPrefix
 	}
 	c.resolveSlots()
 	c.checkOwnership()
@@ -164,25 +174,17 @@ func (c *composer) run() {
 	c.appendNotes()
 }
 
-// checkSelection reports kinds without a component and components in the
-// wrong field.
+// checkSelection reports required kinds without a component and components
+// in the wrong field. An optional kind may have no component.
 func (c *composer) checkSelection() {
 	sel := c.in.Selection
-	fields := []struct {
-		kind catalog.Kind
-		comp *catalog.Component
-	}{
-		{catalog.KindArchitecture, sel.Architecture},
-		{catalog.KindFramework, sel.Framework},
-		{catalog.KindDatabase, sel.Database},
-		{catalog.KindData, sel.Data},
-	}
-	for _, f := range fields {
+	for _, kind := range catalog.Kinds() {
+		comp := sel.Component(kind)
 		switch {
-		case f.comp == nil:
-			c.fail("%w: no %s component selected", ErrSelection, f.kind)
-		case f.comp.Kind != f.kind:
-			c.fail("%w: %s is not a %s component", ErrSelection, f.comp.ID(), f.kind)
+		case comp == nil && !kind.Optional():
+			c.fail("%w: no %s component selected", ErrSelection, kind)
+		case comp != nil && comp.Kind != kind:
+			c.fail("%w: %s is not a %s component", ErrSelection, comp.ID(), kind)
 		}
 	}
 }
@@ -241,6 +243,10 @@ func (c *composer) checkOwnership() {
 	}
 	for _, s := range arch.Slots {
 		owners := fillers[s.Name]
+		if d, ok := c.data.Slots[s.Name]; ok && len(owners) > 0 {
+			d.Filled = true
+			c.data.Slots[s.Name] = d
+		}
 		switch {
 		case len(owners) > 1:
 			ids := make([]string, len(owners))

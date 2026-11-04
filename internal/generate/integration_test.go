@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -15,13 +16,14 @@ import (
 	"github.com/Tales-of-zuna/gobento/internal/compose"
 )
 
-// TestIntegration generates every supported selection twice, with the
-// default versions and with the floor of every range, using the real go
-// command, and checks that each project builds (also with cgo disabled),
-// vets, passes its tests, is formatted, has exactly the chosen versions, and
-// keeps the handlers package independent of the database and store
-// packages. It needs network access to the module proxy and is skipped with
-// -short.
+// TestIntegration generates the selections CI covers (compose.Coverage:
+// every supported selection without a frontend, and a pairwise covering set
+// of those with one) twice, with the default versions and with the floor of
+// every range, using the real go command, and checks that each project
+// builds (also with cgo disabled), vets, passes its tests, is formatted, has
+// exactly the chosen versions, and keeps the handlers and web packages
+// independent of the database and store packages. It needs network access
+// to the module proxy and is skipped with -short.
 func TestIntegration(t *testing.T) {
 	skipIntegration(t)
 	cat := shippedCatalog(t)
@@ -29,7 +31,9 @@ func TestIntegration(t *testing.T) {
 	if len(supported) == 0 {
 		t.Fatal("no supported selections")
 	}
-	for _, sel := range supported {
+	covered := compose.Coverage(supported)
+	t.Logf("generating %d of %d supported selections", len(covered), len(supported))
+	for _, sel := range covered {
 		checkSelection(t, cat, sel)
 	}
 }
@@ -77,7 +81,11 @@ func checkSelection(t *testing.T, cat *catalog.Catalog, sel catalog.Selection) {
 				t.Errorf("gofmt -l lists files:\n%s", out)
 			}
 			checkPins(t, dir, p.Versions)
-			checkHandlersContract(t, dir, p)
+			checkContract(t, dir, p, "handlers")
+			if p.Plan.Slots["web"].Filled {
+				checkContract(t, dir, p, "web")
+				checkNoFramework(t, dir, p, cat)
+			}
 		})
 	}
 }
@@ -155,24 +163,42 @@ func checkPins(t *testing.T, dir string, res compat.Resolved) {
 	}
 }
 
-// checkHandlersContract asserts the spec "Handlers depend only on the
-// contract": the handlers package imports neither the database nor the
-// store package, directly or transitively.
-func checkHandlersContract(t *testing.T, dir string, p *Prepared) {
+// checkContract asserts the spec scenarios "Handlers depend only on the
+// contract" and "Web UI depends only on the contract": the package of slot
+// imports neither the database nor the store package, directly or
+// transitively.
+func checkContract(t *testing.T, dir string, p *Prepared, slot string) {
 	t.Helper()
-	handlers, ok := p.Plan.Slots["handlers"]
+	pkg, ok := p.Plan.Slots[slot]
 	if !ok {
-		t.Fatal("handlers slot not found in the plan")
+		t.Fatalf("%s slot not found in the plan", slot)
 	}
-	deps := runIn(t, dir, "go", "list", "-deps", "./"+handlers.Dir)
+	deps := runIn(t, dir, "go", "list", "-deps", "./"+pkg.Dir)
 	for _, forbidden := range []string{"database", "store"} {
-		slot, ok := p.Plan.Slots[forbidden]
+		other, ok := p.Plan.Slots[forbidden]
 		if !ok {
 			t.Fatalf("%s slot not found in the plan", forbidden)
 		}
 		for line := range strings.SplitSeq(deps, "\n") {
-			if line == slot.Import || strings.HasPrefix(line, slot.Import+"/") {
-				t.Errorf("handlers package depends on %s", line)
+			if line == other.Import || strings.HasPrefix(line, other.Import+"/") {
+				t.Errorf("%s package depends on %s", slot, line)
+			}
+		}
+	}
+}
+
+// checkNoFramework asserts that the web package imports no module of a
+// framework component: a frontend works with every framework.
+func checkNoFramework(t *testing.T, dir string, p *Prepared, cat *catalog.Catalog) {
+	t.Helper()
+	deps := runIn(t, dir, "go", "list", "-deps", "./"+p.Plan.Slots["web"].Dir)
+	for _, m := range cat.Rules().Modules {
+		if !slices.ContainsFunc(m.Components, func(id string) bool { return strings.HasPrefix(id, string(catalog.KindFramework)+"/") }) {
+			continue
+		}
+		for line := range strings.SplitSeq(deps, "\n") {
+			if line == m.Path || strings.HasPrefix(line, m.Path+"/") {
+				t.Errorf("web package depends on the framework module %s", line)
 			}
 		}
 	}

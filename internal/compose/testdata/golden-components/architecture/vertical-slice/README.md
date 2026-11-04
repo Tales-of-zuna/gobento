@@ -53,8 +53,9 @@ To add, for example, orders next to items:
    items packages. Add its tables to the schema in
    `internal/platform/database`.
 3. In `cmd/shop/main.go`, create the store and combine the
-   routers, for example with an `http.ServeMux` that sends `/orders` to the
-   orders handlers and every other path to the items handlers.
+   routers in `newHandler`, for example with an `http.ServeMux` that sends
+   `/orders` to the orders handlers and the other API paths to
+   the items handlers.
 
 A feature never imports another feature's subpackages. If orders need items,
 depend on the `items` package and its interfaces.

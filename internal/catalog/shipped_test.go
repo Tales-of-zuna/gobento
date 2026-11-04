@@ -59,7 +59,8 @@ func TestShippedCatalog(t *testing.T) {
 }
 
 // TestShippedCatalogCandidates checks the shipped candidates: every
-// architecture with every framework, database, and data access.
+// architecture with every framework, database, and data access, each
+// without a frontend and with htmx.
 func TestShippedCatalogCandidates(t *testing.T) {
 	t.Parallel()
 
@@ -76,7 +77,8 @@ func TestShippedCatalogCandidates(t *testing.T) {
 		for _, fw := range []string{"chi", "gin", "nethttp"} {
 			for _, db := range []string{"postgres", "sqlite"} {
 				for _, data := range []string{"gorm", "sqlc"} {
-					want = append(want, arch+"/"+fw+"/"+db+"/"+data)
+					sel := arch + "/" + fw + "/" + db + "/" + data
+					want = append(want, sel, sel+"/htmx")
 				}
 			}
 		}

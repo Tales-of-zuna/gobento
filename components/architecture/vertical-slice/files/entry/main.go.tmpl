@@ -1,4 +1,9 @@
+{{- if .Slots.web.Filled -}}
+// Command {{.Project.Name}} serves the {{.Project.Name}} web pages at / and
+// the HTTP API under {{.APIPrefix}}/.
+{{- else -}}
 // Command {{.Project.Name}} serves the {{.Project.Name}} HTTP API.
+{{- end}}
 //
 // Configuration comes from the environment:
 //
@@ -19,7 +24,11 @@ import (
 
 	"{{.Slots.database.Import}}"
 	"{{.Slots.handlers.Import}}"
+	"{{.Slots.models.Import}}"
 	"{{.Slots.store.Import}}"
+{{- if .Slots.web.Filled}}
+	"{{.Slots.web.Import}}"
+{{- end}}
 )
 
 func main() {
@@ -47,7 +56,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              ":" + getenv("PORT", "8080"),
-		Handler:           {{.Slots.handlers.Package}}.NewRouter({{.Slots.store.Package}}.New(db)),
+		Handler:           newHandler({{.Slots.store.Package}}.New(db)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,
@@ -81,6 +90,23 @@ func run() error {
 	}
 	return nil
 }
+
+{{if .Slots.web.Filled -}}
+// newHandler returns the application's HTTP handler. It sends requests
+// under {{.APIPrefix}}/ to the API router, without the prefix, and every
+// other request to the web pages.
+func newHandler(itemStore {{.Slots.models.Package}}.ItemStore) http.Handler {
+	mux := http.NewServeMux()
+	mux.Handle("{{.APIPrefix}}/", http.StripPrefix("{{.APIPrefix}}", {{.Slots.handlers.Package}}.NewRouter(itemStore)))
+	mux.Handle("/", {{.Slots.web.Package}}.NewHandler(itemStore))
+	return mux
+}
+{{- else -}}
+// newHandler returns the application's HTTP handler: the API router.
+func newHandler(itemStore {{.Slots.models.Package}}.ItemStore) http.Handler {
+	return {{.Slots.handlers.Package}}.NewRouter(itemStore)
+}
+{{- end}}
 
 // getenv returns the value of the environment variable key, or fallback if
 // it is unset or empty.

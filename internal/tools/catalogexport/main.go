@@ -43,15 +43,27 @@ type Output struct {
 	Components []Component         `json:"components"`
 	Go         GoRule              `json:"go"`
 	Modules    []Module            `json:"modules"`
+	Assets     []Asset             `json:"assets"`
 	Supported  []map[string]string `json:"supported"`
 	Rules      Rules               `json:"rules"`
 }
 
-// Kind describes a component kind.
+// Kind describes a component kind. A supported selection has no entry for
+// an optional kind it leaves out.
 type Kind struct {
 	ID          string `json:"id"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
+	Optional    bool   `json:"optional"`
+}
+
+// Asset is a file that components vendor from an upstream release, with a
+// version fixed per gobento release.
+type Asset struct {
+	Name       string   `json:"name"`
+	Components []string `json:"components"`
+	Version    string   `json:"version"`
+	Source     string   `json:"source"`
 }
 
 // Component is one component of the catalog.
@@ -128,6 +140,7 @@ var kindInfo = map[catalog.Kind]Kind{
 	catalog.KindFramework:    {Title: "HTTP framework", Description: "Routes HTTP requests to handlers."},
 	catalog.KindDatabase:     {Title: "Database", Description: "Where the project stores its data."},
 	catalog.KindData:         {Title: "Data access", Description: "How the code reads and writes the database."},
+	catalog.KindFrontend:     {Title: "Frontend", Description: "Web pages served next to the API, which then moves under /api."},
 }
 
 // Export loads the catalog in fsys and converts it to the website's schema.
@@ -139,6 +152,7 @@ func Export(fsys fs.FS) (*Output, error) {
 	out := &Output{
 		Components: []Component{},
 		Modules:    []Module{},
+		Assets:     []Asset{},
 		Supported:  []map[string]string{},
 	}
 
@@ -148,6 +162,7 @@ func Export(fsys fs.FS) (*Output, error) {
 			return nil, fmt.Errorf("kind %s has no title and description", k)
 		}
 		info.ID = string(k)
+		info.Optional = k.Optional()
 		out.Kinds = append(out.Kinds, info)
 		for _, c := range cat.Components(k) {
 			out.Components = append(out.Components, exportComponent(c))
@@ -176,6 +191,10 @@ func Export(fsys fs.FS) (*Output, error) {
 			}
 		}
 		out.Modules = append(out.Modules, em)
+	}
+
+	for _, a := range rules.Assets {
+		out.Assets = append(out.Assets, Asset{Name: a.Name, Components: a.Components, Version: a.Version, Source: a.Source})
 	}
 
 	for _, sel := range compose.Supported(cat) {

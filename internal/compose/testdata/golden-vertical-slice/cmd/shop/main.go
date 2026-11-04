@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"example.com/shop/internal/items"
 	"example.com/shop/internal/items/itemshttp"
 	"example.com/shop/internal/items/itemsstore"
 	"example.com/shop/internal/platform/database"
@@ -47,7 +48,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              ":" + getenv("PORT", "8080"),
-		Handler:           itemshttp.NewRouter(itemsstore.New(db)),
+		Handler:           newHandler(itemsstore.New(db)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,
@@ -80,6 +81,11 @@ func run() error {
 		return err
 	}
 	return nil
+}
+
+// newHandler returns the application's HTTP handler: the API router.
+func newHandler(itemStore items.ItemStore) http.Handler {
+	return itemshttp.NewRouter(itemStore)
 }
 
 // getenv returns the value of the environment variable key, or fallback if

@@ -48,8 +48,15 @@ func TestExportShipped(t *testing.T) {
 	for _, k := range o.Kinds {
 		kinds = append(kinds, k.ID)
 	}
-	if want := []string{"architecture", "framework", "database", "data"}; !reflect.DeepEqual(kinds, want) {
+	if want := []string{"architecture", "framework", "database", "data", "frontend"}; !reflect.DeepEqual(kinds, want) {
 		t.Errorf("kinds = %v, want %v", kinds, want)
+	}
+	optional := make(map[string]bool)
+	for _, k := range o.Kinds {
+		optional[k.ID] = k.Optional
+	}
+	if !optional["frontend"] || optional["database"] {
+		t.Errorf("optional kinds = %v, want only frontend", optional)
 	}
 
 	ids := make(map[string]bool)
@@ -76,13 +83,33 @@ func TestExportShipped(t *testing.T) {
 	if len(o.Supported) == 0 {
 		t.Fatal("no supported selections")
 	}
+	withoutFrontend := 0
 	for _, s := range o.Supported {
-		if len(s) != len(catalog.Kinds()) {
-			t.Errorf("supported selection %v does not name one component per kind", s)
+		for _, k := range catalog.Kinds() {
+			if _, ok := s[string(k)]; !ok && !k.Optional() {
+				t.Errorf("supported selection %v does not name a %s", s, k)
+			}
+		}
+		if _, ok := s["frontend"]; !ok {
+			withoutFrontend++
 		}
 		for kind, name := range s {
 			if !ids[kind+"/"+name] {
 				t.Errorf("supported selection %v: unknown component %s/%s", s, kind, name)
+			}
+		}
+	}
+
+	if withoutFrontend == 0 || withoutFrontend == len(o.Supported) {
+		t.Errorf("%d of %d supported selections have no frontend, want some with and some without", withoutFrontend, len(o.Supported))
+	}
+	if o.Assets == nil {
+		t.Error("assets must be an empty list, not null")
+	}
+	for _, a := range o.Assets {
+		for _, id := range a.Components {
+			if !ids[id] {
+				t.Errorf("asset %s: unknown component %q", a.Name, id)
 			}
 		}
 	}

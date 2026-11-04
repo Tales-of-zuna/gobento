@@ -16,7 +16,20 @@ type Data struct {
 	// Versions maps module paths to their chosen versions, for example
 	// {{index .Versions "modernc.org/sqlite"}}.
 	Versions map[string]string
+	// Assets maps the names of the vendored assets of the selected
+	// components to their versions, for example
+	// {{index .Assets "htmx.org"}}.
+	Assets map[string]string
+	// APIPrefix is the path prefix the API router is served under: "" when
+	// no frontend is selected, so the API is at the root, and "/api" when
+	// one is, so the frontend serves every other path. Write API paths as
+	// {{.APIPrefix}}/items.
+	APIPrefix string
 }
+
+// FrontendAPIPrefix is the value of Data.APIPrefix when a frontend is
+// selected.
+const FrontendAPIPrefix = "/api"
 
 // Project describes the generated project.
 type Project struct {
@@ -39,4 +52,8 @@ type SlotData struct {
 	// Import is the slot's import path, for example
 	// example.com/shop/internal/controllers.
 	Import string
+	// Filled reports whether a selected component has templates for the
+	// slot. An optional slot, such as web, may be unfilled; test it with
+	// {{if .Slots.web.Filled}}.
+	Filled bool
 }

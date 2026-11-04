@@ -19,6 +19,7 @@ import (
 
 	"example.com/shop/internal/controllers"
 	"example.com/shop/internal/database"
+	"example.com/shop/internal/models"
 	"example.com/shop/internal/store"
 )
 
@@ -47,7 +48,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              ":" + getenv("PORT", "8080"),
-		Handler:           controllers.NewRouter(store.New(db)),
+		Handler:           newHandler(store.New(db)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,
@@ -80,6 +81,11 @@ func run() error {
 		return err
 	}
 	return nil
+}
+
+// newHandler returns the application's HTTP handler: the API router.
+func newHandler(itemStore models.ItemStore) http.Handler {
+	return controllers.NewRouter(itemStore)
 }
 
 // getenv returns the value of the environment variable key, or fallback if

@@ -19,7 +19,10 @@ context: |
     resolved at generation time, never hard-coded in templates.
   - JS frontends (React/Vue/Svelte) come from official scaffolders; gobento owns
     templates only where no scaffolder exists (e.g. htmx + templ).
-  - Every supported combination must be provably buildable in CI.
+  - Every supported combination must be provably buildable in CI: every
+    selection without an optional component (such as a frontend) is built,
+    and selections with one are covered pairwise (every two components that
+    can appear together with it are built together).
   - Must work on Linux, macOS, and Windows.
   - No AI attribution lines in commits, PRs, docs, or generated output.
 
