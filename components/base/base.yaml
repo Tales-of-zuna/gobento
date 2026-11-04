@@ -7,14 +7,20 @@ description: Makefile, Dockerfile, CI workflow, Dependabot, and golangci-lint co
 # Contribution points. A component of any kind contributes to a point with
 # contrib/<point>.tmpl in its directory. Contributions are rendered with the
 # usual template data, trimmed of leading and trailing newlines, and joined
-# with newlines in kind order. Write them at column zero; the base templates
-# indent them. A new point needs an entry here and one {{contrib "<point>"}}
-# in a base template.
+# with newlines in kind order. Write them at column zero; the including
+# templates indent them. A new point needs an entry here and one
+# {{contrib "<point>"}} in a template: usually a base template, or a
+# component's own file that other components extend (the vite-* points of
+# the Vite frontends). Contribution templates cannot include points.
 contributions:
   make: >-
     Makefile lines after the variables (GO, BINARY, IMAGE, GOLANGCI_LINT,
     DOCKER_RUN_FLAGS): variable assignments such as
     "DOCKER_RUN_FLAGS += ...", or whole targets with their own .PHONY line.
+  make-build: >-
+    Commands of `make build` that run before the binary is built, one per
+    line, without the leading tab (for example building a frontend that the
+    binary embeds).
   make-generate: >-
     Commands of `make generate`, one per line, without the leading tab. The
     target exists only when some component contributes.
@@ -28,6 +34,10 @@ contributions:
     Steps of the CI job after Go is set up and before the tidy check, build,
     lint, and tests, as YAML sequence entries ("- name: ..."). Use it for
     code generation and for checks that generated code is current.
+  docker-stages: >-
+    Whole Dockerfile stages before the Go build stage, each starting with
+    "FROM ... AS <name>" (for example a Node.js stage that builds a
+    frontend). The build stage copies their output with docker-build.
   docker-build: >-
     Dockerfile instructions in the build stage, after the sources are copied
     and before the binary is built (for example code generation, or
@@ -39,6 +49,25 @@ contributions:
   dockerignore: >-
     .dockerignore patterns, one per line, for files that must not reach the
     build context (for example local database files).
+  dependabot: >-
+    Entries of the updates: list of .github/dependabot.yml, as YAML sequence
+    entries ("- package-ecosystem: ..."), for ecosystems beyond gomod,
+    github-actions, and docker (for example npm in /frontend).
+  gitignore: >-
+    .gitignore patterns, one per line, for files the component's tools
+    write that must not be committed. The architectures' .gitignore
+    includes them.
+  vite-imports: >-
+    Import lines of frontend/vite.config.ts in the Vite frontends (React,
+    Vue, Svelte), for example a Vite plugin of a CSS component.
+  vite-plugins: >-
+    Entries of the plugins array of frontend/vite.config.ts in the Vite
+    frontends, one per line with a trailing comma, for example
+    "tailwindcss(),".
+  vite-styles: >-
+    CSS at the top of the stylesheet the Vite frontends' entry imports (for
+    example `@import "tailwindcss";`).
   readme-docker: >-
-    Markdown paragraphs for the README's Docker section: what the component
+    Markdown paragraphs for the README's Docker section, separated from
+    other components' paragraphs by a blank line: what the component
     needs at run time in a container (data volumes, connection strings).

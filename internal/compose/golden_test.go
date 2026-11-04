@@ -33,6 +33,7 @@ var goldens = []struct {
 	{dir: "testdata/golden-ddd", sel: [4]string{"ddd", "nethttp", "sqlite", "sqlc"}},
 	{dir: "testdata/golden-htmx", sel: [4]string{"mvc", "nethttp", "sqlite", "sqlc"}, frontend: "htmx"},
 	{dir: "testdata/golden-ddd-htmx", sel: [4]string{"ddd", "nethttp", "sqlite", "sqlc"}, frontend: "htmx"},
+	{dir: "testdata/golden-react", sel: [4]string{"mvc", "nethttp", "sqlite", "sqlc"}, frontend: "react"},
 }
 
 // goldenComponentsDir holds the files each component contributes, in
@@ -228,6 +229,8 @@ func planFor(t *testing.T, cat *catalog.Catalog, sel catalog.Selection) *Plan {
 		Assets:    res.AssetVersions(),
 		Base:      cat.Base(),
 		Tooling:   res.Tooling,
+		Node:      res.Node,
+		NPM:       res.NPMVersions(),
 	})
 	if err != nil {
 		t.Fatalf("Compose() error = %v", err)
@@ -326,7 +329,10 @@ func TestShippedCatalogSupported(t *testing.T) {
 			for _, db := range []string{"postgres", "sqlite"} {
 				for _, data := range []string{"gorm", "sqlc"} {
 					sel := arch + "/" + fw + "/" + db + "/" + data
-					want = append(want, sel, sel+"/htmx")
+					want = append(want, sel)
+					for _, ui := range []string{"htmx", "react", "svelte", "vue"} {
+						want = append(want, sel+"/"+ui)
+					}
 				}
 			}
 		}

@@ -171,6 +171,12 @@ func checkSelection(t *testing.T, cat *catalog.Catalog, sel catalog.Selection, t
 			if err := Generate(context.Background(), p.Request(dir)); err != nil {
 				t.Fatalf("Generate() error = %v", err)
 			}
+			checkScaffolds(t, dir, p)
+			if variant == "defaults" {
+				// The floors keep the unbuilt placeholder, so both states of
+				// the web package are built and tested.
+				buildFrontends(t, dir, p)
+			}
 
 			for _, args := range [][]string{
 				{"build", "./..."},
@@ -194,11 +200,68 @@ func checkSelection(t *testing.T, cat *catalog.Catalog, sel catalog.Selection, t
 			checkLayers(t, dir, p)
 			if variant == "defaults" {
 				checkTooling(t, dir, tools)
-				if web := p.Plan.Slots["web"]; web.Filled {
+				if web := p.Plan.Slots["web"]; web.Filled && sel.Traits()["frontend-build"] == "go" {
 					checkTemplFresh(t, dir, p, web.Dir, tools)
 				}
 			}
 		})
+	}
+}
+
+// checkScaffolds asserts the spec requirement "Scaffold step": gobento's
+// planned files are unchanged by the scaffolder, and each scaffolded
+// directory has its package.json and lock file but no node_modules.
+func checkScaffolds(t *testing.T, dir string, p *Prepared) {
+	t.Helper()
+	if len(p.Scaffolds) == 0 {
+		return
+	}
+	for _, f := range p.Plan.Files {
+		if got := readFile(t, filepath.Join(dir, filepath.FromSlash(f.Path))); got != string(f.Content) {
+			t.Errorf("%s differs from gobento's file after scaffolding", f.Path)
+		}
+	}
+	for _, s := range p.Scaffolds {
+		sd := filepath.Join(dir, filepath.FromSlash(s.Dir))
+		for _, name := range []string{"package.json", lockFile} {
+			if _, err := os.Stat(filepath.Join(sd, name)); err != nil {
+				t.Errorf("%s/%s: %v", s.Dir, name, err)
+			}
+		}
+		if _, err := os.Stat(filepath.Join(sd, "node_modules")); err == nil {
+			t.Errorf("%s/node_modules exists after generation", s.Dir)
+		}
+	}
+}
+
+// buildFrontends covers the spec scenario "Frontend build in the integration
+// test": for each scaffolded frontend it runs what the generated CI workflow
+// runs (npm ci, the lint and check scripts if defined, npm run build) and
+// checks that the build is in the web package's dist/app, so the Go checks
+// that follow embed the real app.
+func buildFrontends(t *testing.T, dir string, p *Prepared) {
+	t.Helper()
+	if len(p.Scaffolds) == 0 {
+		return
+	}
+	npm, err := exec.LookPath("npm")
+	if err != nil {
+		t.Fatalf("npm not found: %v", err)
+	}
+	for _, s := range p.Scaffolds {
+		sd := filepath.Join(dir, filepath.FromSlash(s.Dir))
+		for _, args := range [][]string{
+			{"ci", "--no-audit", "--no-fund"},
+			{"run", "--if-present", "lint"},
+			{"run", "--if-present", "check"},
+			{"run", "build"},
+		} {
+			runIn(t, sd, npm, args...)
+		}
+	}
+	index := filepath.Join(dir, filepath.FromSlash(p.Plan.Slots["web"].Dir), "dist", "app", "index.html")
+	if _, err := os.Stat(index); err != nil {
+		t.Errorf("npm run build did not write the app into the web package: %v", err)
 	}
 }
 

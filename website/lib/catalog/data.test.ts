@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ROADMAP as CONFIGURATOR_ROADMAP } from '@/components/configurator/roadmap';
-import { ROADMAP as HOME_ROADMAP } from '@/lib/home/menu';
+import { ROADMAP as HOME_ROADMAP, stackCells } from '@/lib/home/menu';
 import { catalog } from './data';
 
 /** Lower-cased names and titles of the components the real catalog ships. */
@@ -24,6 +24,14 @@ describe('the real catalog', () => {
         ).toBe(false);
       }
     }
+  });
+
+  it('lists the Vite frontends as shipped frontends on the home page', () => {
+    const frontend = stackCells(catalog).find((cell) => cell.kind === 'frontend')!;
+    expect(frontend.options.map((o) => o.name)).toEqual(
+      expect.arrayContaining(['htmx + templ', 'React', 'Vue', 'Svelte']),
+    );
+    for (const name of ['React', 'Vue', 'Svelte']) expect(frontend.roadmap).not.toContain(name);
   });
 
   it('is not listed on the home page roadmap', () => {

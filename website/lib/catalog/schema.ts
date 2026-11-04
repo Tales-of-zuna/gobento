@@ -81,6 +81,28 @@ const assetSchema = z.object({
 });
 
 /**
+ * An npm package that components use (for example create-vite, which
+ * scaffolds a Vite frontend at generation time), with a version fixed per
+ * gobento release: not a Go module and not pinnable.
+ */
+const npmPackageSchema = z.object({
+  name: text,
+  /** Ids of the components that use this package. */
+  components: z.array(text).min(1),
+  /** A scaffolder runs once at generation time; the others land in package.json. */
+  role: z.enum(['scaffolder', 'dependency', 'dev-dependency']),
+  version: text,
+});
+
+/**
+ * The Node.js that npm packages need: `range` is what generation needs on the
+ * machine running gobento (for example `>=v22.12.0`), `default` the release
+ * line the generated tooling uses (for example `26`, as in `{node}`). Both
+ * are empty when no component uses an npm package.
+ */
+const nodeSchema = z.object({ range: z.string(), default: z.string() });
+
+/**
  * Versions of the project tooling that are not Go modules (container images,
  * GitHub Actions, tools), fixed per gobento release and not pinnable.
  */
@@ -128,6 +150,12 @@ const rawCatalogSchema = z.object({
   modules: z.array(moduleSchema),
   assets: z.array(assetSchema).default([]),
   tooling: toolingSchema.default({ images: [], actions: [], tools: [] }),
+  node: nodeSchema.default({ range: '', default: '' }),
+  /** The CLI writes `null` when no component uses an npm package. */
+  npm: z
+    .array(npmPackageSchema)
+    .nullish()
+    .transform((packages) => packages ?? []),
   /**
    * The selections the CLI supports (compose.Supported): traits met, default
    * versions resolved, and composition without errors. CI builds every one
@@ -220,6 +248,30 @@ function checkConsistency(catalog: RawCatalog, ctx: z.RefinementCtx): void {
     });
   });
 
+  const npmNames = new Set(catalog.npm.map((pkg) => pkg.name));
+  if (npmNames.size !== catalog.npm.length) issue(['npm'], 'duplicate npm package name');
+  catalog.npm.forEach((pkg, i) => {
+    pkg.components.forEach((id, j) => {
+      if (!componentIds.has(id))
+        issue(['npm', i, 'components', j], `${pkg.name}: unknown component "${id}"`);
+    });
+  });
+  if (catalog.npm.length === 0) {
+    if (catalog.node.range !== '' || catalog.node.default !== '') {
+      issue(['node'], 'a Node.js rule without npm packages');
+    }
+  } else {
+    checkRange(['node', 'range'], catalog.node.range, 'module');
+    if (!/^[1-9]\d*$/.test(catalog.node.default)) {
+      issue(['node', 'default'], `node: malformed release line "${catalog.node.default}"`);
+    } else if (!satisfies(`v${catalog.node.default}`, catalog.node.range, 'module')) {
+      issue(
+        ['node', 'default'],
+        `node: release line ${catalog.node.default} is outside its range ${catalog.node.range}`,
+      );
+    }
+  }
+
   const optional = new Set(catalog.kinds.filter((k) => k.optional).map((k) => k.id));
   catalog.supported.forEach((selection, i) => {
     for (const kind of KIND_IDS) {
@@ -255,6 +307,8 @@ export type Component = Catalog['components'][number];
 export type Module = Catalog['modules'][number];
 /** A file vendored into generated projects, with a version fixed per release. */
 export type Asset = Catalog['assets'][number];
+/** An npm package used by one or more components, with a version fixed per release. */
+export type NpmPackage = Catalog['npm'][number];
 /** A component kind as described by the catalog. */
 export type Kind = Catalog['kinds'][number];
 /** A selection the CLI supports; an optional kind without a component is absent. */

@@ -824,6 +824,16 @@
 .tree li[data-dir='true'] {
   color: var(--ink-2);
 }
+/* A directory a scaffolder completes at generation time: a frontend-colored chip. */
+.treeNote {
+  display: inline-block;
+  margin: 2px 0 0 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--kind-frontend);
+  color: var(--ink);
+  font: 600 var(--t-xs) / 1.2 var(--cf-body);
+}
 
 .toastSlot {
   min-height: 46px;

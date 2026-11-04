@@ -1,0 +1,80 @@
+package {{.Slots.web.Package}}
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"testing/fstest"
+)
+
+// built is a small stand-in for a Vite build in dist/app.
+var built = fstest.MapFS{
+	"index.html":           {Data: []byte(`<!doctype html><div id="app"></div>`)},
+	"favicon.svg":          {Data: []byte(`<svg xmlns="http://www.w3.org/2000/svg"/>`)},
+	"assets/index-abc1.js": {Data: []byte(`console.log("app")`)},
+}
+
+func serve(h http.Handler, method, target string) *httptest.ResponseRecorder {
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(method, target, nil))
+	return rec
+}
+
+func TestBuiltApp(t *testing.T) {
+	h := newHandler(built)
+	index := string(built["index.html"].Data)
+	tests := []struct {
+		method, target string
+		status         int
+		body           string // "" means not checked
+		cache          string
+	}{
+		{http.MethodGet, "/", http.StatusOK, index, "no-cache"},
+		{http.MethodGet, "/index.html", http.StatusOK, index, "no-cache"},
+		// Client-side routes get the app, so a reload keeps the page.
+		{http.MethodGet, "/items/42", http.StatusOK, index, "no-cache"},
+		{http.MethodGet, "/assets/index-abc1.js", http.StatusOK, `console.log("app")`, "public, max-age=31536000, immutable"},
+		{http.MethodGet, "/favicon.svg", http.StatusOK, "", ""},
+		{http.MethodGet, "/assets/missing.js", http.StatusNotFound, "", ""},
+		{http.MethodGet, "{{.APIPrefix}}/items", http.StatusNotFound, "", ""},
+		{http.MethodGet, "{{.APIPrefix}}", http.StatusNotFound, "", ""},
+		{http.MethodPost, "/", http.StatusMethodNotAllowed, "", ""},
+		{http.MethodHead, "/items/42", http.StatusOK, "", "no-cache"},
+	}
+	for _, tt := range tests {
+		rec := serve(h, tt.method, tt.target)
+		if rec.Code != tt.status {
+			t.Errorf("%s %s status = %d, want %d", tt.method, tt.target, rec.Code, tt.status)
+			continue
+		}
+		if got := rec.Body.String(); tt.body != "" && got != tt.body {
+			t.Errorf("%s %s body = %q, want %q", tt.method, tt.target, got, tt.body)
+		}
+		if got := rec.Header().Get("Cache-Control"); got != tt.cache {
+			t.Errorf("%s %s Cache-Control = %q, want %q", tt.method, tt.target, got, tt.cache)
+		}
+	}
+	if rec := serve(h, http.MethodPost, "/"); rec.Header().Get("Allow") != "GET, HEAD" {
+		t.Errorf("POST / Allow = %q, want GET, HEAD", rec.Header().Get("Allow"))
+	}
+}
+
+func TestUnbuiltApp(t *testing.T) {
+	rec := serve(newHandler(fstest.MapFS{}), http.MethodGet, "/")
+	if rec.Code != http.StatusOK || !strings.HasPrefix(rec.Header().Get("Content-Type"), "text/html") {
+		t.Fatalf("GET / = %d %s, want 200 text/html", rec.Code, rec.Header().Get("Content-Type"))
+	}
+	if b := rec.Body.String(); !strings.Contains(b, "npm --prefix frontend run build") {
+		t.Errorf("placeholder does not name the build command:\n%s", b)
+	}
+}
+
+// TestEmbeddedApp serves the embedded build, or the placeholder before
+// npm run build.
+func TestEmbeddedApp(t *testing.T) {
+	rec := serve(NewHandler(nil), http.MethodGet, "/")
+	if rec.Code != http.StatusOK || !strings.HasPrefix(rec.Header().Get("Content-Type"), "text/html") {
+		t.Errorf("GET / = %d %s, want 200 text/html", rec.Code, rec.Header().Get("Content-Type"))
+	}
+}

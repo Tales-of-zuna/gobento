@@ -51,6 +51,21 @@ type Resolved struct {
 	Assets []AssetVersion
 	// Tooling holds the tooling versions for the chosen Go version.
 	Tooling ToolingVersions
+	// NPM lists every npm package the selected components use, sorted by
+	// name.
+	NPM []NPMVersion
+	// Node is the Node.js release line of the generated tooling, or "" if
+	// the rules have none.
+	Node string
+}
+
+// NPMVersions returns the npm package versions keyed by package name.
+func (r Resolved) NPMVersions() map[string]string {
+	out := make(map[string]string, len(r.NPM))
+	for _, p := range r.NPM {
+		out[p.Name] = p.Version
+	}
+	return out
 }
 
 // AssetVersion is one vendored asset with its version.
@@ -124,12 +139,22 @@ func (r *Rules) Resolve(req Request) (Resolved, error) {
 		}
 	}
 
+	for _, p := range r.NPM {
+		if slices.ContainsFunc(p.Components, func(c string) bool { return slices.Contains(req.Components, c) }) {
+			res.NPM = append(res.NPM, NPMVersion{Name: p.Name, Role: p.Role, Version: p.Version})
+		}
+	}
+
 	for _, path := range sortedKeys(req.Pins) {
 		version := req.Pins[path]
 		m, known := r.Module(path)
 		i, used := chosen[path]
 		if a, ok := r.Asset(path); ok && !known {
 			errs = append(errs, fmt.Errorf("%w: cannot pin %s, vendored asset versions are fixed per gobento release (this release ships %s)", ErrNotPinnable, path, a.Version))
+			continue
+		}
+		if p, ok := r.NPMPackage(path); ok && !known {
+			errs = append(errs, fmt.Errorf("%w: cannot pin %s, npm package versions are fixed per gobento release (this release uses %s)", ErrNotPinnable, path, p.Version))
 			continue
 		}
 		switch {
@@ -159,7 +184,8 @@ func (r *Rules) Resolve(req Request) (Resolved, error) {
 	if err := errors.Join(errs...); err != nil {
 		return Resolved{}, err
 	}
-	res.Tooling = r.Tooling.Resolve(res.Go)
+	res.Node = r.Node.Default
+	res.Tooling = r.Tooling.Resolve(res.Go, res.Node)
 	return res, nil
 }
 

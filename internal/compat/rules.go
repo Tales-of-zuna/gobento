@@ -44,6 +44,12 @@ type Rules struct {
 	// Tooling lists the versions of the project tooling that are not Go
 	// modules: container images, GitHub Actions, and tools.
 	Tooling Tooling
+	// Node describes the Node.js versions that scaffolding needs and the
+	// release line of the generated tooling. It is zero without npm
+	// packages.
+	Node NodeRule
+	// NPM lists every npm package components use, sorted by name.
+	NPM []NPMPackage
 }
 
 // Asset is a file that components ship unmodified from an upstream release,
@@ -154,6 +160,8 @@ type rulesFile struct {
 	Modules map[string]moduleFile `yaml:"modules"`
 	Assets  map[string]assetFile  `yaml:"assets"`
 	Tooling toolingFile           `yaml:"tooling"`
+	Node    nodeFile              `yaml:"node"`
+	NPM     map[string]npmFile    `yaml:"npm"`
 }
 
 type assetFile struct {
@@ -229,9 +237,23 @@ func ParseRules(data []byte) (*Rules, error) {
 		}
 	}
 
+	npm, nerrs := parseNPM(file.NPM)
+	rules.NPM = npm
+	errs = append(errs, nerrs...)
+	node, nodeErrs := parseNode(file.Node, len(npm) > 0)
+	rules.Node = node
+	errs = append(errs, nodeErrs...)
+
 	tooling, terrs := parseTooling(file.Tooling)
 	rules.Tooling = tooling
 	errs = append(errs, terrs...)
+	if node.IsZero() {
+		for _, key := range slices.Sorted(maps.Keys(tooling.Images)) {
+			if strings.Contains(tooling.Images[key].Tag, NodePlaceholder) {
+				errs = append(errs, fmt.Errorf("tooling: image %s: the tag uses %s, but the rules have no node section", key, NodePlaceholder))
+			}
+		}
+	}
 
 	if err := errors.Join(errs...); err != nil {
 		return nil, fmt.Errorf("invalid rules: %w", err)
@@ -387,6 +409,13 @@ func (r *Rules) CheckComponents(exists func(id string) bool) error {
 		for _, c := range a.Components {
 			if !exists(c) {
 				errs = append(errs, fmt.Errorf("asset %s: unknown component %q", a.Name, c))
+			}
+		}
+	}
+	for _, p := range r.NPM {
+		for _, c := range p.Components {
+			if !exists(c) {
+				errs = append(errs, fmt.Errorf("npm %s: unknown component %q", p.Name, c))
 			}
 		}
 	}

@@ -14,7 +14,7 @@ components; it is not a component kind and is never selected.
 | `Dockerfile`               | A multi-stage build: a static binary (`CGO_ENABLED=0`) in a distroless runtime image, run as the non-root user 65532 |
 | `.dockerignore`            | Keeps `.git`, build output, and local databases out of the build context                                             |
 | `.github/workflows/ci.yml` | On pull requests and pushes to `main`: tidy check, build, vet, golangci-lint, tests with `-race`, and an image build |
-| `.github/dependabot.yml`   | Weekly updates for Go modules, GitHub Actions, and Docker base images                                                |
+| `.github/dependabot.yml`   | Weekly updates for Go modules, GitHub Actions, and Docker base images, and npm packages with a Vite frontend         |
 | `.golangci.yml`            | golangci-lint v2 configuration, including the `gofmt` and `goimports` formatters                                     |
 
 The generated README's **Development** section explains all of it for the
@@ -22,25 +22,28 @@ selected components.
 
 ## Make targets, with or without make
 
-| Target               | Runs                                                                         |
-| -------------------- | ---------------------------------------------------------------------------- |
-| `make` / `make help` | Lists the targets                                                            |
-| `make build`         | `go build -o bin/<name> ./cmd/<name>` (with `.exe` on Windows)               |
-| `make run`           | `go run ./cmd/<name>`                                                        |
-| `make test`          | `go test ./...`                                                              |
-| `make cover`         | `go test -coverprofile=coverage.out ./...` and a coverage summary            |
-| `make vet`           | `go vet ./...`                                                               |
-| `make lint`          | `golangci-lint run`, at the pinned version, with `go run`                    |
-| `make fmt`           | `golangci-lint fmt`                                                          |
-| `make tidy`          | `go mod tidy`                                                                |
-| `make check`         | `vet`, `lint`, and `test`                                                    |
-| `make generate`      | Regenerates generated code; only with a component that has some (sqlc, htmx) |
-| `make docker-build`  | `docker build --tag <name> .`                                                |
-| `make docker-run`    | `docker run --rm --publish 8080:8080 <name>`, with the database's options    |
-| `make clean`         | Removes `bin/` and `coverage.out`                                            |
+| Target               | Runs                                                                                                                                    |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `make` / `make help` | Lists the targets                                                                                                                       |
+| `make build`         | `go build -o bin/<name> ./cmd/<name>` (with `.exe` on Windows); with a Vite frontend, `npm ci` and `npm run build` in `frontend/` first |
+| `make dev`           | Only with a Vite frontend: the Vite dev server (`npm run dev` in `frontend/`)                                                           |
+| `make run`           | `go run ./cmd/<name>`                                                                                                                   |
+| `make test`          | `go test ./...`                                                                                                                         |
+| `make cover`         | `go test -coverprofile=coverage.out ./...` and a coverage summary                                                                       |
+| `make vet`           | `go vet ./...`                                                                                                                          |
+| `make lint`          | `golangci-lint run`, at the pinned version, with `go run`                                                                               |
+| `make fmt`           | `golangci-lint fmt`                                                                                                                     |
+| `make tidy`          | `go mod tidy`                                                                                                                           |
+| `make check`         | `vet`, `lint`, and `test`                                                                                                               |
+| `make generate`      | Regenerates generated code; only with a component that has some (sqlc, htmx)                                                            |
+| `make docker-build`  | `docker build --tag <name> .`                                                                                                           |
+| `make docker-run`    | `docker run --rm --publish 8080:8080 <name>`, with the database's options                                                               |
+| `make clean`         | Removes `bin/` and `coverage.out`                                                                                                       |
 
 Make is the only prerequisite besides Go: golangci-lint, sqlc, and templ run
-with `go run <module>@<version>`, so nothing else has to be installed. On Windows
+with `go run <module>@<version>`, so nothing else has to be installed. A
+React, Vue, or Svelte frontend also needs Node.js and npm to build the
+frontend; see [Frontend tooling](#frontend-tooling). On Windows
 without make, run the commands that the README lists next to each target.
 
 ## The container image
@@ -68,7 +71,9 @@ The database decides what the container needs at run time:
 
 With the **htmx** frontend, the pages and their static files are compiled
 into the binary (`go:embed`), so the image needs nothing else: the pages are
-at `/`, and the API, its health check included, under `/api/`.
+at `/`, and the API, its health check included, under `/api/`. With a
+**React, Vue, or Svelte** frontend, a `frontend` stage builds the app first;
+see [Frontend tooling](#frontend-tooling).
 
 ## Continuous integration
 
@@ -85,11 +90,39 @@ Every action is pinned by its full commit SHA, with the release in a comment
 repository. Dependabot keeps the SHAs, the runtime image digest, and the Go
 modules current after generation.
 
+## Frontend tooling
+
+With a React, Vue, or Svelte frontend (the
+[trait](/docs/concepts/traits) `frontend-build: vite`), the tooling also
+builds the frontend in `frontend/`, so the binary embeds the real app. API-only
+and htmx projects get none of this.
+
+- **Makefile.** `NPM ?= npm`; `make build` runs `npm --prefix frontend ci`
+  and `npm --prefix frontend run build` before `go build`; `make dev` runs
+  the Vite dev server on port 5173, which forwards `/api` to the Go server
+  that `make run` starts on port 8080.
+- **CI.** Before the Go steps, the `check` job sets up Node.js with
+  `actions/setup-node` (pinned by SHA) at the rules file's Node.js line
+  (`node-version: 26`), with npm's cache keyed on
+  `frontend/package-lock.json`, then runs `npm ci`,
+  `npm run --if-present lint` and `npm run --if-present check` (the checks
+  the scaffolded project defines, such as React's oxlint and Svelte's
+  svelte-check), and `npm run build`, which type-checks the code and writes
+  the build that `go build` and `go test` then embed.
+- **Dockerfile.** A `frontend` stage `FROM node:26-alpine` installs with
+  `npm ci` (with an npm cache mount) and builds the app; the Go build stage
+  copies only the build into the web package's `dist/app`. The runtime image
+  is unchanged.
+- **Dependabot** also updates the npm dependencies of `/frontend`, and
+  **`.dockerignore`** leaves out `frontend/node_modules` and a local build
+  in the web package's `dist/app`.
+
 ## Where the versions come from
 
-Like every version gobento uses, the images, action SHAs, and the
-golangci-lint version are data in the `tooling` section of
-`components/versions.yaml` ([Version rules](/docs/concepts/version-rules#tooling-versions)),
+Like every version gobento uses, the images, action SHAs, the
+golangci-lint version, and the Node.js line are data in the `tooling` section of
+`components/versions.yaml` ([Version rules](/docs/concepts/version-rules#tooling-versions);
+the Node.js line in [`node`](/docs/concepts/version-rules#nodejs-and-npm)),
 never constants in the templates. They are fixed per gobento release and
 cannot be pinned with `--pin`.
 
@@ -100,17 +133,28 @@ only they know about through **contribution points** that the base layer
 declares in `components/base/base.yaml`, with a template
 `contrib/<point>.tmpl` in the component's directory:
 
-| Point            | Where it goes                                    | Used by                                       |
-| ---------------- | ------------------------------------------------ | --------------------------------------------- |
-| `make`           | Makefile variables or extra targets              | sqlite (data volume), postgres (host mapping) |
-| `make-generate`  | The recipe of `make generate`                    | sqlc, htmx (`go generate` of the web package) |
-| `ci-services`    | Service containers of the CI job                 | postgres                                      |
-| `ci-env`         | Environment of the CI job                        | postgres (`TEST_DATABASE_URL`)                |
-| `ci-steps`       | CI steps before the tidy check, build, and tests | sqlc (`sqlc diff`), htmx (templ output check) |
-| `docker-build`   | Build stage, after the sources are copied        | sqlite (`/out/data`)                          |
-| `docker-runtime` | Runtime stage, before `USER` and `ENTRYPOINT`    | sqlite (`/data` volume, `DATABASE_URL`)       |
-| `dockerignore`   | `.dockerignore` patterns                         | sqlite (`*.db`), htmx (`*_templ.txt`)         |
-| `readme-docker`  | The README's Docker section                      | sqlite, postgres, htmx                        |
+| Point            | Where it goes                                                         | Used by                                                                                               |
+| ---------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `make`           | Makefile variables or extra targets                                   | sqlite (data volume), postgres (host mapping), Vite frontends (`NPM`, `make dev`)                     |
+| `make-build`     | The recipe of `make build`, before `go build`                         | Vite frontends (`npm ci`, `npm run build`)                                                            |
+| `make-generate`  | The recipe of `make generate`                                         | sqlc, htmx (`go generate` of the web package)                                                         |
+| `ci-services`    | Service containers of the CI job                                      | postgres                                                                                              |
+| `ci-env`         | Environment of the CI job                                             | postgres (`TEST_DATABASE_URL`)                                                                        |
+| `ci-steps`       | CI steps before the tidy check, build, and tests                      | sqlc (`sqlc diff`), htmx (templ output check), Vite frontends (Node.js setup, install, checks, build) |
+| `docker-stages`  | Whole stages before the Go build stage                                | Vite frontends (the `frontend` stage)                                                                 |
+| `docker-build`   | Build stage, after the sources are copied                             | sqlite (`/out/data`), Vite frontends (copy the build)                                                 |
+| `docker-runtime` | Runtime stage, before `USER` and `ENTRYPOINT`                         | sqlite (`/data` volume, `DATABASE_URL`)                                                               |
+| `dockerignore`   | `.dockerignore` patterns                                              | sqlite (`*.db`), htmx (`*_templ.txt`), Vite frontends (`frontend/node_modules`, the build)            |
+| `dependabot`     | Entries of the `updates:` list of Dependabot                          | Vite frontends (`npm` for `/frontend`)                                                                |
+| `gitignore`      | `.gitignore` patterns (the architectures' `.gitignore` includes them) | htmx (`*_templ.txt`)                                                                                  |
+| `readme-docker`  | The README's Docker section                                           | sqlite, postgres, htmx, Vite frontends                                                                |
+
+Three more points are not in a tooling file but in the Vite frontends' own
+files, for a CSS component that extends any of them: `vite-imports` (import
+lines of `frontend/vite.config.ts`), `vite-plugins` (entries of its
+`plugins` array), and `vite-styles` (CSS at the top of the stylesheet). They
+are declared in `base.yaml` like the others; see
+[Adding a component](/docs/contributing/adding-a-component#contribution-points-in-component-files).
 
 A contribution depends only on traits and the template data, never on which
 other component is selected, so a component of a kind added later, such as

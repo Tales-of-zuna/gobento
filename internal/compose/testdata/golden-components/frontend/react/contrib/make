@@ -1,0 +1,5 @@
+NPM              ?= npm
+
+.PHONY: dev
+dev: ## Run the Vite dev server; it forwards /api to the server of make run
+	$(NPM) --prefix frontend run dev

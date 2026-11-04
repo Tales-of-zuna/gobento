@@ -223,6 +223,30 @@ templates for an undeclared slot, so composition rejects the selection, and
 it is not supported. [Adding a component](/docs/contributing/adding-a-component#supporting-frontends-in-an-architecture)
 lists what an architecture does to support them.
 
+### Serving a Vite build
+
+htmx renders its pages in Go. The React, Vue, and Svelte frontends fill the
+same slot with the same `NewHandler`, but their page is a single-page app
+that Vite builds from `frontend/` into the web package's `dist/app`
+(`build.outDir` in `frontend/vite.config.ts`). The package embeds it with
+`//go:embed all:dist` and serves it. It does not use the store: the app
+reads and adds items through the API under `/api`.
+
+| Request                                                        | Response                                                                                  |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `GET` or `HEAD` for a file of the build                        | The file; under `/assets/` (Vite's content-hashed files) with a one-year, immutable cache |
+| `GET` or `HEAD` for `/` or a path without a file extension     | The app's `index.html`, revalidated on every load, so client-side routes survive a reload |
+| A missing file with an extension, such as `/assets/missing.js` | `404`, so a missing script is reported instead of loading HTML                            |
+| Any path under `/api/`                                         | `404`: the web handler never answers an API path with the app                             |
+| Any other method                                               | `405` with `Allow: GET, HEAD`                                                             |
+
+The build is not committed: the committed `dist/.gitignore` ignores
+`dist/app/` and keeps `dist/`, so the embed pattern always matches a file.
+Until the frontend is built, every page the app would serve is a small
+placeholder that names `make build` and the npm commands, so `go build` and
+`go test ./...` work without Node.js. The handler's test covers a built and
+an unbuilt app, so it passes before and after `npm run build`.
+
 ## Why there are no per-combination templates
 
 Many generators keep a template for each combination of options, so every new

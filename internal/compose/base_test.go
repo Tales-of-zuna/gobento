@@ -167,10 +167,10 @@ func TestComposeBaseLayerErrors(t *testing.T) {
 			want:    []string{"base/files/root/Dockerfile.tmpl", `no contribution point "docker-build"`},
 		},
 		{
-			name:    "contrib outside the base layer",
-			changes: map[string]string{"data/query/files/root/query.yaml.tmpl": "{{contrib \"make\"}}\n"},
+			name:    "contrib in a contribution",
+			changes: map[string]string{"database/lite/contrib/ci-steps.tmpl": "{{contrib \"make\"}}\n"},
 			wantErr: ErrTemplate,
-			want:    []string{"data/query/files/root/query.yaml.tmpl", `"contrib" not defined`},
+			want:    []string{"database/lite/contrib/ci-steps.tmpl", `"contrib" not defined`},
 		},
 		{
 			name:    "contribution fails to render",
@@ -220,5 +220,25 @@ func TestComposeContributionOfAnyKind(t *testing.T) {
 	ci, _ := plan.File(".github/workflows/ci.yml")
 	if !strings.Contains(string(ci.Content), "      - run: web generate\n") {
 		t.Errorf("workflow lacks the framework's step:\n%s", ci.Content)
+	}
+}
+
+// TestComponentTemplatesIncludePoints covers the spec scenario "CSS
+// contribution to a Vite frontend": a component's own template includes the
+// contributions of another component to a declared point.
+func TestComponentTemplatesIncludePoints(t *testing.T) {
+	t.Parallel()
+
+	cat := loadCatalog(t, withBase(map[string]string{
+		"data/query/files/root/query.yaml.tmpl": "steps:\n{{indent 2 (contrib \"ci-steps\")}}\n",
+		"database/lite/contrib/ci-steps.tmpl":   "- run: lite\n",
+	}))
+	plan, err := Compose(baseInput(cat, pick(t, cat, "layered", "web", "lite", "query")))
+	if err != nil {
+		t.Fatalf("Compose() error = %v", err)
+	}
+	f, _ := plan.File("query.yaml")
+	if got := string(f.Content); got != "steps:\n  - run: lite\n" {
+		t.Errorf("query.yaml = %q", got)
 	}
 }

@@ -70,6 +70,14 @@ type manifest struct {
 	Slots       map[string]slotManifest `yaml:"slots"`
 	Provides    map[string]string       `yaml:"provides"`
 	Requires    map[string][]string     `yaml:"requires"`
+	Scaffold    *scaffoldManifest       `yaml:"scaffold"`
+}
+
+type scaffoldManifest struct {
+	With     string   `yaml:"with"`
+	Template string   `yaml:"template"`
+	Dir      string   `yaml:"dir"`
+	Remove   []string `yaml:"remove"`
 }
 
 // baseManifest mirrors the YAML layout of base.yaml.
@@ -151,6 +159,7 @@ func Load(fsys fs.FS) (*Catalog, error) {
 		if err := rules.CheckTraits(provided); err != nil {
 			errs = append(errs, fmt.Errorf("%s: %w", RulesFile, err))
 		}
+		errs = append(errs, checkScaffolders(cat.components, rules)...)
 		cat.rules = rules
 	}
 
@@ -258,6 +267,22 @@ func loadComponent(fsys fs.FS, kind Kind, dir string) (*Component, []error) {
 		}
 		if len(m.Requires[k]) == 0 {
 			fail("requires: trait %s lists no accepted values", k)
+		}
+	}
+
+	if m.Scaffold != nil {
+		sc := m.Scaffold
+		c.Scaffold = &Scaffold{With: sc.With, Template: sc.Template, Dir: sc.Dir, Remove: sc.Remove}
+		if !namePattern.MatchString(sc.Template) {
+			fail("scaffold: template %q must match %s", sc.Template, namePattern)
+		}
+		if !isCleanLocal(sc.Dir) {
+			fail("scaffold: dir %q must be a clean relative path inside the project", sc.Dir)
+		}
+		for _, r := range sc.Remove {
+			if !isCleanLocal(r) {
+				fail("scaffold: remove %q must be a clean relative path inside dir", r)
+			}
 		}
 	}
 
@@ -407,6 +432,32 @@ func checkContributions(comps []*Component, base *Component) []error {
 		}
 	}
 	return errs
+}
+
+// checkScaffolders reports every scaffold declaration whose scaffolder is
+// not an npm scaffolder of the rules that lists the component.
+func checkScaffolders(comps []*Component, rules *compat.Rules) []error {
+	var errs []error
+	for _, c := range comps {
+		if c.Scaffold == nil {
+			continue
+		}
+		p, ok := rules.NPMPackage(c.Scaffold.With)
+		switch {
+		case !ok || p.Role != compat.NPMScaffolder:
+			errs = append(errs, fmt.Errorf("%s: scaffold: %q is not a scaffolder in %s", c.ID(), c.Scaffold.With, RulesFile))
+		case !slices.Contains(p.Components, c.ID()):
+			errs = append(errs, fmt.Errorf("%s: scaffold: %s does not list %s among its components in %s", c.ID(), p.Name, c.ID(), RulesFile))
+		}
+	}
+	return errs
+}
+
+// isCleanLocal reports whether p is a clean, relative, slash-separated
+// path that stays inside its base directory.
+func isCleanLocal(p string) bool {
+	return p != "" && p != "." && !strings.Contains(p, `\`) && !path.IsAbs(p) &&
+		path.Clean(p) == p && p != ".." && !strings.HasPrefix(p, "../")
 }
 
 func readManifest(fsys fs.FS, name string) (manifest, error) {

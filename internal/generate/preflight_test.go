@@ -202,7 +202,7 @@ func runPreflight(ctx context.Context, req Request) error {
 	if err != nil {
 		return err
 	}
-	_, err = preflight(ctx, req)
+	_, _, err = preflight(ctx, req)
 	return err
 }
 

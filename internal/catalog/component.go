@@ -73,6 +73,27 @@ type Component struct {
 	// Points lists the contribution points the base layer declares,
 	// sorted by name. Only the base layer declares points.
 	Points []Point
+	// Scaffold describes the project directory an official scaffolder
+	// creates at generation time, or is nil.
+	Scaffold *Scaffold
+}
+
+// Scaffold is a project directory created at generation time by an npm
+// scaffolder of the rules file. The component's root templates under Dir
+// replace the scaffolded files of the same path.
+type Scaffold struct {
+	// With is the scaffolder's npm package in the rules file, for example
+	// create-vite.
+	With string
+	// Template is the scaffolder's template, for example react-ts.
+	Template string
+	// Dir is the directory the scaffolder creates, relative to the
+	// project root, for example frontend.
+	Dir string
+	// Remove lists scaffolded files or directories, relative to Dir, that
+	// generation deletes because the component's own files make them
+	// unused. Each must exist in the scaffolder's output.
+	Remove []string
 }
 
 // Point is a contribution point of the base layer: a named place in its

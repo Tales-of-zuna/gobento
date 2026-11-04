@@ -210,8 +210,8 @@ func TestNewErrors(t *testing.T) {
 		{
 			// Spec: Unknown frontend.
 			name: "unknown frontend",
-			args: []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc", "--frontend", "react"},
-			want: []string{`--frontend: unknown frontend "react"; supported: none, htmx`},
+			args: []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc", "--frontend", "angular"},
+			want: []string{`--frontend: unknown frontend "angular"; supported: none, htmx, react, svelte, vue`},
 		},
 		{
 			// Spec: Architecture must be chosen.
@@ -511,5 +511,46 @@ func TestNewFrontend(t *testing.T) {
 	}
 	if outputs[0] != outputs[1] {
 		t.Errorf("--frontend none plans other files than no --frontend:\n%s\n%s", outputs[0], outputs[1])
+	}
+}
+
+// TestNewViteFrontend covers the spec scenarios "Dry run of a React
+// project", "Next steps", and "Scaffolder version from the rules".
+func TestNewViteFrontend(t *testing.T) {
+	t.Parallel()
+
+	args := []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc", "--frontend", "react"}
+	gen := &fakeGenerator{}
+	out, _, err := run(t, components.FS(), gen, append(args, "--dry-run")...)
+	if err != nil {
+		t.Fatalf("--dry-run error = %v", err)
+	}
+	for _, w := range []string{
+		"frontend/vite.config.ts", "frontend/src/App.tsx", "internal/views/dist/.gitignore",
+		"npm create vite@9.3.3 frontend -- --template react-ts adds more files to frontend/",
+		"frontend/package-lock.json", "Node.js >=v22.12.0, npm, and network access",
+	} {
+		if !strings.Contains(out, w) {
+			t.Errorf("dry-run output does not contain %q:\n%s", w, out)
+		}
+	}
+	if len(gen.calls) != 0 {
+		t.Fatal("generate called during a dry run")
+	}
+
+	dir := t.TempDir()
+	out, _, err = run(t, components.FS(), gen, append(args, "--dir", filepath.Join(dir, "shop"))...)
+	if err != nil {
+		t.Fatalf("new error = %v", err)
+	}
+	if len(gen.calls) != 1 || len(gen.calls[0].Scaffolds) != 1 {
+		t.Fatalf("generate calls = %+v, want one with a scaffold step", gen.calls)
+	}
+	if s := gen.calls[0].Scaffolds[0]; s.Package != "create-vite" || s.Version != "9.3.3" || s.Template != "react-ts" || s.Dir != "frontend" {
+		t.Errorf("scaffold step = %+v", s)
+	}
+	ci := strings.Index(out, "npm --prefix frontend ci\n  npm --prefix frontend run build\n")
+	if ci < 0 || ci > strings.Index(out, "go run ./cmd/shop") {
+		t.Errorf("next steps do not build the frontend before go run:\n%s", out)
 	}
 }

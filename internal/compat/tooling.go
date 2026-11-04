@@ -59,10 +59,12 @@ type Image struct {
 	Digest string
 }
 
-// Ref returns the image reference for the Go version goVersion:
-// name:tag, followed by @digest when the image has one.
-func (i Image) Ref(goVersion string) string {
-	ref := i.Name + ":" + strings.ReplaceAll(i.Tag, GoPlaceholder, goVersion)
+// Ref returns the image reference for the Go version goVersion and the
+// Node.js release line nodeLine: name:tag, followed by @digest when the
+// image has one.
+func (i Image) Ref(goVersion, nodeLine string) string {
+	tag := strings.ReplaceAll(i.Tag, GoPlaceholder, goVersion)
+	ref := i.Name + ":" + strings.ReplaceAll(tag, NodePlaceholder, nodeLine)
 	if i.Digest != "" {
 		ref += "@" + i.Digest
 	}
@@ -90,15 +92,16 @@ type ToolingVersions struct {
 	Tools map[string]string
 }
 
-// Resolve returns the tooling versions for the Go version goVersion.
-func (t Tooling) Resolve(goVersion string) ToolingVersions {
+// Resolve returns the tooling versions for the Go version goVersion and
+// the Node.js release line nodeLine.
+func (t Tooling) Resolve(goVersion, nodeLine string) ToolingVersions {
 	out := ToolingVersions{
 		Images:  make(map[string]string, len(t.Images)),
 		Actions: make(map[string]string, len(t.Actions)),
 		Tools:   make(map[string]string, len(t.Tools)),
 	}
 	for k, img := range t.Images {
-		out.Images[k] = img.Ref(goVersion)
+		out.Images[k] = img.Ref(goVersion, nodeLine)
 	}
 	for ref, a := range t.Actions {
 		out.Actions[ref] = ref + "@" + a.SHA + " # " + a.Version
@@ -145,9 +148,10 @@ func parseTooling(tf toolingFile) (Tooling, []error) {
 		if !imageNamePattern.MatchString(f.Image) {
 			fail("image %s: image %q is not an image name without tag or digest, such as golang or gcr.io/distroless/static-debian13", key, f.Image)
 		}
-		// The placeholder stands for a version such as 1.27 or 1.26.3.
-		if tag := strings.ReplaceAll(f.Tag, GoPlaceholder, "1.27"); !imageTagPattern.MatchString(tag) {
-			fail("image %s: tag %q is not a valid tag; %s is the only placeholder", key, f.Tag, GoPlaceholder)
+		// The placeholders stand for versions such as 1.27 and 26.
+		tag := strings.ReplaceAll(strings.ReplaceAll(f.Tag, GoPlaceholder, "1.27"), NodePlaceholder, "26")
+		if !imageTagPattern.MatchString(tag) {
+			fail("image %s: tag %q is not a valid tag; the placeholders are %s and %s", key, f.Tag, GoPlaceholder, NodePlaceholder)
 		}
 		if f.Digest != "" && !digestPattern.MatchString(f.Digest) {
 			fail("image %s: digest %q must be sha256: followed by 64 lowercase hexadecimal digits", key, f.Digest)

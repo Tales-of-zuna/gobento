@@ -117,3 +117,48 @@ func TestShippedAssets(t *testing.T) {
 		}
 	}
 }
+
+// TestShippedViteTooling covers the spec scenarios "templ watch files only
+// with htmx", "Dependency updates for the frontend", and the Vite tooling of
+// "Build with make": the files of the base layer get the Vite frontends'
+// contributions, and htmx keeps its own.
+func TestShippedViteTooling(t *testing.T) {
+	t.Parallel()
+
+	names := [4]string{"mvc", "nethttp", "sqlite", "sqlc"}
+	for _, ui := range []string{"react", "svelte", "vue"} {
+		plan := referencePlanWith(t, names, ui)
+		want := map[string][]string{
+			".gitignore":               nil,
+			".github/dependabot.yml":   {"- package-ecosystem: npm\n    directory: /frontend\n"},
+			".dockerignore":            {"frontend/node_modules\n", "internal/views/dist/app\n"},
+			"Makefile":                 {"build: ## Build the binary into bin/\n\t$(NPM) --prefix frontend ci\n\t$(NPM) --prefix frontend run build\n\t$(GO) build", "\ndev: ##"},
+			"Dockerfile":               {"FROM node:26-alpine AS frontend\n", "COPY --from=frontend /src/internal/views/dist/app internal/views/dist/app\n"},
+			".github/workflows/ci.yml": {"actions/setup-node@", "node-version: 26\n", "run: npm ci\n", "run: npm run build\n"},
+		}
+		for path, wants := range want {
+			f, ok := plan.File(path)
+			if !ok {
+				t.Errorf("%s: %s not planned", ui, path)
+				continue
+			}
+			for _, w := range wants {
+				if !strings.Contains(string(f.Content), w) {
+					t.Errorf("%s: %s does not contain %q", ui, path, w)
+				}
+			}
+			if path == ".gitignore" && strings.Contains(string(f.Content), "_templ.txt") {
+				t.Errorf("%s: .gitignore lists templ watch files", ui)
+			}
+		}
+	}
+	htmx := referencePlanWith(t, names, "htmx")
+	if f, _ := htmx.File(".gitignore"); !strings.Contains(string(f.Content), "*_templ.txt") {
+		t.Error("htmx: .gitignore does not list *_templ.txt")
+	}
+	for _, path := range []string{"Makefile", "Dockerfile", ".github/dependabot.yml"} {
+		if f, _ := htmx.File(path); strings.Contains(string(f.Content), "npm") || strings.Contains(string(f.Content), "node") {
+			t.Errorf("htmx: %s mentions npm or node", path)
+		}
+	}
+}

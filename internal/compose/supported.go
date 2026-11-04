@@ -38,6 +38,6 @@ func Check(cat *catalog.Catalog, sel catalog.Selection) error {
 	// Composition does not depend on the project beyond names that are
 	// valid for any project, so a fixed, simple one is representative.
 	project := Project{Name: "app", Module: "example.com/app", GoVersion: goVersion}
-	_, err = Compose(Input{Project: project, Selection: sel, Versions: res.Versions(), Assets: res.AssetVersions(), Base: cat.Base(), Tooling: res.Tooling})
+	_, err = Compose(Input{Project: project, Selection: sel, Versions: res.Versions(), Assets: res.AssetVersions(), Base: cat.Base(), Tooling: res.Tooling, Node: res.Node, NPM: res.NPMVersions()})
 	return err
 }

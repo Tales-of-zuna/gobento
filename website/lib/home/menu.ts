@@ -22,12 +22,7 @@ export interface RoadmapItem {
 }
 
 /** Components on the roadmap; they join once they pass the CI matrix. */
-export const ROADMAP: readonly RoadmapItem[] = [
-  { kind: 'frontend', name: 'React' },
-  { kind: 'frontend', name: 'Vue' },
-  { kind: 'frontend', name: 'Svelte' },
-  { kind: 'frontend', name: 'Tailwind CSS' },
-];
+export const ROADMAP: readonly RoadmapItem[] = [{ kind: 'frontend', name: 'Tailwind CSS' }];
 
 /** One plate on the belt. */
 export interface Plate {

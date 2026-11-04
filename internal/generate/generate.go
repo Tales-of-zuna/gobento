@@ -54,6 +54,17 @@ type Request struct {
 	Env []string
 	// Warn receives warnings. The default discards them.
 	Warn io.Writer
+	// Scaffolds lists the scaffold steps of the selection, run after the
+	// plan is written and before the go commands. With none, Node.js is
+	// not needed.
+	Scaffolds []Scaffold
+	// Node is the rules' Node.js rule, which the local Node.js must meet
+	// when there are scaffold steps.
+	Node compat.NodeRule
+	// NodeCommand and NPMCommand are the node and npm commands: names
+	// looked up on PATH, or paths to the binaries. The defaults are
+	// "node" and "npm".
+	NodeCommand, NPMCommand string
 }
 
 // withDefaults fills in the defaults of r and makes Target absolute.
@@ -67,6 +78,12 @@ func (r Request) withDefaults() (Request, error) {
 	if r.Warn == nil {
 		r.Warn = io.Discard
 	}
+	if r.NodeCommand == "" {
+		r.NodeCommand = "node"
+	}
+	if r.NPMCommand == "" {
+		r.NPMCommand = "npm"
+	}
 	abs, err := filepath.Abs(r.Target)
 	if err != nil {
 		return r, fmt.Errorf("%w: %w", ErrTarget, err)
@@ -77,13 +94,17 @@ func (r Request) withDefaults() (Request, error) {
 
 // Generate creates the project described by req in req.Target:
 //
-//  1. Preflight checks the go command and the target.
+//  1. Preflight checks the go command and the target, and node and npm
+//     when there are scaffold steps.
 //  2. The plan and go.mod are written into a temporary directory: next to
 //     a missing target, or inside an existing empty one.
-//  3. go get fetches the chosen library versions, then go mod tidy runs.
-//  4. go.mod is checked: the go directive and every chosen version must be
+//  3. Each scaffold step runs its scaffolder, merges the scaffolded files
+//     under its directory (the plan's files win), and writes the npm lock
+//     file there.
+//  4. go get fetches the chosen library versions, then go mod tidy runs.
+//  5. go.mod is checked: the go directive and every chosen version must be
 //     unchanged, and a toolchain line is removed.
-//  5. The result is moved into place.
+//  6. The result is moved into place.
 //
 // If any step fails or ctx is cancelled, everything Generate created is
 // removed and a pre-existing target is left as it was.
@@ -92,7 +113,7 @@ func Generate(ctx context.Context, req Request) (err error) {
 	if err != nil {
 		return err
 	}
-	tc, err := preflight(ctx, req)
+	tc, n, err := preflight(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -120,6 +141,9 @@ func Generate(ctx context.Context, req Request) (err error) {
 	}()
 
 	if err := writePlan(tmp, req.Plan, req.Module, goDirective); err != nil {
+		return err
+	}
+	if err := scaffold(ctx, n, tmp, req); err != nil {
 		return err
 	}
 	if err := resolve(ctx, tc.path, tmp, req); err != nil {

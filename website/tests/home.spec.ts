@@ -124,16 +124,23 @@ test.describe('home page', () => {
       'GORM',
       'sqlc',
       'htmx + templ',
+      'React',
+      'Vue',
+      'Svelte',
     ]) {
       await expect(belt.getByText(name, { exact: true }).first()).toBeAttached();
     }
     await expect(
       page.getByText('modernc.org/sqlite v1.61.1 needs Go 1.26 or newer'),
     ).toBeAttached();
-    // The optional frontend kind has its own compartment, with the roadmap.
-    const frontend = page.getByRole('list', { name: 'Frontend roadmap' });
-    for (const name of ['React', 'Vue', 'Svelte', 'Tailwind CSS']) {
-      await expect(frontend.getByText(name, { exact: true })).toBeAttached();
+    // The optional frontend kind has its own compartment: the shipped
+    // frontends as options, and only what is still planned on its roadmap.
+    const roadmap = page.getByRole('list', { name: 'Frontend roadmap' });
+    await expect(roadmap.getByText('Tailwind CSS', { exact: true })).toBeAttached();
+    const stack = page.getByRole('region', { name: 'One choice per compartment.' });
+    for (const name of ['htmx + templ', 'React', 'Vue', 'Svelte']) {
+      await expect(stack.getByText(name, { exact: true })).toBeAttached();
+      await expect(roadmap.getByText(name, { exact: true })).toHaveCount(0);
     }
   });
 

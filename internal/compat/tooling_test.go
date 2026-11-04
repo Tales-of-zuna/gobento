@@ -118,7 +118,7 @@ func TestParseRulesToolingErrors(t *testing.T) {
 		{
 			name:    "unknown placeholder",
 			tooling: "  images:\n    go: { image: golang, tag: \"{golang}\" }\n",
-			want:    []string{"image go", "tag", "{go} is the only placeholder"},
+			want:    []string{"image go", "tag", "the placeholders are {go} and {node}"},
 		},
 		{
 			name:    "empty tag",

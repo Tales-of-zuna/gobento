@@ -69,6 +69,10 @@ type Input struct {
 	Base *catalog.Component
 	// Tooling holds the tooling versions: images, actions, and tools.
 	Tooling compat.ToolingVersions
+	// Node is the Node.js release line of the generated tooling.
+	Node string
+	// NPM maps the selected components' npm packages to their versions.
+	NPM map[string]string
 }
 
 // Plan is the composed project: every file to write, in path order. It
@@ -188,6 +192,8 @@ func (c *composer) run() {
 		Images:   orEmpty(c.in.Tooling.Images),
 		Actions:  orEmpty(c.in.Tooling.Actions),
 		Tools:    orEmpty(c.in.Tooling.Tools),
+		Node:     c.in.Node,
+		NPM:      orEmpty(c.in.NPM),
 	}
 	if sel.Frontend != nil {
 		c.data.APIPrefix = FrontendAPIPrefix
@@ -246,10 +252,18 @@ func (c *composer) renderContributions() {
 
 // contrib returns the contributions to point, joined with newlines, or ""
 // if no selected component contributes. It is the template function
-// "contrib" of the base layer's templates.
+// "contrib".
 func (c *composer) contrib(point string) (string, error) {
+	parts, err := c.contribList(point)
+	return strings.Join(parts, "\n"), err
+}
+
+// contribList returns the contributions to point, one per contributing
+// component, for example to separate Markdown paragraphs with blank lines.
+// It is the template function "contribs".
+func (c *composer) contribList(point string) ([]string, error) {
 	if _, ok := c.in.Base.Point(point); !ok {
-		return "", fmt.Errorf("the base layer declares no contribution point %q in %s", point, catalog.BaseManifestFile)
+		return nil, fmt.Errorf("the base layer declares no contribution point %q in %s", point, catalog.BaseManifestFile)
 	}
 	var parts []string
 	for _, k := range c.contribs {
@@ -257,16 +271,18 @@ func (c *composer) contrib(point string) (string, error) {
 			parts = append(parts, k.Content)
 		}
 	}
-	return strings.Join(parts, "\n"), nil
+	return parts, nil
 }
 
-// funcsFor returns the extra template functions of comp's templates: the
-// base layer's templates may include contributions.
-func (c *composer) funcsFor(comp *catalog.Component) template.FuncMap {
-	if comp != c.in.Base {
+// funcsFor returns the extra template functions of comp's templates and
+// notes: with a base layer, they may include contributions, so that one
+// component can extend a file another one owns. Contribution templates
+// themselves get no extra functions.
+func (c *composer) funcsFor(_ *catalog.Component) template.FuncMap {
+	if c.in.Base == nil {
 		return nil
 	}
-	return template.FuncMap{"contrib": c.contrib}
+	return template.FuncMap{"contrib": c.contrib, "contribs": c.contribList}
 }
 
 // checkSelection reports required kinds without a component and components

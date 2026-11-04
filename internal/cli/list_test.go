@@ -438,7 +438,7 @@ func TestListJSON(t *testing.T) {
 	fields := map[string][]string{
 		"components": {"components", "kinds"},
 		"selections": {"supported"},
-		"versions":   {"assets", "go", "modules", "tooling"},
+		"versions":   {"assets", "go", "modules", "node", "npm", "tooling"},
 	}
 	for sub, want := range fields {
 		out, _, err := runList(t, shippedDocument(t), "list", sub, "--json")
@@ -537,8 +537,8 @@ func TestListErrors(t *testing.T) {
 		},
 		{
 			name: "unknown frontend",
-			args: []string{"list", "selections", "--frontend", "react"},
-			want: `--frontend: unknown frontend "react"; supported: none, htmx`,
+			args: []string{"list", "selections", "--frontend", "angular"},
+			want: `--frontend: unknown frontend "angular"; supported: none, htmx`,
 		},
 		{
 			name: "argument",
@@ -644,6 +644,26 @@ func TestHelpPointsAtList(t *testing.T) {
 		}
 		if !strings.Contains(out, "gobento list") {
 			t.Errorf("gobento %s does not mention gobento list:\n%s", strings.Join(args, " "), out)
+		}
+	}
+}
+
+// TestListVersionsNPM covers the spec scenario "npm packages in the
+// listing" with the shipped catalog.
+func TestListVersionsNPM(t *testing.T) {
+	t.Parallel()
+
+	var b strings.Builder
+	if err := writeVersions(&b, shippedDocument(t)); err != nil {
+		t.Fatal(err)
+	}
+	for _, w := range []string{
+		"npm packages (fixed per gobento release; generation needs Node.js >=v22.12.0, the tooling uses Node.js 26)",
+		"create-vite  scaffolder  9.3.3    frontend/react, frontend/svelte, frontend/vue",
+		"node:{node}-alpine",
+	} {
+		if !strings.Contains(b.String(), w) {
+			t.Errorf("versions output does not contain %q:\n%s", w, b.String())
 		}
 	}
 }

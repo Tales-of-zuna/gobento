@@ -4,8 +4,9 @@ description: How gobento describes supported Go and module versions as data, let
 ---
 
 All version data lives in one rules file, `components/versions.yaml`: Go and
-module versions, and the [tooling versions](#tooling-versions) of images and
-actions. Templates never contain version numbers, so a version bump is a
+module versions, the [Node.js and npm](#nodejs-and-npm) versions of the
+frontends an official scaffolder creates, and the
+[tooling versions](#tooling-versions) of images and actions. Templates never contain version numbers, so a version bump is a
 one-line, reviewable change.
 
 ## The rules file
@@ -123,7 +124,8 @@ gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --go 1.2
 - the version is outside the module's range (the error shows the range);
 - no selected component uses the module, or its trait conditions are not met
   (the error names it);
-- the module is a tool (the error shows the version this release uses).
+- the module is a tool, or the name is a vendored asset or an npm package
+  (the error shows the version this release uses).
 
 See [Errors](/docs/cli/new#errors) for the exact messages.
 
@@ -180,6 +182,52 @@ recorded checksum, and, with network access, so does the file at `path` in
 `source`. To update an asset, replace the file and change `version`,
 `source`, and `sha256` together.
 
+## Node.js and npm
+
+The React, Vue, and Svelte frontends are created at generation time by
+Vite's official scaffolder, `create-vite`, which is an npm package. The rules
+file records the Node.js versions this needs and every npm package
+components use:
+
+```yaml title="components/versions.yaml"
+node:
+  range: '>=v22.12.0'
+  default: '26'
+npm:
+  create-vite:
+    components: [frontend/react, frontend/svelte, frontend/vue]
+    role: scaffolder
+    version: 9.3.3
+```
+
+| Field          | Meaning                                                                                                                                                                                               |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `node.range`   | The Node.js versions generation accepts, compared with `node --version`; gobento checks it only when a selected component uses a scaffolder                                                           |
+| `node.default` | The Node.js release line of the generated tooling, such as `26`: `actions/setup-node` in CI and the `node` image of the Dockerfile. Templates read it as `{{.Node}}`; it must lie inside `node.range` |
+| `npm.<name>`   | One entry per npm package, keyed by package name                                                                                                                                                      |
+| `components`   | The components that use the package                                                                                                                                                                   |
+| `role`         | `scaffolder` (run at generation time), or `dependency` or `dev-dependency` (added to every scaffolded frontend of a selection that uses the package)                                                  |
+| `version`      | One exact version, such as `9.3.3`. Templates read it as `{{index .NPM "<name>"}}`                                                                                                                    |
+
+A scaffolder's name starts with `create-`, and it runs as
+`npm create <name without create->@<version>`: `create-vite` 9.3.3 runs as
+`npm create vite@9.3.3`. The component names the scaffolder and its template
+(`react-ts`) in its manifest; the version is data, here. The scaffolded
+project's own dependencies, such as React and Vite, are chosen by the
+scaffolder and recorded in the project's `frontend/package-lock.json`, not
+in the rules file.
+
+Like tools and assets, npm package versions are fixed per gobento release.
+`--pin create-vite=9.0.0` is rejected:
+
+```text
+version is fixed: cannot pin create-vite, npm package versions are fixed per gobento release (this release uses 9.3.3)
+```
+
+The Node.js range is the scaffolder's and Vite's supported engines without
+release lines that reached end of life. The generated project keeps its npm
+dependencies current with Dependabot.
+
 ## Tooling versions
 
 The [project tooling](/docs/concepts/project-tooling) uses versions that are not
@@ -192,6 +240,9 @@ tooling:
     go: # build stage of the Dockerfile
       image: golang
       tag: '{go}' # the selected Go version, for example 1.27
+    node: # frontend build stage of the Dockerfile with a Vite frontend
+      image: node
+      tag: '{node}-alpine' # node.default, for example 26-alpine
     runtime: # runtime stage, pinned by digest because it ships
       image: gcr.io/distroless/static-debian13
       tag: nonroot
@@ -207,14 +258,14 @@ tooling:
     golangci-lint: v2.15.0
 ```
 
-| Field                  | Meaning                                                                                                                          |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `images.<key>`         | An image; templates read `{{.Images.<key>}}`, the full reference `image:tag`, followed by `@digest` when it has one              |
-| `image`, `tag`         | The image name without tag, and the tag; `{go}` in a tag is the selected Go version, the only placeholder                        |
-| `digest`               | Optional `sha256:` digest that pins the image                                                                                    |
-| `actions.<owner/repo>` | A GitHub Action; templates read `{{index .Actions "<owner/repo>"}}`, the complete `uses:` value `<owner/repo>@<sha> # <version>` |
-| `version`, `sha`       | The release and the full 40-character commit SHA its tag points to                                                               |
-| `tools.<name>`         | An exact tool version, read as `{{index .Tools "<name>"}}`                                                                       |
+| Field                  | Meaning                                                                                                                           |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `images.<key>`         | An image; templates read `{{.Images.<key>}}`, the full reference `image:tag`, followed by `@digest` when it has one               |
+| `image`, `tag`         | The image name without tag, and the tag; `{go}` in a tag is the selected Go version, and `{node}` the Node.js line `node.default` |
+| `digest`               | Optional `sha256:` digest that pins the image                                                                                     |
+| `actions.<owner/repo>` | A GitHub Action; templates read `{{index .Actions "<owner/repo>"}}`, the complete `uses:` value `<owner/repo>@<sha> # <version>`  |
+| `version`, `sha`       | The release and the full 40-character commit SHA its tag points to                                                                |
+| `tools.<name>`         | An exact tool version, read as `{{index .Tools "<name>"}}`                                                                        |
 
 gobento rejects a malformed name, tag, digest, version, or SHA when it loads
 the file. Like tool modules, tooling versions are fixed per gobento release
@@ -242,12 +293,16 @@ it applies only when that module is part of the selection.
 
 ## The rules file is checked
 
-Loading fails, with an error naming the module, if the rules file:
+Loading fails, with an error naming the module or package, if the rules file:
 
 - has an unknown field (a typo fails instead of being ignored),
 - declares a default outside its own range,
 - gives a tool a range other than one exact version, such as `=v1.31.1`,
 - references an unknown component or constraint target,
+- lists an npm package without components, with a malformed version, or with
+  an unknown role, names a scaffolder that does not start with `create-`, or
+  lists npm packages without a `node` section,
+- declares a `node.default` outside `node.range`,
 - conditions a module on a trait that no component provides,
 - contains a malformed range or version.
 

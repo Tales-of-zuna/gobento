@@ -127,7 +127,7 @@ Vendored assets (fixed per gobento release):
 ASSET     VERSION  USED BY        SOURCE
 htmx.org  2.0.11   frontend/htmx  https://registry.npmjs.org/htmx.org/-/htmx.org-2.0.11.tgz
 
-Project tooling (fixed per gobento release; {go} is the selected Go version):
+Project tooling (fixed per gobento release; {go} is the selected Go version, {node} the Node.js line):
 
 TYPE    NAME                           VERSION                                    PINNED BY
 image   go                             golang:{go}                                -

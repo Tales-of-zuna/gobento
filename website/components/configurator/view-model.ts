@@ -9,10 +9,11 @@ import {
   goVersionReasons,
   selectedAssets,
   selectedModules,
+  selectedNpmPackages,
   type Selection,
 } from '@/lib/catalog/compat';
 import { isOptionalKind, KIND_IDS, titleInSentence } from '@/lib/catalog/kinds';
-import type { Catalog, KindId, Module } from '@/lib/catalog/schema';
+import type { Catalog, KindId, Module, NpmPackage } from '@/lib/catalog/schema';
 import {
   compareVersions,
   parseGoVersion,
@@ -185,14 +186,17 @@ export function goOptions(catalog: Catalog, state: Selection): OptionView[] {
   });
 }
 
-/** A module version field in the Advanced section, or a vendored asset's fixed version. */
+/**
+ * A module version field in the Advanced section, or the fixed version of a
+ * vendored asset or an npm package.
+ */
 export interface ModuleFieldView {
-  /** The module path, or the asset name. */
+  /** The module path, or the asset or package name. */
   readonly path: string;
   /** The component titles using the module, for the label. */
   readonly usedBy: string;
   readonly fixed: boolean;
-  /** Tag shown next to a fixed version: a tool's `Fixed` or an asset's `Vendored`. */
+  /** Tag shown next to a fixed version: a tool's `Fixed`, an asset's `Vendored`, a package's role. */
   readonly tag?: string;
   /** What the input shows: the override, or else the default. */
   readonly value: string;
@@ -211,9 +215,17 @@ function titlesOf(catalog: Catalog, ids: readonly string[]): string {
   return ids.map((id) => catalog.components.find((c) => c.id === id)?.title ?? id).join(', ');
 }
 
+/** Tag of an npm package's fixed version, by role. */
+const NPM_TAGS: Readonly<Record<NpmPackage['role'], string>> = {
+  scaffolder: 'Scaffolder',
+  dependency: 'npm',
+  'dev-dependency': 'npm (dev)',
+};
+
 /**
  * The version fields for the modules the chosen components use, followed by
- * the files they vendor (shown with their fixed version, never pinnable).
+ * the files they vendor and the npm packages they use (shown with their fixed
+ * version, never pinnable).
  */
 export function moduleFields(
   catalog: Catalog,
@@ -227,6 +239,17 @@ export function moduleFields(
     tag: 'Vendored',
     value: asset.version,
     hint: 'Vendored into the project; its version is fixed per gobento release.',
+  }));
+  const packages = selectedNpmPackages(catalog, state).map((pkg): ModuleFieldView => ({
+    path: pkg.name,
+    usedBy: titlesOf(catalog, pkg.components),
+    fixed: true,
+    tag: NPM_TAGS[pkg.role],
+    value: pkg.version,
+    hint:
+      pkg.role === 'scaffolder'
+        ? `Scaffolds the app at generation time and needs Node.js ${catalog.node.range}; its version is fixed per gobento release.`
+        : 'An npm package of the app; its version is fixed per gobento release.',
   }));
   const modules = selectedModules(catalog, state).map((module): ModuleFieldView => {
     const usedBy = titlesOf(catalog, module.components);
@@ -248,7 +271,7 @@ export function moduleFields(
       (needs ? ` · this version needs Go ${needs}` : '');
     return { path: module.path, usedBy, fixed: false, value, hint, error };
   });
-  return [...modules, ...assets];
+  return [...modules, ...assets, ...packages];
 }
 
 /** Returns the pins after the visitor typed `value` for `path`: a default clears the pin. */
@@ -320,6 +343,11 @@ export interface TreeLine {
   readonly label: string;
   readonly depth: 0 | 1 | 2;
   readonly dir: boolean;
+  /**
+   * A remark shown next to the line, for a directory that a scaffolder
+   * completes at generation time (the preview lists only gobento's own files).
+   */
+  readonly note?: string;
 }
 
 /**
@@ -367,6 +395,45 @@ const FRONTEND_FILES: Readonly<Record<string, readonly string[]>> = {
 };
 
 /**
+ * The web package of a frontend built by Vite (trait `frontend-build: vite`):
+ * the handler that serves the embedded build, and the build directory.
+ */
+const VITE_WEB_FILES: readonly string[] = ['handler.go', 'handler_test.go', 'dist/.gitignore'];
+
+/**
+ * The files gobento writes over the scaffolded app in `frontend/`, by
+ * component id: the Vite config, the API client, the page, and the stylesheet.
+ * The scaffolder adds the rest (package.json, index.html, tsconfig, ...).
+ */
+const VITE_APP_FILES: Readonly<Record<string, readonly string[]>> = {
+  'frontend/react': ['src/App.tsx', 'src/index.css'],
+  'frontend/vue': ['src/App.vue', 'src/style.css'],
+  'frontend/svelte': ['src/App.svelte', 'src/app.css'],
+};
+
+/**
+ * The `frontend/` directory of a Vite frontend: gobento's own files, with the
+ * scaffolder from the catalog's npm packages that completes the rest.
+ */
+function viteApp(catalog: Catalog, id: string): TreeLine[] {
+  const scaffolder = catalog.npm.find(
+    (pkg) => pkg.role === 'scaffolder' && pkg.components.includes(id),
+  );
+  const files = ['vite.config.ts', 'src/api.ts', ...(VITE_APP_FILES[id] ?? [])].sort();
+  return [
+    {
+      label: 'frontend/',
+      depth: 1,
+      dir: true,
+      ...(scaffolder && {
+        note: `completed by ${scaffolder.name} ${scaffolder.version} at generation time`,
+      }),
+    },
+    ...files.map((label) => ({ label, depth: 2 as const, dir: false })),
+  ];
+}
+
+/**
  * Files the base layer (components/base) adds to every project: the
  * developer tooling. Files under .github/ are listed inside that directory.
  */
@@ -382,16 +449,18 @@ const BASE_FILES: readonly string[] = [
 /** The project tree preview for the chosen components. */
 export function fileTree(catalog: Catalog, state: ConfigState, nameValid: boolean): TreeLine[] {
   const name = nameValid ? state.name : '<name>';
-  const ids = KIND_IDS.flatMap((kind) => {
+  const components = KIND_IDS.flatMap((kind) => {
     const component = catalog.components.find(
       (c) => c.kind === kind && c.name === state.components[kind],
     );
-    return component ? [component.id] : [];
+    return component ? [component] : [];
   });
+  const ids = components.map((c) => c.id);
   const files = ids.flatMap((id) => COMPONENT_FILES[id] ?? []);
   const web = ids.map((id) => WEB_DIRS[id]).find((dir) => dir !== undefined) ?? 'internal/web/';
-  for (const id of ids) {
-    const frontend = FRONTEND_FILES[id];
+  const vite = components.filter((c) => c.provides['frontend-build'] === 'vite');
+  for (const component of components) {
+    const frontend = vite.includes(component) ? VITE_WEB_FILES : FRONTEND_FILES[component.id];
     if (frontend) files.push(web, ...frontend.map((file) => `${web}${file}`));
   }
   const internal = files
@@ -416,6 +485,7 @@ export function fileTree(catalog: Catalog, state: ConfigState, nameValid: boolea
           ...internal.map((label) => ({ label, depth: 2 as const, dir: false })),
         ]
       : []),
+    ...vite.flatMap((component) => viteApp(catalog, component.id)),
     ...top.map((label) => ({ label, depth: 1 as const, dir: false })),
     { label: 'go.mod', depth: 1, dir: false },
     { label: 'README.md', depth: 1, dir: false },

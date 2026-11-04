@@ -25,6 +25,8 @@ type Document struct {
 	Modules    []Module            `json:"modules"`
 	Assets     []Asset             `json:"assets"`
 	Tooling    Tooling             `json:"tooling"`
+	Node       NodeRule            `json:"node"`
+	NPM        []NPMPackage        `json:"npm"`
 	Supported  []map[string]string `json:"supported"`
 	Rules      Rules               `json:"rules"`
 }
@@ -45,6 +47,22 @@ type Asset struct {
 	Components []string `json:"components"`
 	Version    string   `json:"version"`
 	Source     string   `json:"source"`
+}
+
+// NodeRule is the Node.js range that scaffolding needs and the release
+// line of the generated tooling; both are "" without npm packages.
+type NodeRule struct {
+	Range   string `json:"range"`
+	Default string `json:"default"`
+}
+
+// NPMPackage is an npm package that components use, with a version fixed
+// per gobento release. Role is scaffolder, dependency, or dev-dependency.
+type NPMPackage struct {
+	Name       string   `json:"name"`
+	Components []string `json:"components"`
+	Role       string   `json:"role"`
+	Version    string   `json:"version"`
 }
 
 // Tooling lists the versions of the project tooling that are not Go modules,
@@ -172,6 +190,7 @@ func FromCatalog(cat *catalog.Catalog) (*Document, error) {
 		Components: []Component{},
 		Modules:    []Module{},
 		Assets:     []Asset{},
+		NPM:        []NPMPackage{},
 		Tooling:    Tooling{Images: []Image{}, Actions: []Action{}, Tools: []Tool{}},
 		Supported:  []map[string]string{},
 	}
@@ -215,6 +234,13 @@ func FromCatalog(cat *catalog.Catalog) (*Document, error) {
 
 	for _, a := range rules.Assets {
 		out.Assets = append(out.Assets, Asset{Name: a.Name, Components: a.Components, Version: a.Version, Source: a.Source})
+	}
+
+	if !rules.Node.IsZero() {
+		out.Node = NodeRule{Range: rules.Node.Range.String(), Default: rules.Node.Default}
+	}
+	for _, p := range rules.NPM {
+		out.NPM = append(out.NPM, NPMPackage{Name: p.Name, Components: p.Components, Role: string(p.Role), Version: p.Version})
 	}
 
 	for _, key := range slices.Sorted(maps.Keys(rules.Tooling.Images)) {

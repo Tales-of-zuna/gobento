@@ -1,0 +1,44 @@
+<script setup lang="ts">
+// The example page: lists the items of the API and adds new ones.
+import { onMounted, ref } from 'vue'
+import { createItem, errorMessage, listItems, type Item } from './api'
+
+const items = ref<Item[]>([])
+const name = ref('')
+const error = ref('')
+
+onMounted(async () => {
+  try {
+    items.value = await listItems()
+  } catch (err) {
+    error.value = errorMessage(err)
+  }
+})
+
+async function add() {
+  try {
+    const item = await createItem(name.value)
+    items.value = [...items.value, item]
+    name.value = ''
+    error.value = ''
+  } catch (err) {
+    error.value = errorMessage(err)
+  }
+}
+</script>
+
+<template>
+  <main>
+    <h1>shop</h1>
+    <form @submit.prevent="add">
+      <label for="name">Name</label>
+      <input id="name" v-model="name" name="name" autocomplete="off" />
+      <button type="submit">Add</button>
+    </form>
+    <p v-if="error" role="alert" v-text="error"></p>
+    <p v-if="items.length === 0" class="empty">No items yet.</p>
+    <ul v-else>
+      <li v-for="item in items" :key="item.id" v-text="item.name"></li>
+    </ul>
+  </main>
+</template>

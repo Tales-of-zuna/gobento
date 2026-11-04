@@ -26,10 +26,21 @@ import (
 //	FAKE_GO_RAISE=mod@ver  go get requires mod at ver instead
 //	FAKE_GO_RAISE_GO=ver   go get raises the go directive to ver
 //	FAKE_GO_TOOLCHAIN_LINE go get adds a toolchain line
+//
+// Copied as node and npm, it fakes those (see fakenpm_test.go).
 var fakeGoPath string
+
+// fakeNodePath and fakeNPMPath are the fake node and npm commands.
+var fakeNodePath, fakeNPMPath string
 
 func TestMain(m *testing.M) {
 	if os.Getenv("GOBENTO_FAKE_GO") == "1" {
+		switch name := strings.TrimSuffix(filepath.Base(os.Args[0]), ".exe"); name {
+		case "node":
+			os.Exit(fakeNode(os.Args[1:]))
+		case "npm":
+			os.Exit(fakeNPM(os.Args[1:]))
+		}
 		os.Exit(fakeGo(os.Args[1:]))
 	}
 	os.Exit(runTests(m))
@@ -42,21 +53,29 @@ func runTests(m *testing.M) int {
 		return 1
 	}
 	defer func() { _ = os.RemoveAll(dir) }()
-	if fakeGoPath, err = installFakeGo(dir); err != nil {
+	if fakeGoPath, err = installFake(dir, "go"); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if fakeNodePath, err = installFake(dir, "node"); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if fakeNPMPath, err = installFake(dir, "npm"); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
 	return m.Run()
 }
 
-func installFakeGo(dir string) (string, error) {
+// installFake copies the test binary into dir as the command name.
+func installFake(dir, name string) (string, error) {
 	self, err := os.Executable()
 	if err != nil {
 		return "", err
 	}
-	name := "go"
 	if runtime.GOOS == "windows" {
-		name = "go.exe"
+		name += ".exe"
 	}
 	dst := filepath.Join(dir, name)
 	src, err := os.Open(self) //nolint:gosec // G304: copying the running test binary

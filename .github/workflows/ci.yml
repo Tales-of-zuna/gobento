@@ -90,13 +90,22 @@ jobs:
     # Generates the selections compose.Coverage returns (every supported
     # selection without a frontend, and a pairwise covering set of those with
     # one) with default and floor versions, and builds, vets, and tests each
-    # project (internal/generate).
-    name: integration (${{ matrix.os }})
+    # project (internal/generate). The React, Vue, and Svelte frontends are
+    # scaffolded with npm and built with Vite, so the job sets up Node.js:
+    # the node default of components/versions.yaml, and on macOS the floor of
+    # its node range.
+    name: integration (${{ matrix.os }}, node ${{ matrix.node }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            node: "26"
+          - os: macos-latest
+            node: "22.12.0"
+          - os: windows-latest
+            node: "26"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -106,6 +115,9 @@ jobs:
           # The newest Go in the go range of components/versions.yaml.
           go-version: "1.27"
           cache: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
       - name: Start PostgreSQL for the generated projects' tests
         # Only Linux runners have Docker. Elsewhere TEST_DATABASE_URL stays
         # unset, and the tests that need a server skip.

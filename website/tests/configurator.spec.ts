@@ -119,6 +119,43 @@ test.describe('configurator', () => {
     await expect(files).not.toContainText('pages.templ');
   });
 
+  test('Choosing a Vite frontend previews its files and its create-vite scaffolder', async ({
+    page,
+  }) => {
+    await open(page);
+    const frontend = group(page, 'Frontend');
+    const base = 'gobento new myapp --arch mvc --framework nethttp --db sqlite --data sqlc';
+    for (const [title, name, pageFile, style] of [
+      ['React', 'react', 'src/App.tsx', 'src/index.css'],
+      ['Vue', 'vue', 'src/App.vue', 'src/style.css'],
+      ['Svelte', 'svelte', 'src/App.svelte', 'src/app.css'],
+    ]) {
+      await frontend.getByText(title!, { exact: true }).click();
+      await expect(command(page)).toHaveText(`${base} --frontend ${name}`);
+      const files = page.getByRole('list', { name: 'Generated files' });
+      for (const file of [
+        'views/handler.go',
+        'views/handler_test.go',
+        'views/dist/.gitignore',
+        'vite.config.ts',
+        'src/api.ts',
+        pageFile!,
+        style!,
+      ]) {
+        await expect(files.getByText(file, { exact: true })).toBeVisible();
+      }
+      await expect(files).toContainText(
+        /frontend\/ completed by create-vite \S+ at generation time/,
+      );
+      await expect(files).not.toContainText('pages.templ');
+    }
+    await expect(page.getByText('Incompatible', { exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: /Advanced/ }).click();
+    await expect(page.getByText('create-vite (React, Svelte, Vue)')).toBeVisible();
+    await expect(page.getByText('Scaffolder', { exact: true })).toBeVisible();
+    expect((await new AxeBuilder({ page }).include('aside').analyze()).violations).toEqual([]);
+  });
+
   test('A shared link restores the frontend, and an unknown one falls back to None', async ({
     page,
   }) => {
@@ -129,9 +166,10 @@ test.describe('configurator', () => {
       'gobento new myapp --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx',
     );
 
-    await open(page, '?arch=mvc&framework=nethttp&db=sqlite&data=sqlc&frontend=react');
+    // Tailwind CSS is on the roadmap, not in the catalog.
+    await open(page, '?arch=mvc&framework=nethttp&db=sqlite&data=sqlc&frontend=tailwind');
     const notice = page.getByRole('status').filter({ hasText: 'shared link was reset' });
-    await expect(notice).toContainText('frontend "react", which is not available; none is used');
+    await expect(notice).toContainText('frontend "tailwind", which is not available; none is used');
     await expect(frontend.getByRole('radio', { name: 'None (API only)' })).toBeChecked();
     await expect(command(page)).toHaveText(
       'gobento new myapp --arch mvc --framework nethttp --db sqlite --data sqlc',

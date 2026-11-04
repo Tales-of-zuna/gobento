@@ -21,6 +21,9 @@ help: ## Show this list of targets
 	@awk 'BEGIN {FS = ":.*## "} /^[a-z0-9-]+:.*## / {printf "  %-13s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 build: ## Build the binary into bin/
+{{- with contrib "make-build"}}
+{{prefix "\t" .}}
+{{- end}}
 	$(GO) build -o bin/$(BINARY) ./{{.Slots.entry.Dir}}
 
 run: ## Run the server

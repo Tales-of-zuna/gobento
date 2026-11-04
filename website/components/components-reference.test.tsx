@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { CatalogReference, ComponentsReference } from '@/components/components-reference';
-import { catalogWith } from '@/lib/test/catalog';
+import { addViteFrontend, catalogWith } from '@/lib/test/catalog';
 
 const sqliteModules = () => screen.getByRole('table', { name: 'Modules of sqlite' });
 
@@ -45,6 +45,42 @@ describe('CatalogReference', () => {
     expect(row).toHaveTextContent('vendored');
     expect(row).toHaveTextContent('2.0.11');
     expect(screen.getAllByRole('heading', { level: 2, name: /optional/ })).toHaveLength(1);
+  });
+
+  it('lists the npm scaffolder of each Vite frontend and the Node.js it needs', () => {
+    const catalog = catalogWith((data) => {
+      for (const name of ['react', 'svelte', 'vue'] as const) addViteFrontend(data, name);
+      data.npm![0]!.version = '9.4.0';
+    });
+    render(<CatalogReference catalog={catalog} />);
+    const node = screen.getByRole('table', { name: 'Node.js versions' });
+    expect(node).toHaveTextContent('>=v22.12.0');
+    expect(node).toHaveTextContent('26');
+    expect(node).toHaveTextContent('react, svelte, vue');
+    for (const name of ['react', 'svelte', 'vue']) {
+      const table = screen.getByRole('table', { name: `npm packages of ${name}` });
+      const row = within(table).getByRole('row', { name: /create-vite/ });
+      expect(row).toHaveTextContent('scaffolder, run at generation time');
+      expect(row).toHaveTextContent('9.4.0');
+    }
+    const react = screen.getByRole('article', { name: /React/ });
+    expect(react).toHaveTextContent('frontend-build: vite');
+    expect(react).toHaveTextContent('Generating it needs Node.js >=v22.12.0');
+    expect(screen.queryByRole('table', { name: 'npm packages of htmx' })).toBeNull();
+  });
+
+  it('leaves Node.js out when no component uses an npm package', () => {
+    render(<CatalogReference catalog={catalogWith()} />);
+    expect(screen.queryByRole('heading', { level: 2, name: 'Node.js' })).toBeNull();
+  });
+
+  it('lists the shipped Vite frontends with create-vite from the real catalog', () => {
+    render(<ComponentsReference />);
+    for (const name of ['react', 'svelte', 'vue']) {
+      expect(screen.getByRole('table', { name: `npm packages of ${name}` })).toHaveTextContent(
+        'create-vite',
+      );
+    }
   });
 
   // Spec "Version bump": a changed default appears without editing docs content.
