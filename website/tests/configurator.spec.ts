@@ -14,6 +14,10 @@ async function open(page: Page, query = '') {
 const command = (page: Page) => page.locator('[data-command]').locator('visible=true');
 const group = (page: Page, name: string) => page.getByRole('group', { name });
 
+/** Chooses a data access by clicking its card; with several options, none is preselected. */
+const chooseData = (page: Page, title: string) =>
+  group(page, 'Data access').getByText(title, { exact: true }).click();
+
 test.describe('configurator', () => {
   test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
@@ -28,13 +32,23 @@ test.describe('configurator', () => {
       ['Architecture', 'Model-View-Controller'],
       ['HTTP framework', 'net/http'],
       ['Database', 'SQLite'],
-      ['Data access', 'sqlc'],
       ['Go version', 'Go 1.27'],
     ]) {
       await expect(group(page, kind!).getByRole('radio', { name: option })).toBeChecked();
     }
     await expect(group(page, 'HTTP framework').getByRole('radio', { name: 'gin' })).toBeDisabled();
-    await expect(command(page)).toHaveText('gobento new myapp');
+    // Data access has several options, so it waits for a choice before offering a command.
+    for (const option of ['GORM', 'sqlc']) {
+      const radio = group(page, 'Data access').getByRole('radio', { name: option });
+      await expect(radio).toBeEnabled();
+      await expect(radio).not.toBeChecked();
+    }
+    await expect(page.getByRole('button', { name: 'Copy command' })).toHaveCount(0);
+    await expect(
+      page.getByText('No command yet. Fix the data access choice').locator('visible=true'),
+    ).toBeVisible();
+    await chooseData(page, 'sqlc');
+    await expect(command(page)).toHaveText('gobento new myapp --data sqlc');
     await page.getByRole('button', { name: /Advanced/ }).click();
     await expect(page.getByLabel('modernc.org/sqlite')).toHaveValue('v1.61.1');
     await expect(page.getByText('Tool versions are fixed per gobento release.')).toBeVisible();
@@ -44,9 +58,18 @@ test.describe('configurator', () => {
     await open(page);
     await page.getByLabel('Project name').fill('shop');
     await page.getByLabel('Module path').fill('example.com/shop');
-    await expect(command(page)).toHaveText('gobento new shop --module example.com/shop');
+    await chooseData(page, 'sqlc');
+    await expect(command(page)).toHaveText(
+      'gobento new shop --module example.com/shop --data sqlc',
+    );
+    await chooseData(page, 'GORM');
+    await expect(command(page)).toHaveText(
+      'gobento new shop --module example.com/shop --data gorm',
+    );
     await group(page, 'Go version').getByText('Go 1.26').click();
-    await expect(command(page)).toHaveText('gobento new shop --module example.com/shop --go 1.26');
+    await expect(command(page)).toHaveText(
+      'gobento new shop --module example.com/shop --data gorm --go 1.26',
+    );
     await expect(page.getByRole('list', { name: 'Generated files' })).toContainText(
       'cmd/shop/main.go',
     );
@@ -55,6 +78,7 @@ test.describe('configurator', () => {
   test('Copy command puts the displayed command on the clipboard', async ({ page }) => {
     await open(page);
     await page.getByLabel('Project name').fill('blog');
+    await chooseData(page, 'sqlc');
     const shown = await command(page).textContent();
     await page.getByRole('button', { name: 'Copy command' }).click();
     // Check the visible feedback first: it deliberately reverts after 2 seconds.
@@ -91,6 +115,7 @@ test.describe('configurator', () => {
     // Configurator.test.tsx and view-model.test.ts. This test checks the live
     // range validation the same field uses.
     await open(page);
+    await chooseData(page, 'sqlc');
     await page.getByRole('button', { name: /Advanced/ }).click();
     const sqlite = page.getByLabel('modernc.org/sqlite');
     await sqlite.fill('v2.1.0');
@@ -98,7 +123,9 @@ test.describe('configurator', () => {
     await expect(sqlite).toHaveAccessibleDescription(/outside the supported range >=v1\.61\.0/);
     await sqlite.fill('v1.62.0');
     await expect(sqlite).toHaveAttribute('aria-invalid', 'false');
-    await expect(command(page)).toHaveText('gobento new myapp --pin modernc.org/sqlite=v1.62.0');
+    await expect(command(page)).toHaveText(
+      'gobento new myapp --data sqlc --pin modernc.org/sqlite=v1.62.0',
+    );
     await expect(group(page, 'Go version').getByRole('radio', { name: 'Go 1.26' })).toBeEnabled();
   });
 
@@ -106,6 +133,7 @@ test.describe('configurator', () => {
     await open(page);
     await page.getByLabel('Project name').fill('shop');
     await page.getByLabel('Module path').fill('example.com/shop');
+    await chooseData(page, 'sqlc');
     await group(page, 'Go version').getByText('Go 1.26').click();
     const shown = await command(page).textContent();
     await page.getByRole('button', { name: 'Share this configuration' }).click();
@@ -120,19 +148,20 @@ test.describe('configurator', () => {
     await expect(other.locator('[data-hydrated="true"]')).toBeAttached();
     await expect(other.getByLabel('Project name')).toHaveValue('shop');
     await expect(other.getByLabel('Module path')).toHaveValue('example.com/shop');
+    await expect(group(other, 'Data access').getByRole('radio', { name: 'sqlc' })).toBeChecked();
     await expect(group(other, 'Go version').getByRole('radio', { name: 'Go 1.26' })).toBeChecked();
     await expect(command(other)).toHaveText(shown!);
   });
 
   test('Unknown value in a shared link falls back with a notice', async ({ page }) => {
-    await open(page, '?name=blog&framework=fiber&go=1.19');
+    await open(page, '?name=blog&framework=fiber&go=1.19&data=sqlc');
     const notice = page.getByRole('status').filter({ hasText: 'shared link was reset' });
     await expect(notice).toContainText('framework "fiber"');
     await expect(notice).toContainText('Go 1.19');
     await expect(
       group(page, 'HTTP framework').getByRole('radio', { name: 'net/http' }),
     ).toBeChecked();
-    await expect(command(page)).toHaveText('gobento new blog');
+    await expect(command(page)).toHaveText('gobento new blog --data sqlc');
     await notice.getByRole('button', { name: 'Dismiss' }).click();
     await expect(notice).toHaveCount(0);
   });
@@ -150,7 +179,17 @@ test.describe('configurator', () => {
     await expect(page.getByLabel('Module path')).toBeFocused();
     await page.keyboard.type('example.com/shop');
 
-    // Each radio group is one tab stop; the Go group is the last one.
+    // Each radio group is one tab stop. Data access has no choice yet, so Tab
+    // lands on its first card and an arrow key moves to and checks the next.
+    const gorm = group(page, 'Data access').getByRole('radio', { name: 'GORM' });
+    for (let i = 0; i < 10 && !(await gorm.evaluate((el) => el === document.activeElement)); i++) {
+      await page.keyboard.press('Tab');
+    }
+    await expect(gorm).toBeFocused();
+    await page.keyboard.press('ArrowRight');
+    await expect(group(page, 'Data access').getByRole('radio', { name: 'sqlc' })).toBeChecked();
+
+    // The Go group is the last one.
     const go127 = group(page, 'Go version').getByRole('radio', { name: 'Go 1.27' });
     for (let i = 0; i < 10 && !(await go127.evaluate((el) => el === document.activeElement)); i++) {
       await page.keyboard.press('Tab');
@@ -158,7 +197,9 @@ test.describe('configurator', () => {
     await expect(go127).toBeFocused();
     await page.keyboard.press('ArrowLeft');
     await expect(group(page, 'Go version').getByRole('radio', { name: 'Go 1.26' })).toBeChecked();
-    await expect(command(page)).toHaveText('gobento new shop --module example.com/shop --go 1.26');
+    await expect(command(page)).toHaveText(
+      'gobento new shop --module example.com/shop --data sqlc --go 1.26',
+    );
 
     await page.keyboard.press('Tab');
     const advanced = page.getByRole('button', { name: /Advanced/ });
@@ -177,7 +218,7 @@ test.describe('configurator', () => {
     expect(outline).toBe('3px');
     await page.keyboard.press('Enter');
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-      'gobento new shop --module example.com/shop --go 1.26',
+      'gobento new shop --module example.com/shop --data sqlc --go 1.26',
     );
   });
 
@@ -200,12 +241,12 @@ test.describe('configurator', () => {
     test.use({ viewport: { width: 390, height: 844 } });
 
     test('shows the stage first and pins the command to the bottom', async ({ page }) => {
-      await open(page);
+      await open(page, '?data=sqlc');
       const stage = page.locator('[data-stage]');
       const nameBox = await page.getByLabel('Project name').boundingBox();
       expect((await stage.boundingBox())!.y).toBeLessThan(nameBox!.y);
       const bar = command(page);
-      await expect(bar).toHaveText('gobento new myapp');
+      await expect(bar).toHaveText('gobento new myapp --data sqlc');
       const box = await bar.boundingBox();
       expect(box!.y + box!.height).toBeGreaterThan(844 - 100);
       await page.mouse.wheel(0, 1500);
@@ -214,7 +255,8 @@ test.describe('configurator', () => {
   });
 
   test('the 3D bento loads on interaction without moving the tray', async ({ page }) => {
-    await open(page);
+    // Every compartment is filled once a data access is chosen.
+    await open(page, '?data=sqlc');
     const tray = page.getByRole('list', { name: 'Bento: chosen parts' });
     // The mascot still holds the scene's place from the first paint.
     await expect(page.locator('[data-stage] img[data-mascot-still]')).toBeVisible();

@@ -57,7 +57,9 @@ test.describe('without JavaScript', () => {
     );
     await expectShown(page.getByText(/gobento picks versions that are known to work/));
     await expectShown(
-      page.locator('main code').filter({ hasText: 'gobento new shop --module example.com/shop' }),
+      page.locator('main code').filter({
+        hasText: 'gobento new shop --module example.com/shop --data sqlc',
+      }),
     );
     for (const name of SECTION_HEADINGS) {
       await expectShown(page.getByRole('heading', { level: 2, name }));

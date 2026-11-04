@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/Tales-of-zuna/gobento/components"
@@ -49,7 +50,7 @@ func TestShippedCatalog(t *testing.T) {
 				for _, c := range s.Components() {
 					ids = append(ids, c.ID())
 				}
-				if _, err := cat.Rules().Resolve(compat.Request{Components: ids}); err != nil {
+				if _, err := cat.Rules().Resolve(compat.Request{Components: ids, Traits: s.Traits()}); err != nil {
 					t.Errorf("Resolve(defaults) for %s error = %v", s, err)
 				}
 			}
@@ -57,7 +58,7 @@ func TestShippedCatalog(t *testing.T) {
 	}
 }
 
-func TestShippedCatalogFirstSlice(t *testing.T) {
+func TestShippedCatalogCandidates(t *testing.T) {
 	t.Parallel()
 
 	cat, err := catalog.Load(components.FS())
@@ -68,8 +69,9 @@ func TestShippedCatalogFirstSlice(t *testing.T) {
 	for _, s := range cat.Candidates() {
 		got = append(got, s.String())
 	}
-	if len(got) != 1 || got[0] != "mvc/nethttp/sqlite/sqlc" {
-		t.Errorf("Candidates() = %v, want [mvc/nethttp/sqlite/sqlc]", got)
+	want := []string{"mvc/nethttp/sqlite/gorm", "mvc/nethttp/sqlite/sqlc"}
+	if !slices.Equal(got, want) {
+		t.Errorf("Candidates() = %v, want %v", got, want)
 	}
 }
 

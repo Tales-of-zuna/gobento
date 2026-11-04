@@ -10,6 +10,7 @@ describe('catalog schema', () => {
       'architecture/mvc',
       'framework/nethttp',
       'database/sqlite',
+      'data/gorm',
       'data/sqlc',
     ]);
   });
@@ -100,6 +101,11 @@ describe('catalog schema', () => {
     {
       name: 'trait requirement with no allowed values',
       edit: (d) => (sqlc(d).requires['sql-dialect'] = []),
+      expected: 'Too small',
+    },
+    {
+      name: 'module trait condition with no allowed values',
+      edit: (d) => (sqlite(d).traits = { 'sql-dialect': [] }),
       expected: 'Too small',
     },
     {

@@ -34,15 +34,49 @@ modules:
   generated from the real file, so it always shows the current ranges and defaults.
 </Callout>
 
-| Field                    | Meaning                                                                                                       |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| `go.range`, `go.default` | The Go versions a generated project may use, and the one used by default                                      |
-| `modules.<path>`         | One entry per Go module, keyed by module path                                                                 |
-| `components`             | The components that use the module, as `<kind>/<name>`                                                        |
-| `role`                   | `library` (required in the generated `go.mod`) or `tool` (used but not in `go.mod`)                           |
-| `range`                  | The supported versions                                                                                        |
-| `default`                | The version used when you do not choose one; it must lie inside `range`                                       |
-| `constraints`            | Conditions on other versions; each applies `when` the module's version matches, and states what it `require`s |
+| Field                    | Meaning                                                                                                                |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `go.range`, `go.default` | The Go versions a generated project may use, and the one used by default                                               |
+| `modules.<path>`         | One entry per Go module, keyed by module path                                                                          |
+| `components`             | The components that use the module, as `<kind>/<name>`                                                                 |
+| `traits`                 | Optional. Trait values the selection must provide for the module to be used; see [Trait conditions](#trait-conditions) |
+| `role`                   | `library` (required in the generated `go.mod`) or `tool` (used but not in `go.mod`)                                    |
+| `range`                  | The supported versions                                                                                                 |
+| `default`                | The version used when you do not choose one; it must lie inside `range`                                                |
+| `constraints`            | Conditions on other versions; each applies `when` the module's version matches, and states what it `require`s          |
+
+## Trait conditions
+
+Some modules are needed only for one value of a [trait](/docs/concepts/traits).
+GORM, for example, needs a different driver per SQL dialect. Such a module
+lists `traits`:
+
+```yaml title="components/versions.yaml"
+github.com/libtnb/sqlite:
+  components: [data/gorm]
+  traits: { sql-dialect: [sqlite] }
+  role: library
+  range: '>=v1.1.0 <v2.0.0'
+  default: v1.2.2
+gorm.io/driver/postgres:
+  components: [data/gorm]
+  traits: { sql-dialect: [postgresql] }
+  role: library
+  range: '>=v1.6.1 <v2.0.0'
+  default: v1.6.3
+```
+
+A module is used when one of its `components` is selected and, for every
+trait it lists, the selection provides one of the listed values. A module that
+is not used is not added to `go.mod`, its constraints do not apply, and
+`--pin` rejects it like any other module the selection does not use. So
+`gobento new shop --db sqlite --data gorm` requires `github.com/libtnb/sqlite`
+but not `gorm.io/driver/postgres`.
+
+Conditions name traits, not components, so a new database that provides
+`sql-dialect: postgresql` gets the PostgreSQL driver without a change to the
+rules file. Loading fails if a condition names a trait that no component
+provides.
 
 ## Ranges
 
@@ -75,13 +109,14 @@ gobento resolves versions in this order:
 Every problem from steps 3 and 4 is collected and reported together.
 
 ```sh
-gobento new shop --go 1.26 --pin modernc.org/sqlite=v1.61.0
+gobento new shop --data sqlc --go 1.26 --pin modernc.org/sqlite=v1.61.0
 ```
 
 `--pin` is rejected when:
 
 - the version is outside the module's range (the error shows the range);
-- no selected component uses the module (the error names it);
+- no selected component uses the module, or its trait conditions are not met
+  (the error names it);
 - the module is a tool (the error shows the version this release uses).
 
 See [Errors](/docs/cli/new#errors) for the exact messages.
@@ -122,6 +157,7 @@ Loading fails, with an error naming the module, if the rules file:
 - declares a default outside its own range,
 - gives a tool a range other than one exact version, such as `=v1.31.1`,
 - references an unknown component or constraint target,
+- conditions a module on a trait that no component provides,
 - contains a malformed range or version.
 
 gobento's test suite checks the shipped rules file, and CI generates every

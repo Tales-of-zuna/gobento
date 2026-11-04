@@ -1,0 +1,10 @@
+go:
+  range: ">=1.26 <1.28"
+  default: "1.27"
+modules:
+  example.com/lib:
+    components: [database/db]
+    traits: { sql-dialekt: [sqlite] }
+    role: library
+    range: ">=v1.0.0"
+    default: v1.0.0

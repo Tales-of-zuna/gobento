@@ -19,5 +19,5 @@ export const ROADMAP: Readonly<Record<KindId, readonly PlannedComponent[]>> = {
     { name: 'chi', title: 'chi' },
   ],
   database: [{ name: 'postgres', title: 'PostgreSQL' }],
-  data: [{ name: 'gorm', title: 'GORM' }],
+  data: [],
 };

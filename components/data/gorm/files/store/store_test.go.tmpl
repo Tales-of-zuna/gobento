@@ -1,0 +1,92 @@
+{{- $dialect := index .Traits "sql-dialect" -}}
+package {{.Slots.store.Package}}
+
+import (
+	"context"
+{{- if eq $dialect "sqlite"}}
+	"path/filepath"
+{{- else}}
+	"os"
+{{- end}}
+	"testing"
+
+	"{{.Slots.database.Import}}"
+)
+
+// TestItemStore runs the store against a real database{{if eq $dialect "sqlite"}} file{{end}}.
+func TestItemStore(t *testing.T) {
+	ctx := context.Background()
+{{- if eq $dialect "sqlite"}}
+	dsn := filepath.Join(t.TempDir(), "test.db")
+{{- else}}
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("set DATABASE_URL to a test database to run this test")
+	}
+{{- end}}
+	db, err := {{.Slots.database.Package}}.Open(ctx, dsn)
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	// Windows cannot remove open files, so close before TempDir cleanup.
+	t.Cleanup(func() { _ = db.Close() })
+
+	s := New(db)
+	before, err := s.List(ctx)
+	if err != nil {
+		t.Fatalf("List() error = %v", err)
+	}
+{{- if eq $dialect "sqlite"}}
+	if len(before) != 0 {
+		t.Fatalf("List() on an empty database = %v, want no items", before)
+	}
+{{- end}}
+
+	created, err := s.Create(ctx, "first")
+	if err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	if created.ID == 0 || created.Name != "first" || created.CreatedAt.IsZero() {
+		t.Errorf("Create() = %+v, want an ID, the name, and a creation time", created)
+	}
+
+	if _, err := s.Create(ctx, "second"); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	items, err := s.List(ctx)
+	if err != nil {
+		t.Fatalf("List() error = %v", err)
+	}
+	if n := len(items); n != len(before)+2 || items[n-2].ID != created.ID || items[n-2].Name != "first" || items[n-1].Name != "second" {
+		t.Errorf("List() = %+v, want the earlier items, then first and second", items)
+	}
+}
+
+// TestStoreOnClosedDatabase checks that a store on a closed connection
+// returns errors instead of panicking, including when GORM cannot be set up.
+func TestStoreOnClosedDatabase(t *testing.T) {
+	ctx := context.Background()
+{{- if eq $dialect "sqlite"}}
+	dsn := filepath.Join(t.TempDir(), "test.db")
+{{- else}}
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		t.Skip("set DATABASE_URL to a test database to run this test")
+	}
+{{- end}}
+	db, err := {{.Slots.database.Package}}.Open(ctx, dsn)
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	s := New(db)
+	if _, err := s.List(ctx); err == nil {
+		t.Error("List() on a closed database: error = nil, want an error")
+	}
+	if _, err := s.Create(ctx, "x"); err == nil {
+		t.Error("Create() on a closed database: error = nil, want an error")
+	}
+}

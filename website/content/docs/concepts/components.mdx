@@ -10,12 +10,12 @@ gobento.
 
 ## The four kinds
 
-| Kind           | Flag          | What it contributes                                                                                                       | First-slice option |
-| -------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| Architecture   | `--arch`      | The project layout (its [slots](/docs/concepts/slots-and-contracts)), the entry point, and the Go contracts between slots | `mvc`              |
-| HTTP framework | `--framework` | The router and HTTP handlers                                                                                              | `nethttp`          |
-| Database       | `--db`        | Opening the database connection and applying the schema                                                                   | `sqlite`           |
-| Data access    | `--data`      | The store that implements the data contract on top of the database                                                        | `sqlc`             |
+| Kind           | Flag          | What it contributes                                                                                                       | Options        |
+| -------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| Architecture   | `--arch`      | The project layout (its [slots](/docs/concepts/slots-and-contracts)), the entry point, and the Go contracts between slots | `mvc`          |
+| HTTP framework | `--framework` | The router and HTTP handlers                                                                                              | `nethttp`      |
+| Database       | `--db`        | Opening the database connection and applying the schema                                                                   | `sqlite`       |
+| Data access    | `--data`      | The store that implements the data contract on top of the database                                                        | `sqlc`, `gorm` |
 
 ## A selection
 
@@ -28,10 +28,11 @@ You choose with the flags above. If you omit a flag:
 - and the kind has several options, gobento stops, names the flag, and lists
   the supported values.
 
-With one option per kind in the first slice, the project name is enough:
+Today every kind but data access has one option, so the project name and
+`--data` are enough:
 
 ```sh
-gobento new shop
+gobento new shop --data sqlc
 ```
 
 ## Supported selections

@@ -14,10 +14,11 @@ of a list of values.
 
 Both are keys of `component.yaml`. In the current catalog:
 
-| Component            | `provides`                                                            | `requires`                                                                  |
-| -------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `sqlite` (database)  | `sql-dialect: sqlite`, `conn: database/sql`, `sql-schema: schema.sql` | none                                                                        |
-| `sqlc` (data access) | none                                                                  | `sql-dialect: [sqlite]`, `conn: [database/sql]`, `sql-schema: [schema.sql]` |
+| Component            | `provides`                                                            | `requires`                                                                              |
+| -------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `sqlite` (database)  | `sql-dialect: sqlite`, `conn: database/sql`, `sql-schema: schema.sql` | none                                                                                    |
+| `gorm` (data access) | none                                                                  | `sql-dialect: [sqlite, postgresql]`, `conn: [database/sql]`, `sql-schema: [schema.sql]` |
+| `sqlc` (data access) | none                                                                  | `sql-dialect: [sqlite]`, `conn: [database/sql]`, `sql-schema: [schema.sql]`             |
 
 Trait names match `^[a-z][a-z0-9-]*$`. A provided value must not be empty,
 and a requirement lists at least one accepted value.
@@ -33,13 +34,31 @@ and a requirement lists at least one accepted value.
 - **`sql-schema`**: the file name of the schema inside the database slot,
   such as `schema.sql`. sqlc reads it to generate its code, so its
   `sqlc.yaml` template finds the schema at
-  `{{.Slots.database.Dir}}/{{index .Traits "sql-schema"}}`. Traits carry the
+  `{{.Slots.database.Dir}}/{{index .Traits "sql-schema"}}`. GORM uses the
+  same tables without reading the file: it never calls `AutoMigrate`, so the
+  schema stays the single source of truth. Traits carry the
   few facts one component needs about another's files, without naming the
   other component.
 
-Future components declare their own values. For example, a pgx or GORM
-component would declare its own `conn` value, so an incompatible pair is
-rejected by data, without any code in gobento.
+Future components declare their own values. For example, a pgx component
+would declare its own `conn` value, so an incompatible pair is rejected by
+data, without any code in gobento.
+
+## Code that depends on a trait value
+
+A component that accepts several values of a trait picks the matching code
+from `.Traits` in its templates. `gorm` accepts `sql-dialect: sqlite` and
+`postgresql`, and its store template chooses the GORM dialect accordingly:
+
+```go title="components/data/gorm/files/store/store.go.tmpl"
+{{if eq (index .Traits "sql-dialect") "postgresql"}}postgres.New(postgres.Config{Conn: db}){{else}}sqlite.New(sqlite.Config{Conn: db}){{end}}
+```
+
+Modules needed for only one value, such as each dialect's driver, carry a
+[trait condition](/docs/concepts/version-rules#trait-conditions) in the rules
+file, so a project's `go.mod` gets only the driver it uses. Because both the
+template and the rules name trait values rather than components, a new
+database that provides `sql-dialect: postgresql` works with `gorm` unchanged.
 
 ## When a trait is not met
 
@@ -61,9 +80,10 @@ provides, no selection containing it would be listed as supported. The
 website's configurator uses the same rules to disable incompatible options
 and explain why.
 
-Today the catalog has one supported selection:
+Today the catalog has two supported selections:
 
 ```text
+mvc + nethttp + sqlite + gorm
 mvc + nethttp + sqlite + sqlc
 ```
 

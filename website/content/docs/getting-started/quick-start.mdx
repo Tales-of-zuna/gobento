@@ -12,8 +12,9 @@ Install gobento first, with
 [GitHub Releases](https://github.com/Tales-of-zuna/gobento/releases); see
 [Installation](/docs/getting-started/installation) for checksums and details.
 
-This guide generates a project called `shop` with the first supported stack:
-MVC, `net/http`, SQLite, and sqlc.
+This guide generates a project called `shop` with MVC, `net/http`, SQLite,
+and sqlc. To use GORM instead of sqlc, pass `--data gorm` wherever this guide
+passes `--data sqlc`; see [With GORM](#with-gorm) for what changes.
 
 ## Generate and run it
 
@@ -26,7 +27,7 @@ MVC, `net/http`, SQLite, and sqlc.
 writes nothing and does not run the Go toolchain.
 
 ```sh
-gobento new shop --module example.com/shop --dry-run
+gobento new shop --module example.com/shop --data sqlc --dry-run
 ```
 
 It prints `Dry run: nothing was written.`, the module, the selection
@@ -39,10 +40,11 @@ It prints `Dry run: nothing was written.`, the module, the selection
 ### Generate it
 
 ```sh
-gobento new shop --module example.com/shop
+gobento new shop --module example.com/shop --data sqlc
 ```
 
-Each component kind has one option today, so gobento selects them for you. The
+Data access has two options today (`sqlc` and `gorm`), so `--data` is
+required; every other kind has one option, and gobento selects it for you. The
 same command with every choice spelled out is:
 
 ```sh
@@ -213,6 +215,18 @@ The schema in `internal/database/schema.sql` is embedded in the binary and
 applied every time the server starts. It uses `CREATE TABLE IF NOT EXISTS`, so
 it creates missing tables but never changes existing ones; it is not a
 migration system.
+
+### With GORM
+
+`gobento new shop --module example.com/shop --data gorm` generates the same
+project with a [GORM](https://gorm.io/) store. `internal/store/` then holds
+only `store.go` (the `New` adapter, which wraps the `*sql.DB` from
+`internal/database`) and `store_test.go` (a test against real SQLite), and
+there is no `sqlc.yaml`. `go.mod` adds `gorm.io/gorm` and
+`github.com/libtnb/sqlite`, a pure-Go GORM dialect on the same
+`modernc.org/sqlite` driver, so the project still builds without cgo. The
+tables still come only from `schema.sql`: the store never calls
+`AutoMigrate`.
 
 ## Next steps
 

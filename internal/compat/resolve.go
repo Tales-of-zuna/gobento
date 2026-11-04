@@ -30,6 +30,12 @@ type Request struct {
 	Go string
 	// Pins maps module paths to versions chosen by the user.
 	Pins map[string]string
+	// Traits maps trait names to the values the selection provides; it
+	// decides whether modules with trait conditions are used. Nil means the
+	// traits are not known yet (for example, while a component kind is
+	// unresolved): trait conditions are then ignored, so every module of a
+	// selected component counts as used.
+	Traits map[string]string
 }
 
 // Resolved is the outcome of Resolve: the exact versions a generated project
@@ -82,7 +88,7 @@ func (r *Rules) Resolve(req Request) (Resolved, error) {
 
 	chosen := make(map[string]int) // module path -> index in res.Modules
 	for _, m := range r.Modules {
-		if !m.usedBy(req.Components) {
+		if !m.usedBy(req.Components, req.Traits) {
 			continue
 		}
 		chosen[m.Path] = len(res.Modules)

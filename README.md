@@ -67,9 +67,9 @@ The [installation guide](https://tales-of-zuna.github.io/gobento/docs/getting-st
 covers every platform, including Windows. To build from a clone instead, run
 `make build` or `go install ./cmd/gobento`.
 
-Generate a project. Every flag is optional: a component kind with a single
-option is chosen automatically, and versions come from gobento's
-compatibility rules.
+Generate a project. A component kind with a single option is chosen
+automatically; data access has two (`sqlc` and `gorm`), so pass `--data`.
+Versions come from gobento's compatibility rules.
 
 ```sh
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
@@ -81,14 +81,17 @@ go run ./cmd/shop
 More examples:
 
 ```sh
+# Use GORM instead of sqlc for data access
+gobento new shop --data gorm
+
 # See the files gobento would create, without writing anything
-gobento new shop --dry-run
+gobento new shop --data sqlc --dry-run
 
 # Choose the Go version and a library version within the supported ranges
-gobento new shop --go 1.26 --pin modernc.org/sqlite=v1.61.0
+gobento new shop --data sqlc --go 1.26 --pin modernc.org/sqlite=v1.61.0
 
 # Fill the current directory, which must be empty
-mkdir shop && cd shop && gobento new shop --dir .
+mkdir shop && cd shop && gobento new shop --data sqlc --dir .
 
 # List every flag
 gobento new --help
@@ -106,10 +109,10 @@ digits, `-`, and `_`. Names that Windows reserves for devices, such as `con`,
 
 The generated project's README describes its API, including its error
 responses (`400` for invalid JSON, `413` for bodies over 1 MiB), and how its
-schema and sqlc code are maintained.
+schema and data-access code are maintained.
 
-The first supported stack generates a project like this, with a health
-endpoint and one example resource that builds and passes its own tests:
+The sqlc stack generates a project like this, with a health endpoint and one
+example resource that builds and passes its own tests:
 
 ```text
 shop/
@@ -125,6 +128,11 @@ shop/
 ├── README.md
 └── .gitignore
 ```
+
+With `--data gorm`, `internal/store/` holds a [GORM](https://gorm.io/) store
+and its test instead, there is no `sqlc.yaml`, and the tables still come only
+from the database's embedded schema (no `AutoMigrate`). Both stacks build
+without cgo.
 
 ## How it works
 
@@ -151,7 +159,7 @@ flowchart LR
 - [ ] Interactive prompts
 - [ ] More frameworks: gin, chi
 - [ ] PostgreSQL
-- [ ] GORM
+- [x] GORM
 - [ ] Frontends: React, Vue, and Svelte via Vite; htmx + templ
 - [ ] Tailwind CSS
 - [ ] More architectures: vertical slice, DDD

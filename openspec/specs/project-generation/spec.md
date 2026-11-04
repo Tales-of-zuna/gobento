@@ -16,8 +16,13 @@ path, or the project name when `--module` is omitted.
 - **THEN** a directory `shop` is created containing a Go module named `example.com/shop`
 - **AND** the command exits with status 0 and prints the next commands to run
 
+#### Scenario: GORM data access
+- **WHEN** the user runs `gobento new shop --db sqlite --data gorm`
+- **THEN** a directory `shop` is created whose store is implemented with GORM on the SQLite database
+- **AND** the command exits with status 0
+
 #### Scenario: Module path defaults to the project name
-- **WHEN** the user runs `gobento new shop` without `--module`
+- **WHEN** the user runs `gobento new shop --data sqlc` without `--module`
 - **THEN** the generated module is named `shop`
 
 ### Requirement: Automatic selection of the only option
@@ -68,7 +73,7 @@ when the input is valid, and otherwise exit non-zero with the same problem
 report as a normal run.
 
 #### Scenario: Valid dry run
-- **WHEN** the user runs `gobento new shop --dry-run`
+- **WHEN** the user runs `gobento new shop --data sqlc --dry-run`
 - **THEN** gobento lists the planned files, exits 0, and creates no directory
 
 #### Scenario: Invalid dry run
@@ -104,11 +109,17 @@ downloaded.
 
 ### Requirement: Generated project builds and passes its tests
 A project generated from any supported selection SHALL compile, pass `go vet`
-and `gofmt -l`, and pass its own `go test ./...` without edits by the user.
+and `gofmt -l`, and pass its own `go test ./...` without edits by the user. It
+SHALL also compile with cgo disabled (`CGO_ENABLED=0`), so it needs no C
+compiler on Linux, macOS, or Windows.
 
 #### Scenario: Build check after generation
-- **WHEN** a project is generated with the selection mvc/nethttp/sqlite/sqlc
+- **WHEN** a project is generated with the selection mvc/nethttp/sqlite/sqlc or mvc/nethttp/sqlite/gorm
 - **THEN** `go build ./...`, `go vet ./...` and `go test ./...` succeed inside it, and `gofmt -l .` lists no files
+
+#### Scenario: Build without cgo
+- **WHEN** `CGO_ENABLED=0 go build ./...` runs in a project generated from any supported selection
+- **THEN** it succeeds
 
 #### Scenario: Example functionality is present
 - **WHEN** the generated project is running

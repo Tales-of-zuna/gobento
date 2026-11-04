@@ -10,6 +10,7 @@
  * stale file fails this test (regenerate it with `pnpm test -u`).
  */
 import { describe, expect, it } from 'vitest';
+import { selectedModules } from '@/lib/catalog/compat';
 import { catalog } from '@/lib/catalog/data';
 import type { Catalog } from '@/lib/catalog/schema';
 import { compareVersions, parseVersion, type VersionKind } from '@/lib/catalog/semver';
@@ -33,10 +34,9 @@ function floor(range: string, kind: VersionKind): string {
 function states(cat: Catalog): { label: string; state: ConfigState }[] {
   return cat.supported.flatMap((components) => {
     const label = `${components.architecture}/${components.framework}/${components.database}/${components.data}`;
-    const ids = new Set(Object.entries(components).map(([kind, name]) => `${kind}/${name}`));
     const pins = Object.fromEntries(
-      cat.modules
-        .filter((m) => m.role === 'library' && m.components.some((id) => ids.has(id)))
+      selectedModules(cat, { components, go: cat.go.default, pins: {} })
+        .filter((m) => m.role === 'library')
         .map((m) => [m.path, floor(m.range, 'module')]),
     );
     return [

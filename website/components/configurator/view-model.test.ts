@@ -15,7 +15,9 @@ import {
 } from './view-model';
 
 const catalog = catalogWith();
-const defaults = defaultState(catalog);
+const fresh = defaultState(catalog);
+/** The fresh state with a data access chosen, the one kind the fixture leaves open. */
+const defaults = { ...fresh, components: { ...fresh.components, data: 'sqlc' } };
 
 describe('goVersions', () => {
   it('lists every minor in the range', () => {
@@ -42,11 +44,22 @@ describe('kindGroups', () => {
     ]);
   });
 
+  it('offers every option of a kind with several, none preselected', () => {
+    const data = kindGroups(catalog, fresh, new Map()).find((g) => g.kind === 'data')!;
+    expect(data.description).toBe('How the code reads and writes the database.');
+    expect(data.options.map((o) => [o.value, o.status])).toEqual([
+      ['gorm', 'available'],
+      ['sqlc', 'available'],
+    ]);
+  });
+
   it('lets a catalog component replace its roadmap card and explains incompatibility', () => {
     const withPostgres = catalogWith(addPostgres);
-    const database = kindGroups(withPostgres, defaultState(withPostgres), new Map()).find(
-      (g) => g.kind === 'database',
-    )!;
+    const state = {
+      ...defaultState(withPostgres),
+      components: { ...defaultState(withPostgres).components, data: 'sqlc' },
+    };
+    const database = kindGroups(withPostgres, state, new Map()).find((g) => g.kind === 'database')!;
     const postgres = database.options.filter((o) => o.value === 'postgres');
     expect(postgres).toHaveLength(1);
     expect(postgres[0]!.status).toBe('incompatible');
@@ -89,6 +102,15 @@ describe('moduleFields', () => {
     const fields = moduleFields(catalog, defaults, new Map());
     expect(fields.map((f) => [f.path, f.fixed])).toEqual([
       ['github.com/sqlc-dev/sqlc', true],
+      ['modernc.org/sqlite', false],
+    ]);
+  });
+
+  it('lists only the modules whose trait conditions the selection meets', () => {
+    const gorm = { ...defaults, components: { ...defaults.components, data: 'gorm' } };
+    expect(moduleFields(catalog, gorm, new Map()).map((f) => [f.path, f.fixed])).toEqual([
+      ['github.com/libtnb/sqlite', false],
+      ['gorm.io/gorm', false],
       ['modernc.org/sqlite', false],
     ]);
   });
@@ -137,6 +159,9 @@ describe('blockedMessage', () => {
       ),
     ).toBe(
       'No command yet. Fix the modernc.org/sqlite version under Advanced to get a copyable command.',
+    );
+    expect(blockedMessage(catalog, buildCommand(catalog, fresh))).toBe(
+      'No command yet. Fix the data access choice to get a copyable command.',
     );
     expect(blockedMessage(catalog, buildCommand(catalog, defaults))).toBe('');
   });

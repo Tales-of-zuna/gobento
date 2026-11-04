@@ -25,7 +25,6 @@ export const ROADMAP: readonly RoadmapItem[] = [
   { kind: 'framework', name: 'gin' },
   { kind: 'framework', name: 'chi' },
   { kind: 'database', name: 'PostgreSQL' },
-  { kind: 'data', name: 'GORM' },
 ];
 
 /** One plate on the belt. */

@@ -4,9 +4,11 @@ import {
   goVersionReasons,
   moduleVersionReasons,
   resolvedVersions,
+  selectedModules,
   selectionProblems,
   type Selection,
 } from './compat';
+import type { Catalog } from './schema';
 import { addPostgres, catalogWith, type CatalogData, moduleOf } from '@/lib/test/catalog';
 
 const SQLITE = 'modernc.org/sqlite';
@@ -141,6 +143,27 @@ describe('resolvedVersions', () => {
       pins: { [SQLITE]: 'v1.62.0' },
     });
     expect(Object.fromEntries(versions)).toEqual({ [SQLITE]: 'v1.62.0', [SQLC]: 'v1.31.1' });
+  });
+});
+
+describe('selectedModules', () => {
+  const paths = (catalog: Catalog, selection: Selection) =>
+    selectedModules(catalog, selection).map((m) => m.path);
+  const gorm = (database: string): Selection => ({
+    ...firstSlice,
+    components: { ...firstSlice.components, database, data: 'gorm' },
+  });
+
+  it('includes modules whose trait conditions the selection meets', () => {
+    const selected = paths(catalogWith(), gorm('sqlite'));
+    expect(selected).toEqual(expect.arrayContaining(['github.com/libtnb/sqlite', 'gorm.io/gorm']));
+    expect(selected).not.toContain('gorm.io/driver/postgres');
+  });
+
+  it('follows the dialect the database provides', () => {
+    const selected = paths(catalogWith(addPostgres), gorm('postgres'));
+    expect(selected).toEqual(expect.arrayContaining(['gorm.io/driver/postgres', 'gorm.io/gorm']));
+    expect(selected).not.toContain('github.com/libtnb/sqlite');
   });
 });
 

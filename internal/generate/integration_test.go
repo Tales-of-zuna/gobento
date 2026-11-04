@@ -2,14 +2,17 @@ package generate
 
 import (
 	"context"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"golang.org/x/mod/modfile"
 
+	"github.com/Tales-of-zuna/gobento/components"
 	"github.com/Tales-of-zuna/gobento/internal/catalog"
 	"github.com/Tales-of-zuna/gobento/internal/compat"
 	"github.com/Tales-of-zuna/gobento/internal/compose"
@@ -17,54 +20,124 @@ import (
 
 // TestIntegration generates every supported selection twice, with the
 // default versions and with the floor of every range, using the real go
-// command, and checks that each project builds, vets, passes its tests, is
-// formatted, has exactly the chosen versions, and keeps the handlers package
-// independent of the database and store packages. It needs network access
-// to the module proxy and is skipped with -short.
+// command, and checks that each project builds (also with cgo disabled),
+// vets, passes its tests, is formatted, has exactly the chosen versions, and
+// keeps the handlers package independent of the database and store
+// packages. It needs network access to the module proxy and is skipped with
+// -short.
 func TestIntegration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("integration test: needs the go command and network access")
-	}
-	if _, err := exec.LookPath("go"); err != nil {
-		t.Skip("go command not found")
-	}
-
+	skipIntegration(t)
 	cat := shippedCatalog(t)
 	supported := compose.Supported(cat)
 	if len(supported) == 0 {
 		t.Fatal("no supported selections")
 	}
 	for _, sel := range supported {
-		for _, variant := range []string{"defaults", "floors"} {
-			t.Run(strings.ReplaceAll(sel.String(), "/", "-")+"/"+variant, func(t *testing.T) {
-				spec := Spec{Name: "shop", Module: "example.com/shop", Components: selectionNames(sel)}
-				if variant == "floors" {
-					spec.Go, spec.Pins = floors(t, cat, sel)
-				}
-				p, err := Prepare(cat, spec)
-				if err != nil {
-					t.Fatalf("Prepare() error = %v", err)
-				}
-				dir := filepath.Join(t.TempDir(), "shop")
-				if err := Generate(context.Background(), p.Request(dir)); err != nil {
-					t.Fatalf("Generate() error = %v", err)
-				}
+		checkSelection(t, cat, sel)
+	}
+}
 
-				for _, args := range [][]string{
-					{"build", "./..."},
-					{"vet", "./..."},
-					{"test", "-count=1", "./..."},
-					{"mod", "verify"},
-				} {
-					runIn(t, dir, "go", args...)
-				}
-				if out := runIn(t, dir, "gofmt", "-l", "."); strings.TrimSpace(out) != "" {
-					t.Errorf("gofmt -l lists files:\n%s", out)
-				}
-				checkPins(t, dir, p.Versions)
-				checkHandlersContract(t, dir, p)
-			})
+// TestIntegrationPostgresFixture generates the GORM selection on the
+// test-only PostgreSQL database in testdata/postgres, so the PostgreSQL path
+// of the GORM component is built, vetted, and checked before a real
+// PostgreSQL component exists. The store test skips without DATABASE_URL.
+// Delete this test with the fixture once database/postgres ships.
+func TestIntegrationPostgresFixture(t *testing.T) {
+	skipIntegration(t)
+	cat := catalogWithPostgresFixture(t)
+	sel := catalog.Selection{}
+	for _, c := range []struct {
+		kind catalog.Kind
+		name string
+		dst  **catalog.Component
+	}{
+		{catalog.KindArchitecture, "mvc", &sel.Architecture},
+		{catalog.KindFramework, "nethttp", &sel.Framework},
+		{catalog.KindDatabase, "postgres", &sel.Database},
+		{catalog.KindData, "gorm", &sel.Data},
+	} {
+		comp, ok := cat.Component(c.kind, c.name)
+		if !ok {
+			t.Fatalf("component %s/%s not found", c.kind, c.name)
 		}
+		*c.dst = comp
+	}
+	if err := compose.Check(cat, sel); err != nil {
+		t.Fatalf("%s is not supported: %v", sel, err)
+	}
+	checkSelection(t, cat, sel)
+}
+
+func skipIntegration(t *testing.T) {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("integration test: needs the go command and network access")
+	}
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go command not found")
+	}
+}
+
+// catalogWithPostgresFixture loads the shipped catalog with the PostgreSQL
+// database fixture added.
+func catalogWithPostgresFixture(t *testing.T) *catalog.Catalog {
+	t.Helper()
+	m := fstest.MapFS{}
+	for _, fsys := range []fs.FS{components.FS(), os.DirFS(filepath.Join("testdata", "postgres"))} {
+		err := fs.WalkDir(fsys, ".", func(p string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return err
+			}
+			data, err := fs.ReadFile(fsys, p)
+			m[p] = &fstest.MapFile{Data: data}
+			return err
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	cat, err := catalog.Load(m)
+	if err != nil {
+		t.Fatalf("catalog.Load() error = %v", err)
+	}
+	return cat
+}
+
+// checkSelection generates sel with the defaults and with the floors and
+// checks each project.
+func checkSelection(t *testing.T, cat *catalog.Catalog, sel catalog.Selection) {
+	t.Helper()
+	for _, variant := range []string{"defaults", "floors"} {
+		t.Run(strings.ReplaceAll(sel.String(), "/", "-")+"/"+variant, func(t *testing.T) {
+			spec := Spec{Name: "shop", Module: "example.com/shop", Components: selectionNames(sel)}
+			if variant == "floors" {
+				spec.Go, spec.Pins = floors(t, cat, sel)
+			}
+			p, err := Prepare(cat, spec)
+			if err != nil {
+				t.Fatalf("Prepare() error = %v", err)
+			}
+			dir := filepath.Join(t.TempDir(), "shop")
+			if err := Generate(context.Background(), p.Request(dir)); err != nil {
+				t.Fatalf("Generate() error = %v", err)
+			}
+
+			for _, args := range [][]string{
+				{"build", "./..."},
+				{"vet", "./..."},
+				{"test", "-count=1", "./..."},
+				{"mod", "verify"},
+			} {
+				runIn(t, dir, "go", args...)
+			}
+			// Spec: Build without cgo.
+			runInEnv(t, dir, []string{"CGO_ENABLED=0"}, "go", "build", "./...")
+			if out := runIn(t, dir, "gofmt", "-l", "."); strings.TrimSpace(out) != "" {
+				t.Errorf("gofmt -l lists files:\n%s", out)
+			}
+			checkPins(t, dir, p.Versions)
+			checkHandlersContract(t, dir, p)
+		})
 	}
 }
 
@@ -89,7 +162,7 @@ func floors(t *testing.T, cat *catalog.Catalog, sel catalog.Selection) (string, 
 	for _, c := range sel.Components() {
 		ids = append(ids, c.ID())
 	}
-	res, err := cat.Rules().Resolve(compat.Request{Components: ids})
+	res, err := cat.Rules().Resolve(compat.Request{Components: ids, Traits: sel.Traits()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,9 +241,16 @@ func checkHandlersContract(t *testing.T, dir string, p *Prepared) {
 // fails the test on error.
 func runIn(t *testing.T, dir, name string, args ...string) string {
 	t.Helper()
+	return runInEnv(t, dir, nil, name, args...)
+}
+
+// runInEnv is runIn with extra environment variables, which take
+// precedence.
+func runInEnv(t *testing.T, dir string, env []string, name string, args ...string) string {
+	t.Helper()
 	cmd := exec.Command(name, args...) //nolint:gosec // G204: the test runs fixed go and gofmt commands
 	cmd.Dir = dir
-	cmd.Env = goEnv(os.Environ())
+	cmd.Env = append(goEnv(os.Environ()), env...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("%s %s: %v\n%s", name, strings.Join(args, " "), err, out)

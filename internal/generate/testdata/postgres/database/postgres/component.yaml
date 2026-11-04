@@ -1,0 +1,11 @@
+# Test-only stand-in for a PostgreSQL database component, overlaid on the
+# shipped catalog to compile the PostgreSQL path of components that support
+# sql-dialect postgresql (see TestIntegrationPostgresFixture). Delete it
+# once a real database/postgres component ships.
+name: postgres
+title: PostgreSQL (test fixture)
+description: PostgreSQL through pgx's database/sql driver.
+provides:
+  sql-dialect: postgresql
+  conn: database/sql
+  sql-schema: schema.sql

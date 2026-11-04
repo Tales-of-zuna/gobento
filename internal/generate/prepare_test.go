@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tales-of-zuna/gobento/components"
 	"github.com/Tales-of-zuna/gobento/internal/catalog"
+	"github.com/Tales-of-zuna/gobento/internal/compat"
 )
 
 func shippedCatalog(t *testing.T) *catalog.Catalog {
@@ -52,11 +53,13 @@ func twoFrameworkCatalog(t *testing.T) *catalog.Catalog {
 func TestPrepare(t *testing.T) {
 	t.Parallel()
 
+	sqlc := map[catalog.Kind]string{catalog.KindData: "sqlc"}
 	tests := []struct {
 		name       string
 		spec       Spec
 		wantModule string
 		wantGo     string
+		wantSel    string
 	}{
 		{
 			// Spec: Fully specified by flags.
@@ -67,20 +70,32 @@ func TestPrepare(t *testing.T) {
 			}},
 			wantModule: "example.com/shop",
 			wantGo:     "1.27",
+			wantSel:    "mvc/nethttp/sqlite/sqlc",
 		},
 		{
 			// Spec: Module path defaults to the project name, and
 			// Automatic selection of the only option.
 			name:       "defaults",
-			spec:       Spec{Name: "shop"},
+			spec:       Spec{Name: "shop", Components: sqlc},
 			wantModule: "shop",
 			wantGo:     "1.27",
+			wantSel:    "mvc/nethttp/sqlite/sqlc",
 		},
 		{
 			name:       "version overrides",
-			spec:       Spec{Name: "my-app", Go: "1.26", Pins: map[string]string{"modernc.org/sqlite": "v1.61.0"}},
+			spec:       Spec{Name: "my-app", Components: sqlc, Go: "1.26", Pins: map[string]string{"modernc.org/sqlite": "v1.61.0"}},
 			wantModule: "my-app",
 			wantGo:     "1.26",
+			wantSel:    "mvc/nethttp/sqlite/sqlc",
+		},
+		{
+			// Spec: GORM data access.
+			name: "gorm",
+			spec: Spec{Name: "shop", Components: map[catalog.Kind]string{catalog.KindDatabase: "sqlite", catalog.KindData: "gorm"},
+				Pins: map[string]string{"gorm.io/gorm": "v1.31.2", "github.com/libtnb/sqlite": "v1.1.0"}},
+			wantModule: "shop",
+			wantGo:     "1.27",
+			wantSel:    "mvc/nethttp/sqlite/gorm",
 		},
 	}
 	for _, tt := range tests {
@@ -94,8 +109,8 @@ func TestPrepare(t *testing.T) {
 			if p.Module != tt.wantModule || p.Versions.Go != tt.wantGo {
 				t.Errorf("Prepare() module %q go %q, want %q and %q", p.Module, p.Versions.Go, tt.wantModule, tt.wantGo)
 			}
-			if got := p.Selection.String(); got != "mvc/nethttp/sqlite/sqlc" {
-				t.Errorf("Selection = %s", got)
+			if got := p.Selection.String(); got != tt.wantSel {
+				t.Errorf("Selection = %s, want %s", got, tt.wantSel)
 			}
 			if _, ok := p.Plan.File("cmd/" + tt.spec.Name + "/main.go"); !ok {
 				t.Errorf("plan has no cmd/%s/main.go: %v", tt.spec.Name, p.Plan.Paths())
@@ -149,8 +164,30 @@ func TestPrepareErrors(t *testing.T) {
 			wantMsg: []string{"choose a framework; supported: chi, nethttp"},
 		},
 		{
+			// Spec: Several options require a choice, for the shipped
+			// data-access components.
+			name:    "data access not chosen",
+			spec:    Spec{Name: "shop"},
+			wantMsg: []string{"choose a data-access library; supported: gorm, sqlc"},
+		},
+		{
+			// Spec: Pin for a module whose trait condition is not met.
+			name: "pin of the postgres driver with sqlite",
+			spec: Spec{Name: "shop", Components: map[catalog.Kind]string{catalog.KindDatabase: "sqlite", catalog.KindData: "gorm"},
+				Pins: map[string]string{"gorm.io/driver/postgres": "v1.6.3"}},
+			wantIs:  []error{compat.ErrNotSelected},
+			wantMsg: []string{"cannot pin gorm.io/driver/postgres"},
+		},
+		{
+			name: "gorm floor below a dialect constraint",
+			spec: Spec{Name: "shop", Components: map[catalog.Kind]string{catalog.KindData: "gorm"},
+				Pins: map[string]string{"gorm.io/gorm": "v1.31.1"}},
+			wantIs:  []error{compat.ErrConstraint},
+			wantMsg: []string{"github.com/libtnb/sqlite v1.2.2 requires gorm.io/gorm >=v1.31.2"},
+		},
+		{
 			name:    "version outside range",
-			spec:    Spec{Name: "shop", Pins: map[string]string{"modernc.org/sqlite": "v1.0.0"}},
+			spec:    Spec{Name: "shop", Components: map[catalog.Kind]string{catalog.KindData: "sqlc"}, Pins: map[string]string{"modernc.org/sqlite": "v1.0.0"}},
 			wantMsg: []string{"modernc.org/sqlite v1.0.0", ">=v1.61.0 <v2.0.0"},
 		},
 		{
@@ -226,7 +263,7 @@ func TestPrepareRejectsWindowsReservedNames(t *testing.T) {
 		}
 	}
 	for _, name := range []string{"console", "com0", "com10", "lpt", "auxiliary", "nul-app"} {
-		if _, err := Prepare(cat, Spec{Name: name}); err != nil {
+		if _, err := Prepare(cat, Spec{Name: name, Components: map[catalog.Kind]string{catalog.KindData: "sqlc"}}); err != nil {
 			t.Errorf("Prepare(%q) error = %v, want nil", name, err)
 		}
 	}

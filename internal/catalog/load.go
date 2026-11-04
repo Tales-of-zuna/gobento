@@ -120,6 +120,15 @@ func Load(fsys fs.FS) (*Catalog, error) {
 		if err := rules.CheckComponents(exists); err != nil {
 			errs = append(errs, fmt.Errorf("%s: %w", RulesFile, err))
 		}
+		provided := func(trait string) bool {
+			return slices.ContainsFunc(cat.components, func(c *Component) bool {
+				_, ok := c.Provides[trait]
+				return ok
+			})
+		}
+		if err := rules.CheckTraits(provided); err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", RulesFile, err))
+		}
 		cat.rules = rules
 	}
 

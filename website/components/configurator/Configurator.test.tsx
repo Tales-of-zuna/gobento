@@ -19,15 +19,19 @@ beforeEach(() => {
 const command = () => screen.getAllByText((_, el) => el?.hasAttribute('data-command') ?? false)[0];
 
 describe('Configurator', () => {
-  it('shows the default command and updates it live', () => {
+  it('asks for a data access, then shows the command and updates it live', () => {
     render(<Configurator catalog={catalogWith()} />);
-    expect(command()).toHaveTextContent(/^gobento new myapp$/);
+    expect(screen.getAllByText(/No command yet. Fix the data access choice/)[0]).toBeVisible();
+    fireEvent.click(screen.getByRole('radio', { name: 'sqlc' }));
+    expect(command()).toHaveTextContent(/^gobento new myapp --data sqlc$/);
     fireEvent.change(screen.getByLabelText('Project name'), { target: { value: 'shop' } });
     fireEvent.change(screen.getByLabelText('Module path'), {
       target: { value: 'example.com/shop' },
     });
-    expect(command()).toHaveTextContent(/^gobento new shop --module example\.com\/shop$/);
-    expect(window.location.search).toBe('?name=shop&module=example.com%2Fshop');
+    expect(command()).toHaveTextContent(
+      /^gobento new shop --module example\.com\/shop --data sqlc$/,
+    );
+    expect(window.location.search).toBe('?name=shop&module=example.com%2Fshop&data=sqlc');
   });
 
   it('explains an invalid name next to the field and offers no command', () => {
@@ -41,9 +45,9 @@ describe('Configurator', () => {
   });
 
   it('restores a shared link and reports unknown values', () => {
-    window.history.replaceState(null, '', '/configurator/?name=blog&framework=fiber');
+    window.history.replaceState(null, '', '/configurator/?name=blog&framework=fiber&data=sqlc');
     render(<Configurator catalog={catalogWith()} />);
-    expect(command()).toHaveTextContent(/^gobento new blog$/);
+    expect(command()).toHaveTextContent(/^gobento new blog --data sqlc$/);
     const notice = screen.getByRole('status');
     expect(within(notice).getByText(/framework "fiber"/)).toBeInTheDocument();
     fireEvent.click(within(notice).getByRole('button', { name: 'Dismiss' }));
@@ -60,6 +64,7 @@ describe('Configurator', () => {
       });
     });
     render(<Configurator catalog={strict} />);
+    fireEvent.click(screen.getByRole('radio', { name: 'sqlc' }));
     fireEvent.click(screen.getByRole('button', { name: /Advanced/ }));
     await act(async () => {
       fireEvent.change(screen.getByLabelText('modernc.org/sqlite'), {

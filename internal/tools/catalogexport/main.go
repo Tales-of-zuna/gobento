@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -73,12 +74,15 @@ type GoRule struct {
 
 // Module is one module of the version rules.
 type Module struct {
-	Path        string       `json:"path"`
-	Components  []string     `json:"components"`
-	Role        string       `json:"role"`
-	Range       string       `json:"range"`
-	Default     string       `json:"default"`
-	Constraints []Constraint `json:"constraints"`
+	Path       string   `json:"path"`
+	Components []string `json:"components"`
+	// Traits restricts the module to selections whose traits have one of
+	// the listed values; empty means no restriction.
+	Traits      map[string][]string `json:"traits"`
+	Role        string              `json:"role"`
+	Range       string              `json:"range"`
+	Default     string              `json:"default"`
+	Constraints []Constraint        `json:"constraints"`
 }
 
 // Constraint restricts one target while the owning module's version lies in
@@ -156,11 +160,13 @@ func Export(fsys fs.FS) (*Output, error) {
 		em := Module{
 			Path:        m.Path,
 			Components:  m.Components,
+			Traits:      map[string][]string{},
 			Role:        string(m.Role),
 			Range:       m.Range.String(),
 			Default:     m.Default,
 			Constraints: []Constraint{},
 		}
+		maps.Copy(em.Traits, m.Traits)
 		for _, c := range m.Constraints {
 			for _, r := range c.Requires {
 				em.Constraints = append(em.Constraints, Constraint{

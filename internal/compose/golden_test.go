@@ -81,7 +81,7 @@ func referencePlan(t *testing.T) *Plan {
 	for _, c := range sel.Components() {
 		ids = append(ids, c.ID())
 	}
-	res, err := cat.Rules().Resolve(compat.Request{Components: ids})
+	res, err := cat.Rules().Resolve(compat.Request{Components: ids, Traits: sel.Traits()})
 	if err != nil {
 		t.Fatalf("Resolve() error = %v", err)
 	}
@@ -100,8 +100,8 @@ func referencePlan(t *testing.T) *Plan {
 	return plan
 }
 
-// TestShippedCatalogSupported checks that the shipped catalog supports
-// exactly the first slice.
+// TestShippedCatalogSupported checks the selections the shipped catalog
+// supports.
 func TestShippedCatalogSupported(t *testing.T) {
 	t.Parallel()
 
@@ -113,7 +113,8 @@ func TestShippedCatalogSupported(t *testing.T) {
 	for _, s := range Supported(cat) {
 		got = append(got, s.String())
 	}
-	if !slices.Equal(got, []string{"mvc/nethttp/sqlite/sqlc"}) {
-		t.Errorf("Supported() = %v, want [mvc/nethttp/sqlite/sqlc]", got)
+	want := []string{"mvc/nethttp/sqlite/gorm", "mvc/nethttp/sqlite/sqlc"}
+	if !slices.Equal(got, want) {
+		t.Errorf("Supported() = %v, want %v", got, want)
 	}
 }

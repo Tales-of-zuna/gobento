@@ -16,6 +16,7 @@ describe('beltPlates', () => {
       'MVC',
       'net/http',
       'SQLite',
+      'GORM',
       'sqlc',
     ]);
     expect(plates.filter((p) => p.status === 'roadmap')).toHaveLength(ROADMAP.length);
@@ -48,6 +49,8 @@ describe('stackCells', () => {
     ]);
     expect(cells[1]!.options.map((o) => o.name)).toEqual(['net/http']);
     expect(cells[1]!.roadmap).toEqual(['gin', 'chi']);
+    expect(cells[3]!.options.map((o) => o.name)).toEqual(['GORM', 'sqlc']);
+    expect(cells[3]!.roadmap).toEqual([]);
   });
 });
 

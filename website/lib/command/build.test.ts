@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildCommand, inputErrors, type ConfigState } from './build';
 import { defaultState } from './url-state';
+import type { Catalog } from '@/lib/catalog/schema';
 import { addPostgres, catalogWith } from '@/lib/test/catalog';
 
 const fixture = catalogWith();
@@ -8,38 +9,49 @@ const NAME_RULE = fixture.rules.projectName.message;
 const MODULE_RULE = fixture.rules.modulePath.message;
 const RESERVED_RULE = fixture.rules.projectName.reservedMessage;
 
+/** The default state with a data access chosen, the one kind the fixture leaves open. */
+const chosen = (catalog: Catalog): ConfigState => {
+  const defaults = defaultState(catalog);
+  return { ...defaults, components: { ...defaults.components, data: 'sqlc' } };
+};
+
 const state = (overrides: Partial<ConfigState> = {}): ConfigState => ({
-  ...defaultState(fixture),
+  ...chosen(fixture),
   ...overrides,
 });
 
 describe('buildCommand', () => {
   const cases: { name: string; state: ConfigState; command: string }[] = [
-    { name: 'defaults', state: state(), command: 'gobento new myapp' },
+    { name: 'defaults', state: state(), command: 'gobento new myapp --data sqlc' },
     {
       name: 'changing a choice (spec: Changing a choice)',
       state: state({ name: 'shop', module: 'example.com/shop' }),
-      command: 'gobento new shop --module example.com/shop',
+      command: 'gobento new shop --module example.com/shop --data sqlc',
+    },
+    {
+      name: 'another data access',
+      state: state({ components: { ...chosen(fixture).components, data: 'gorm' } }),
+      command: 'gobento new myapp --data gorm',
     },
     {
       name: 'module equal to the name is the default',
       state: state({ name: 'shop', module: 'shop' }),
-      command: 'gobento new shop',
+      command: 'gobento new shop --data sqlc',
     },
     {
       name: 'default Go version written another way',
       state: state({ go: '1.27.0' }),
-      command: 'gobento new myapp',
+      command: 'gobento new myapp --data sqlc',
     },
     {
       name: 'non-default Go version',
       state: state({ go: '1.26' }),
-      command: 'gobento new myapp --go 1.26',
+      command: 'gobento new myapp --data sqlc --go 1.26',
     },
     {
       name: 'pin equal to the default',
       state: state({ pins: { 'modernc.org/sqlite': 'v1.61.1' } }),
-      command: 'gobento new myapp',
+      command: 'gobento new myapp --data sqlc',
     },
     {
       name: 'fixed flag order',
@@ -50,7 +62,7 @@ describe('buildCommand', () => {
         pins: { 'modernc.org/sqlite': 'v1.62.0' },
       }),
       command:
-        'gobento new shop --module example.com/shop --go 1.26 --pin modernc.org/sqlite=v1.62.0',
+        'gobento new shop --module example.com/shop --data sqlc --go 1.26 --pin modernc.org/sqlite=v1.62.0',
     },
   ];
 
@@ -61,23 +73,30 @@ describe('buildCommand', () => {
   it('includes the flag of a kind with several options, after --module', () => {
     const catalog = catalogWith(addPostgres);
     const input: ConfigState = {
-      ...defaultState(catalog),
+      ...chosen(catalog),
       name: 'shop',
       module: 'example.com/shop',
-      components: { ...defaultState(catalog).components, database: 'sqlite' },
+      components: { ...chosen(catalog).components, database: 'sqlite' },
       go: '1.26',
     };
     expect(buildCommand(catalog, input)).toEqual({
       ok: true,
-      command: 'gobento new shop --module example.com/shop --db sqlite --go 1.26',
+      command: 'gobento new shop --module example.com/shop --db sqlite --data sqlc --go 1.26',
     });
   });
 
   it('requires a choice for a kind with several options', () => {
     const catalog = catalogWith(addPostgres);
-    expect(buildCommand(catalog, defaultState(catalog))).toEqual({
+    expect(buildCommand(catalog, chosen(catalog))).toEqual({
       ok: false,
       errors: [{ field: 'database', message: 'Choose a database: sqlite, postgres.' }],
+    });
+  });
+
+  it('requires a data access, which has several options', () => {
+    expect(buildCommand(fixture, defaultState(fixture))).toEqual({
+      ok: false,
+      errors: [{ field: 'data', message: 'Choose a data access: gorm, sqlc.' }],
     });
   });
 
