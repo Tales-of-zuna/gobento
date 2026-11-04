@@ -240,6 +240,11 @@
       ]
     }
   ],
+  "node": {
+    "range": "",
+    "default": ""
+  },
+  "npm": null,
   "supported": [
     {
       "architecture": "mvc",

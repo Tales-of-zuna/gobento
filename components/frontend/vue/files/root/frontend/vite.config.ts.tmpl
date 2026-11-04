@@ -1,0 +1,27 @@
+import vue from '@vitejs/plugin-vue'
+import { defineConfig } from 'vite'
+{{- with contrib "vite-imports"}}
+{{.}}
+{{- end}}
+
+// The Go server embeds the build from {{.Slots.web.Dir}}/dist/app and serves
+// the API under {{.APIPrefix}}/. The dev server (npm run dev) forwards API
+// requests to the Go server on port 8080.
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [
+    vue(),
+{{- with contrib "vite-plugins"}}
+{{indent 4 .}}
+{{- end}}
+  ],
+  build: {
+    outDir: '../{{.Slots.web.Dir}}/dist/app',
+    emptyOutDir: true,
+  },
+  server: {
+    proxy: {
+      '{{.APIPrefix}}': 'http://localhost:8080',
+    },
+  },
+})

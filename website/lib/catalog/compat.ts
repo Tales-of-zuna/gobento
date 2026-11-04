@@ -5,7 +5,7 @@
  * add-generator-foundation): defaults, then overrides, then range checks,
  * then every matching constraint.
  */
-import type { Asset, Binary, Catalog, Component, KindId, Module } from './schema';
+import type { Asset, Binary, Catalog, Component, KindId, Module, NpmPackage } from './schema';
 import { isOptionalKind, KIND_IDS, titleInSentence } from './kinds';
 import { parseGoVersion, parseModuleVersion, satisfies } from './semver';
 
@@ -82,6 +82,12 @@ export function selectedAssets(catalog: Catalog, selection: Selection): Asset[] 
 export function selectedBinaries(catalog: Catalog, selection: Selection): Binary[] {
   const ids = new Set(selectedComponents(catalog, selection).map((c) => c.id));
   return catalog.binaries.filter((b) => b.components.some((id) => ids.has(id)));
+}
+
+/** Returns the npm packages of the chosen components, whose versions are fixed per release. */
+export function selectedNpmPackages(catalog: Catalog, selection: Selection): NpmPackage[] {
+  const ids = new Set(selectedComponents(catalog, selection).map((c) => c.id));
+  return catalog.npm.filter((p) => p.components.some((id) => ids.has(id)));
 }
 
 /** Returns the version each selected module gets: its override, or else its default. */

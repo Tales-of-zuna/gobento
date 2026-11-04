@@ -1,0 +1,4 @@
+The image builds the frontend in a `frontend` stage on Node.js {{.Node}} and
+compiles the build into the binary, so the runtime image needs nothing else:
+the app is at `/`, and the JSON API, its health check included, is under
+`{{.APIPrefix}}/` (`{{.APIPrefix}}/health`).

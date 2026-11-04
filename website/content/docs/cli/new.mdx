@@ -25,21 +25,21 @@ without them, the project has no frontend and no CSS framework.
 
 ## Flags
 
-| Flag           | Type                         | Default        | Description                                                                                                                                                                                                                                                                      |
-| -------------- | ---------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--module`     | string                       | `<name>`       | Go module path of the generated project, for example `example.com/shop`. It must be a valid Go import path, as checked by `module.CheckImportPath` from `golang.org/x/mod`. Paths without a dot, such as `shop`, are accepted.                                                   |
-| `--arch`       | string                       | auto           | Architecture component: `mvc` (by layer), `vertical-slice` (by feature), or `ddd` (domain-driven design). There are several, so it is asked for in a terminal and required otherwise.                                                                                            |
-| `--framework`  | string                       | auto           | HTTP framework component: `chi`, `gin`, or `nethttp`. There are several, so it is asked for in a terminal and required otherwise.                                                                                                                                                |
-| `--db`         | string                       | auto           | Database component: `sqlite` or `postgres`. There are several, so it is asked for in a terminal and required otherwise.                                                                                                                                                          |
-| `--data`       | string                       | auto           | Data-access component: `sqlc` or `gorm`. There are several, so it is asked for in a terminal and required otherwise.                                                                                                                                                             |
-| `--frontend`   | string                       | `none`         | Frontend component: `htmx` (htmx + templ pages), or `none` for an API-only project. Optional: asked for in a terminal ("None (API only)" first), never required. With a frontend, the API is served under `/api`.                                                                |
-| `--css`        | string                       | `none`         | CSS framework component: `tailwind` (Tailwind CSS), or `none` for the frontend's own stylesheet. Optional, and only with a frontend: asked for in a terminal after the frontend ("None (plain CSS)" first), never required.                                                      |
-| `--go`         | string                       | rules default  | Go version for the `go` directive, for example `1.26`. Must be inside the supported Go range.                                                                                                                                                                                    |
-| `--pin`        | `module=version`, repeatable | rules defaults | Version of a library module, for example `--pin modernc.org/sqlite=v1.61.0`. Must be inside the module's range, and a selected component must use the module. Tool modules, vendored assets (such as htmx), and downloaded binaries (such as the Tailwind CLI) cannot be pinned. |
-| `--dir`        | path                         | `./<name>`     | Directory to generate into, for example `.` for the current one. See [Output location](#output-location).                                                                                                                                                                        |
-| `--dry-run`    | bool                         | `false`        | Check the input and list the files that would be created, without writing anything. See [Dry run](#dry-run).                                                                                                                                                                     |
-| `--no-input`   | bool                         | `false`        | Never ask a question, even in a terminal. See [Questions](#questions).                                                                                                                                                                                                           |
-| `-h`, `--help` | bool                         | `false`        | Show the command's help.                                                                                                                                                                                                                                                         |
+| Flag           | Type                         | Default        | Description                                                                                                                                                                                                                                                                                                                 |
+| -------------- | ---------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--module`     | string                       | `<name>`       | Go module path of the generated project, for example `example.com/shop`. It must be a valid Go import path, as checked by `module.CheckImportPath` from `golang.org/x/mod`. Paths without a dot, such as `shop`, are accepted.                                                                                              |
+| `--arch`       | string                       | auto           | Architecture component: `mvc` (by layer), `vertical-slice` (by feature), or `ddd` (domain-driven design). There are several, so it is asked for in a terminal and required otherwise.                                                                                                                                       |
+| `--framework`  | string                       | auto           | HTTP framework component: `chi`, `gin`, or `nethttp`. There are several, so it is asked for in a terminal and required otherwise.                                                                                                                                                                                           |
+| `--db`         | string                       | auto           | Database component: `sqlite` or `postgres`. There are several, so it is asked for in a terminal and required otherwise.                                                                                                                                                                                                     |
+| `--data`       | string                       | auto           | Data-access component: `sqlc` or `gorm`. There are several, so it is asked for in a terminal and required otherwise.                                                                                                                                                                                                        |
+| `--frontend`   | string                       | `none`         | Frontend component: `htmx` (htmx + templ pages), `react`, `vue`, or `svelte` (TypeScript single-page apps built with Vite, which need [Node.js](#nodejs)), or `none` for an API-only project. Optional: asked for in a terminal ("None (API only)" first), never required. With a frontend, the API is served under `/api`. |
+| `--css`        | string                       | `none`         | CSS framework component: `tailwind` (Tailwind CSS), or `none` for the frontend's own stylesheet. Optional, and only with a frontend: asked for in a terminal after the frontend ("None (plain CSS)" first), never required.                                                                                                 |
+| `--go`         | string                       | rules default  | Go version for the `go` directive, for example `1.26`. Must be inside the supported Go range.                                                                                                                                                                                                                               |
+| `--pin`        | `module=version`, repeatable | rules defaults | Version of a library module, for example `--pin modernc.org/sqlite=v1.61.0`. Must be inside the module's range, and a selected component must use the module. Tool modules, vendored assets (such as htmx), downloaded binaries (such as the Tailwind CLI), and npm packages (such as `create-vite`) cannot be pinned.      |
+| `--dir`        | path                         | `./<name>`     | Directory to generate into, for example `.` for the current one. See [Output location](#output-location).                                                                                                                                                                                                                   |
+| `--dry-run`    | bool                         | `false`        | Check the input and list the files that would be created, without writing anything. See [Dry run](#dry-run).                                                                                                                                                                                                                |
+| `--no-input`   | bool                         | `false`        | Never ask a question, even in a terminal. See [Questions](#questions).                                                                                                                                                                                                                                                      |
+| `-h`, `--help` | bool                         | `false`        | Show the command's help.                                                                                                                                                                                                                                                                                                    |
 
 **auto**: if the kind has exactly one supported component, it is selected. If
 it has several, gobento asks for one in a terminal (see
@@ -97,6 +97,12 @@ so no Node.js is needed:
 
 ```sh
 gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend htmx --css tailwind
+```
+
+Add a React single-page app built with Vite (or `--frontend vue`, `svelte`):
+
+```sh
+gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend react
 ```
 
 Choose every component and the module path explicitly:
@@ -208,12 +214,22 @@ Go module path example.com/shop
    are all checked in memory. Every problem is collected and reported at once.
 2. **Preflight.** gobento checks that `go` is on your `PATH`, compares the
    selected Go version with your toolchain, and checks the target directory.
+   With a React, Vue, or Svelte frontend, it also checks `node` and `npm`
+   (see [Node.js](#nodejs)).
 3. **Write** the project and its `go.mod` into a temporary directory.
-4. **Resolve** the exact versions with the Go toolchain (`go get`, then
+4. **Scaffold**, only with a React, Vue, or Svelte frontend: gobento runs
+   `npm create vite@<version> frontend -- --no-interactive --no-immediate --template <template>`
+   (`react-ts`, `vue-ts`, or `svelte-ts`) in the temporary directory,
+   removes a few demo files the example page leaves unused, keeps its own
+   files where the scaffolder wrote the same path, and runs
+   `npm install --package-lock-only` to write `frontend/package-lock.json`
+   without installing anything (there is no `node_modules`). The version
+   comes from the [version rules](/docs/concepts/version-rules#nodejs-and-npm).
+5. **Resolve** the exact versions with the Go toolchain (`go get`, then
    `go mod tidy`).
-5. **Re-check** that `go.mod` contains exactly the chosen versions. See
+6. **Re-check** that `go.mod` contains exactly the chosen versions. See
    [the MVS re-check](/docs/concepts/version-rules#the-mvs-re-check).
-6. **Place** the files in the target directory, and print the next commands
+7. **Place** the files in the target directory, and print the next commands
    to run.
 
 Nothing is written before steps 1 and 2 pass. A successful run ends like this:
@@ -225,6 +241,21 @@ Created example.com/shop in shop.
 Next steps:
   cd shop
   go test ./...
+  go run ./cmd/shop
+```
+
+With a React, Vue, or Svelte frontend, the next steps also install and
+build the frontend before the server starts:
+
+```text
+$ gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend react
+Created example.com/shop in shop.
+
+Next steps:
+  cd shop
+  go test ./...
+  npm --prefix frontend ci
+  npm --prefix frontend run build
   go run ./cmd/shop
 ```
 
@@ -243,7 +274,9 @@ While working, gobento writes into a temporary directory named
 `.gobento-tmp-<random>`: next to the target when the target does not exist
 yet, or inside it when it is an existing empty directory. If generation fails
 or you press Ctrl-C, gobento removes the temporary directory and anything it
-already moved into the target. A target directory that existed before is
+already moved into the target. While the scaffolder runs, Ctrl-C also stops
+npm and every process it started, so none of them writes into a directory
+that is being removed. A target directory that existed before is
 never deleted, and is left as it was.
 
 ## Dry run
@@ -302,9 +335,33 @@ and `internal/tools/tailwindcss/main.go` with its test. The [tooling files](/doc
 (`Makefile`, `Dockerfile`, `.dockerignore`, `.golangci.yml`, and `.github/`)
 are the same for every architecture.
 
+With `--frontend react`, `vue`, or `svelte`, the list shows only gobento's
+own files: under `frontend/`, the Vite configuration, the example page, the
+API client, and the stylesheet, and in the web package `handler.go`,
+`handler_test.go`, and `dist/.gitignore`. The last lines name the
+scaffolder that adds the rest during generation:
+
+```text
+$ gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend react --dry-run
+Dry run: nothing was written.
+gobento would create example.com/shop (mvc/nethttp/sqlite/sqlc/react, Go 1.27) in shop with these files:
+  ...
+  frontend/src/App.tsx
+  frontend/src/api.ts
+  frontend/src/index.css
+  frontend/vite.config.ts
+  ...
+  internal/views/dist/.gitignore
+  internal/views/handler.go
+  internal/views/handler_test.go
+  sqlc.yaml
+During generation, npm create vite@9.3.3 frontend -- --template react-ts adds more files to frontend/ (template react-ts) and npm writes frontend/package-lock.json;
+this needs Node.js >=v22.12.0, npm, and network access to the npm registry.
+```
+
 - It writes nothing and creates no directory.
-- It does not run the Go toolchain, so it needs neither Go nor access to the
-  Go module proxy.
+- It does not run the Go toolchain or the scaffolder, so it needs neither Go
+  nor Node.js, and no access to the Go module proxy or the npm registry.
 - It does not check the target directory.
 - It exits `0` for valid input. For invalid input, it reports the same
   validation and composition problems as a normal run and exits `1`.
@@ -323,12 +380,40 @@ through unchanged.
 | Selected Go is newer than your toolchain otherwise                                                                            | Warns that the go command will download the selected Go, and continues                  |
 | Fetching a module fails, for example without network                                                                          | Exits `1` with the underlying `go` error, and leaves no files behind                    |
 
+### Node.js
+
+Only a React, Vue, or Svelte frontend needs Node.js: gobento then runs npm
+with your environment, so npm settings such as `npm_config_registry` or your
+user `.npmrc` file apply. API-only and htmx projects never look for `node`. The
+preflight reports these problems with the other ones, before anything is
+written:
+
+| Situation                                                | Result                                                                                                |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| No `node` or `npm` command on `PATH`                     | Exits `1` naming the frontend, the scaffolder, and the Node.js range, and asks you to install Node.js |
+| Node.js older than the range (`>=v22.12.0`)              | Exits `1` naming both versions, and asks you to install a newer Node.js                               |
+| The scaffolder or npm fails, for example without network | Exits `1` with npm's output, and leaves no files behind                                               |
+
+For example, without Node.js, and with Node.js 20:
+
+```text
+$ gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend react
+gobento: cannot create "shop":
+  - node or npm command not found: the node command was not found (exec: "node": executable file not found in $PATH); frontend/react is created with npm create vite@9.3.3 frontend -- --template react-ts, which needs Node.js >=v22.12.0 and npm; install Node.js, which includes npm, from https://nodejs.org/
+```
+
+```text
+$ gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend react
+gobento: cannot create "shop":
+  - unsupported Node.js version: the local Node.js is v20.19.0; frontend/react is created with npm create vite@9.3.3 frontend -- --template react-ts, which needs Node.js >=v22.12.0 and npm; install a newer Node.js from https://nodejs.org/
+```
+
 ## Exit status
 
 | Status | Meaning                                                                                                                                                                                                                        |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `0`    | The project was generated, or a dry run found no problems.                                                                                                                                                                     |
-| `1`    | Any problem: invalid arguments or input, an unsupported selection, a version or constraint error, a failed preflight, or a failed `go` command. Nothing is left behind.                                                        |
+| `1`    | Any problem: invalid arguments or input, an unsupported selection, a version or constraint error, a failed preflight, or a failed `go` or `npm` command. Nothing is left behind.                                               |
 | `130`  | Interrupted by Ctrl-C (or `SIGTERM`), or a question was cancelled with Ctrl-C or Esc. gobento removes everything it created and prints `gobento: interrupted; nothing was left behind`, or lists any file it could not remove. |
 
 ## Errors
@@ -377,6 +462,14 @@ gobento: cannot create "shop":
   - version is fixed: cannot pin github.com/sqlc-dev/sqlc, tool versions are fixed per gobento release (this release uses v1.31.1)
 ```
 
+An npm package, such as the scaffolder of the Vite frontends, whose version is also fixed:
+
+```text
+$ gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend react --pin create-vite=9.0.0
+gobento: cannot create "shop":
+  - version is fixed: cannot pin create-vite, npm package versions are fixed per gobento release (this release uses 9.3.3)
+```
+
 A vendored asset, such as htmx, whose version is fixed like a tool's:
 
 ```text
@@ -396,9 +489,9 @@ gobento: cannot create "shop":
 An unknown frontend; `none` is always accepted:
 
 ```text
-$ gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend react
+$ gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend angular
 gobento: cannot create "shop":
-  - --frontend: unknown frontend "react"; supported: none, htmx
+  - --frontend: unknown frontend "angular"; supported: none, htmx, react, svelte, vue
 ```
 
 A CSS framework without a frontend that supports it:

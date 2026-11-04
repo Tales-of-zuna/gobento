@@ -4,7 +4,8 @@
  * mvc and vertical-slice, nethttp, sqlite, gorm and sqlc, htmx, and Tailwind
  * CSS: architecture and data access have several options, framework and
  * database one, gorm's driver modules carry trait conditions, and the two
- * optional kinds (frontend, css) are linked by the `frontend-build` trait. Tests edit copies of it
+ * optional kinds (frontend, css) are linked by the `frontend-build` trait; no
+ * component uses an npm package. Tests edit copies of it
  * for the cases they need, so they do not change whenever a component ships.
  * Tests about the real catalog import `@/lib/catalog/data` instead.
  */
@@ -49,4 +50,35 @@ export function addPostgres(data: CatalogData): void {
     provides: { 'sql-dialect': 'postgresql', conn: 'pgx', 'sql-schema': 'schema.sql' },
     requires: {},
   });
+}
+
+/** The Vite frontends, by name, with the titles catalog.json gives them. */
+const VITE_TITLES = { react: 'React', vue: 'Vue', svelte: 'Svelte' } as const;
+
+/**
+ * A TypeScript single-page app scaffolded by create-vite, the way catalog.json
+ * lists the Vite frontends: the component, the scaffolder in `npm` (shared by
+ * every Vite frontend added), the Node.js rule, and a supported selection with
+ * it for every selection without a frontend. The frozen fixture predates them.
+ */
+export function addViteFrontend(data: CatalogData, name: keyof typeof VITE_TITLES): void {
+  const id = `frontend/${name}`;
+  const title = VITE_TITLES[name];
+  data.components.push({
+    id,
+    kind: 'frontend',
+    name,
+    title,
+    description: `A ${title} single-page app in TypeScript, scaffolded with create-vite, built with Vite, and embedded in the Go binary.`,
+    provides: { 'frontend-build': 'vite' },
+    requires: {},
+  });
+  data.node = { range: '>=v22.12.0', default: '26' };
+  data.npm ??= [];
+  const scaffolder = data.npm.find((pkg) => pkg.name === 'create-vite');
+  if (scaffolder) scaffolder.components.push(id);
+  else
+    data.npm.push({ name: 'create-vite', components: [id], role: 'scaffolder', version: '9.3.3' });
+  const backends = data.supported.filter((selection) => selection.frontend === undefined);
+  data.supported.push(...backends.map((selection) => ({ ...selection, frontend: name })));
 }

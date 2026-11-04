@@ -26,6 +26,8 @@ type Document struct {
 	Assets     []Asset             `json:"assets"`
 	Binaries   []Binary            `json:"binaries"`
 	Tooling    Tooling             `json:"tooling"`
+	Node       NodeRule            `json:"node"`
+	NPM        []NPMPackage        `json:"npm"`
 	Supported  []map[string]string `json:"supported"`
 	Rules      Rules               `json:"rules"`
 }
@@ -57,6 +59,22 @@ type Binary struct {
 	// Platforms lists the supported platforms as "<GOOS>/<GOARCH>",
 	// sorted.
 	Platforms []string `json:"platforms"`
+}
+
+// NodeRule is the Node.js range that scaffolding needs and the release
+// line of the generated tooling; both are "" without npm packages.
+type NodeRule struct {
+	Range   string `json:"range"`
+	Default string `json:"default"`
+}
+
+// NPMPackage is an npm package that components use, with a version fixed
+// per gobento release. Role is scaffolder, dependency, or dev-dependency.
+type NPMPackage struct {
+	Name       string   `json:"name"`
+	Components []string `json:"components"`
+	Role       string   `json:"role"`
+	Version    string   `json:"version"`
 }
 
 // Tooling lists the versions of the project tooling that are not Go modules,
@@ -186,6 +204,7 @@ func FromCatalog(cat *catalog.Catalog) (*Document, error) {
 		Modules:    []Module{},
 		Assets:     []Asset{},
 		Binaries:   []Binary{},
+		NPM:        []NPMPackage{},
 		Tooling:    Tooling{Images: []Image{}, Actions: []Action{}, Tools: []Tool{}},
 		Supported:  []map[string]string{},
 	}
@@ -237,6 +256,13 @@ func FromCatalog(cat *catalog.Catalog) (*Document, error) {
 			eb.Platforms = append(eb.Platforms, p.Key())
 		}
 		out.Binaries = append(out.Binaries, eb)
+	}
+
+	if !rules.Node.IsZero() {
+		out.Node = NodeRule{Range: rules.Node.Range.String(), Default: rules.Node.Default}
+	}
+	for _, p := range rules.NPM {
+		out.NPM = append(out.NPM, NPMPackage{Name: p.Name, Components: p.Components, Role: string(p.Role), Version: p.Version})
 	}
 
 	for _, key := range slices.Sorted(maps.Keys(rules.Tooling.Images)) {

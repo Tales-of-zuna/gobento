@@ -11,14 +11,14 @@ gobento.
 
 ## The six kinds
 
-| Kind           | Flag          | What it contributes                                                                                                       | Options                        |
-| -------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| Architecture   | `--arch`      | The project layout (its [slots](/docs/concepts/slots-and-contracts)), the entry point, and the Go contracts between slots | `mvc`, `vertical-slice`, `ddd` |
-| HTTP framework | `--framework` | The router and HTTP handlers                                                                                              | `nethttp`, `chi`, `gin`        |
-| Database       | `--db`        | Opening the database connection and applying the schema                                                                   | `sqlite`, `postgres`           |
-| Data access    | `--data`      | The store that implements the data contract on top of the database                                                        | `sqlc`, `gorm`                 |
-| Frontend       | `--frontend`  | Optional. Web pages served at `/`, next to the API, which then moves under `/api`                                         | none, `htmx`                   |
-| CSS framework  | `--css`       | Optional, with a frontend. The stylesheet of the frontend's pages, through the frontend's contribution points             | none, `tailwind`               |
+| Kind           | Flag          | What it contributes                                                                                                       | Options                                |
+| -------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| Architecture   | `--arch`      | The project layout (its [slots](/docs/concepts/slots-and-contracts)), the entry point, and the Go contracts between slots | `mvc`, `vertical-slice`, `ddd`         |
+| HTTP framework | `--framework` | The router and HTTP handlers                                                                                              | `nethttp`, `chi`, `gin`                |
+| Database       | `--db`        | Opening the database connection and applying the schema                                                                   | `sqlite`, `postgres`                   |
+| Data access    | `--data`      | The store that implements the data contract on top of the database                                                        | `sqlc`, `gorm`                         |
+| Frontend       | `--frontend`  | Optional. Web pages served at `/`, next to the API, which then moves under `/api`                                         | none, `htmx`, `react`, `vue`, `svelte` |
+| CSS framework  | `--css`       | Optional, with a frontend. The stylesheet of the frontend's pages, through the frontend's contribution points             | none, `tailwind`                       |
 
 ## A selection
 
@@ -53,6 +53,26 @@ gobento new shop --arch vertical-slice --framework chi --db postgres --data gorm
 gobento new shop --arch vertical-slice --framework chi --db postgres --data gorm --frontend htmx
 gobento new shop --arch vertical-slice --framework chi --db postgres --data gorm --frontend htmx --css tailwind
 ```
+
+## Scaffolded components
+
+A component's files are normally all gobento templates. The React, Vue, and
+Svelte frontends are different: their framework already has an official
+scaffolder, Vite's `create-vite`, so gobento runs it instead of keeping a
+copy of its templates. During generation, `npm create vite` creates
+`frontend/` with the component's template (`react-ts`, `vue-ts`, or
+`svelte-ts`), and the component adds only what must be gobento's: the Vite
+configuration, the example page, the API client, the stylesheet, and the Go
+web package that serves the build. gobento's files win where both write the
+same path, and npm records the dependency tree in
+`frontend/package-lock.json`.
+
+Such a component names its scaffolder in its manifest, and the scaffolder's
+version is in the [version rules](/docs/concepts/version-rules#nodejs-and-npm),
+like every other version. Only these components need
+[Node.js](/docs/getting-started/installation#nodejs-for-react-vue-and-svelte)
+at generation time; `--dry-run` lists gobento's files and says what the
+scaffolder adds.
 
 ## Supported selections
 
@@ -92,14 +112,15 @@ Each component is a directory in the repository under
 `components/<kind>/<name>/`. Its `component.yaml` has these keys, and unknown
 keys are rejected:
 
-| Key           | Kinds             | Meaning                                                          |
-| ------------- | ----------------- | ---------------------------------------------------------------- |
-| `name`        | all               | Equal to the directory name; matches `^[a-z][a-z0-9-]*$`         |
-| `title`       | all               | Required display name, such as `SQLite`                          |
-| `description` | all               | Optional one-sentence summary                                    |
-| `slots`       | architecture only | The [slots](/docs/concepts/slots-and-contracts) it declares      |
-| `provides`    | all               | [Traits](/docs/concepts/traits) it provides: trait → value       |
-| `requires`    | all               | Traits it needs from the others: trait → list of accepted values |
+| Key           | Kinds             | Meaning                                                                                                                                                                   |
+| ------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`        | all               | Equal to the directory name; matches `^[a-z][a-z0-9-]*$`                                                                                                                  |
+| `title`       | all               | Required display name, such as `SQLite`                                                                                                                                   |
+| `description` | all               | Optional one-sentence summary                                                                                                                                             |
+| `slots`       | architecture only | The [slots](/docs/concepts/slots-and-contracts) it declares                                                                                                               |
+| `provides`    | all               | [Traits](/docs/concepts/traits) it provides: trait → value                                                                                                                |
+| `requires`    | all               | Traits it needs from the others: trait → list of accepted values                                                                                                          |
+| `scaffold`    | all               | Optional. The scaffolder from the rules file, its template, the directory it creates, and scaffolded files to remove; see [Scaffolded components](#scaffolded-components) |
 
 ## The base layer
 

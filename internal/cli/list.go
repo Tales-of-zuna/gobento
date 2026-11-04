@@ -34,13 +34,15 @@ type selectionsJSON struct {
 }
 
 // versionsJSON is the JSON of `gobento list versions`: the go, modules,
-// assets, binaries, and tooling fields of the catalog document.
+// assets, binaries, node, npm, and tooling fields of the catalog document.
 type versionsJSON struct {
-	Go       catalogjson.GoRule   `json:"go"`
-	Modules  []catalogjson.Module `json:"modules"`
-	Assets   []catalogjson.Asset  `json:"assets"`
-	Binaries []catalogjson.Binary `json:"binaries"`
-	Tooling  catalogjson.Tooling  `json:"tooling"`
+	Go       catalogjson.GoRule       `json:"go"`
+	Modules  []catalogjson.Module     `json:"modules"`
+	Assets   []catalogjson.Asset      `json:"assets"`
+	Binaries []catalogjson.Binary     `json:"binaries"`
+	Node     catalogjson.NodeRule     `json:"node"`
+	NPM      []catalogjson.NPMPackage `json:"npm"`
+	Tooling  catalogjson.Tooling      `json:"tooling"`
 }
 
 // newListCommand returns the `gobento list` command and its subcommands.
@@ -56,7 +58,8 @@ version rules. Without a subcommand, all three are listed.
 With --json, the output is one JSON document instead of text. For gobento list
 it is the catalog document the gobento website is built from; each subcommand
 prints only the fields it lists ("kinds" and "components", "supported", or
-"go", "modules", "assets", "binaries", and "tooling"), in the same format.
+"go", "modules", "assets", "binaries", "node", "npm", and "tooling"), in the
+same format.
 
 gobento list never asks a question, writes a file, or uses the network.`,
 		Example: `  # Everything gobento supports
@@ -192,7 +195,11 @@ tooling versions. Choose versions inside the module ranges with gobento new
 				return err
 			}
 			if *asJSON {
-				return catalogjson.Encode(a.stdout, versionsJSON{Go: d.Go, Modules: d.Modules, Assets: d.Assets, Binaries: d.Binaries, Tooling: d.Tooling})
+				npm := d.NPM
+				if npm == nil {
+					npm = []catalogjson.NPMPackage{}
+				}
+				return catalogjson.Encode(a.stdout, versionsJSON{Go: d.Go, Modules: d.Modules, Assets: d.Assets, Binaries: d.Binaries, Node: d.Node, NPM: npm, Tooling: d.Tooling})
 			}
 			return writeVersions(a.stdout, d)
 		},
@@ -513,6 +520,19 @@ func writeVersions(w io.Writer, d *catalogjson.Document) error {
 			return err
 		}
 	}
+	if len(d.NPM) > 0 {
+		if _, err := fmt.Fprintf(w, "\nnpm packages (fixed per gobento release; generation needs Node.js %s, the tooling uses Node.js %s):\n\n",
+			d.Node.Range, d.Node.Default); err != nil {
+			return err
+		}
+		rows = [][]string{{"PACKAGE", "ROLE", "VERSION", "USED BY"}}
+		for _, p := range d.NPM {
+			rows = append(rows, []string{p.Name, p.Role, p.Version, strings.Join(p.Components, ", ")})
+		}
+		if err := writeTable(w, rows); err != nil {
+			return err
+		}
+	}
 	return writeTooling(w, d.Tooling)
 }
 
@@ -523,7 +543,7 @@ func writeTooling(w io.Writer, t catalogjson.Tooling) error {
 	if len(t.Images)+len(t.Actions)+len(t.Tools) == 0 {
 		return nil
 	}
-	if _, err := fmt.Fprint(w, "\nProject tooling (fixed per gobento release; {go} is the selected Go version):\n\n"); err != nil {
+	if _, err := fmt.Fprint(w, "\nProject tooling (fixed per gobento release; {go} is the selected Go version, {node} the Node.js line):\n\n"); err != nil {
 		return err
 	}
 	rows := [][]string{{"TYPE", "NAME", "VERSION", "PINNED BY"}}

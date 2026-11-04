@@ -77,7 +77,9 @@ flag, and no frontend or CSS framework is selected unless its flag names
 one. Set ACCESSIBLE=1 for plain-text questions.
 
 Generation runs the go command (go get and go mod tidy), so it needs Go and
-access to the Go module proxy. --dry-run needs neither.
+access to the Go module proxy. The React, Vue, and Svelte frontends are
+created by the official scaffolder (npm create vite), so they also need
+Node.js, npm, and access to the npm registry. --dry-run needs none of this.
 
 ` + listHint,
 		Example: `  # Create ./shop with mvc, the chi router, SQLite, sqlc, and the default versions
@@ -94,6 +96,9 @@ access to the Go module proxy. --dry-run needs neither.
 
   # Style the pages with Tailwind CSS (standalone CLI, no Node.js needed)
   gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend htmx --css tailwind
+
+  # Add a React single-page app built with Vite (or --frontend vue, svelte)
+  gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend react
 
   # Choose every component and the module path explicitly
   gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
@@ -126,7 +131,7 @@ access to the Go module proxy. --dry-run needs neither.
 	fl.StringVar(&f.framework, "framework", "", "HTTP framework, for example chi, gin, or nethttp (asked for in a terminal; required otherwise when several are supported)")
 	fl.StringVar(&f.db, "db", "", "database, for example sqlite or postgres (asked for in a terminal; required otherwise when several are supported)")
 	fl.StringVar(&f.data, "data", "", "data-access library, for example sqlc or gorm (asked for in a terminal; required otherwise when several are supported)")
-	fl.StringVar(&f.frontend, "frontend", "", "frontend, for example htmx, or none for an API-only project (asked for in a terminal; default otherwise: none)")
+	fl.StringVar(&f.frontend, "frontend", "", "frontend, for example htmx, react, vue, or svelte, or none for an API-only project (asked for in a terminal; default otherwise: none)")
 	fl.StringVar(&f.css, "css", "", "CSS framework for the frontend, for example tailwind, or none for the frontend's own stylesheet (asked for in a terminal when a frontend is selected; default otherwise: none)")
 	fl.StringVar(&f.goVersion, "go", "", "Go version for go.mod, for example 1.26 (default: from the compatibility rules)")
 	fl.StringArrayVar(&f.pins, "pin", nil, "library version as module=version, for example modernc.org/sqlite=v1.61.0 (repeatable)")
@@ -314,6 +319,11 @@ func (a *app) printDryRun(p *generate.Prepared, target string) error {
 	for _, path := range paths {
 		fmt.Fprintf(&b, "  %s\n", path)
 	}
+	for _, s := range p.Scaffolds {
+		fmt.Fprintf(&b, "During generation, %s adds more files to %s/ (template %s) and npm writes %s/package-lock.json;\n",
+			s.Command(), s.Dir, s.Template, s.Dir)
+		fmt.Fprintf(&b, "this needs Node.js %s, npm, and network access to the npm registry.\n", p.Node.Range)
+	}
 	_, err := io.WriteString(a.stdout, b.String())
 	return err
 }
@@ -327,6 +337,9 @@ func (a *app) printNextSteps(p *generate.Prepared, target string) error {
 		fmt.Fprintf(&b, "Created %s in %s.\n\nNext steps:\n  cd %s\n", p.Module, target, shellQuote(target))
 	}
 	b.WriteString("  go test ./...\n")
+	for _, s := range p.Scaffolds {
+		fmt.Fprintf(&b, "  npm --prefix %s ci\n  npm --prefix %s run build\n", s.Dir, s.Dir)
+	}
 	if entry, ok := p.Plan.Slots["entry"]; ok {
 		fmt.Fprintf(&b, "  go run ./%s\n", entry.Dir)
 	}

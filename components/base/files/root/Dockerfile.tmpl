@@ -8,6 +8,11 @@
 #
 # The cache mounts need BuildKit, the default builder of Docker 23 and later.
 
+{{- with contrib "docker-stages"}}
+
+{{.}}
+{{- end}}
+
 FROM {{.Images.go}} AS build
 WORKDIR /src
 

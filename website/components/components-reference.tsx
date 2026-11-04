@@ -1,8 +1,8 @@
 /**
  * The Components reference (design D5): every component of the catalog with
- * its traits, module versions, vendored assets, and the platform binaries it
- * downloads on demand, rendered at build time so
- * that no docs content contains a version number. Optional kinds are marked.
+ * its traits, module versions, vendored assets, the platform binaries it
+ * downloads on demand, and npm packages, rendered at build time so that no
+ * docs content contains a version number. Optional kinds are marked.
  */
 import { catalog as builtCatalog } from '@/lib/catalog/data';
 import {
@@ -12,6 +12,7 @@ import {
   type Catalog,
   type Component,
   type Module,
+  type NpmPackage,
 } from '@/lib/catalog/schema';
 import { KIND_FLAGS } from '@/lib/command/build';
 
@@ -43,6 +44,52 @@ export function CatalogReference({ catalog }: { catalog: Catalog }) {
           </tbody>
         </table>
       </div>
+      {catalog.npm.length > 0 && (
+        <>
+          <h2 id="node">Node.js</h2>
+          <p>
+            Components with npm packages need Node.js and npm on the machine that runs{' '}
+            <code>gobento new</code>; the generated project&apos;s tooling (container image and CI)
+            uses the release line below.
+          </p>
+          <div
+            className="docs-table"
+            tabIndex={0}
+            role="region"
+            aria-label="Node.js versions table"
+          >
+            <table aria-label="Node.js versions">
+              <thead>
+                <tr>
+                  <th scope="col">Needed to generate</th>
+                  <th scope="col">Tooling release line</th>
+                  <th scope="col">Used by</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <code>{catalog.node.range}</code>
+                  </td>
+                  <td>
+                    <code>{catalog.node.default}</code>
+                  </td>
+                  <td>
+                    {[...new Set(catalog.npm.flatMap((pkg) => pkg.components))]
+                      .sort()
+                      .map((id, i) => (
+                        <span key={id}>
+                          {i > 0 && ', '}
+                          <code>{id.slice(id.indexOf('/') + 1)}</code>
+                        </span>
+                      ))}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
       {KIND_IDS.map((kindId) => {
         const kind = catalog.kinds.find((k) => k.id === kindId);
         const components = catalog.components.filter((c) => c.kind === kindId);
@@ -74,6 +121,8 @@ export function CatalogReference({ catalog }: { catalog: Catalog }) {
                 modules={catalog.modules.filter((m) => m.components.includes(component.id))}
                 assets={catalog.assets.filter((a) => a.components.includes(component.id))}
                 binaries={catalog.binaries.filter((b) => b.components.includes(component.id))}
+                packages={catalog.npm.filter((p) => p.components.includes(component.id))}
+                node={catalog.node}
               />
             ))}
           </section>
@@ -83,18 +132,29 @@ export function CatalogReference({ catalog }: { catalog: Catalog }) {
   );
 }
 
+/** How each npm package role reads in the reference. */
+const NPM_ROLES: Readonly<Record<NpmPackage['role'], string>> = {
+  scaffolder: 'scaffolder, run at generation time (fixed per release)',
+  dependency: 'dependency (fixed per release)',
+  'dev-dependency': 'dev dependency (fixed per release)',
+};
+
 function ComponentEntry({
   component,
   kindTitle,
   modules,
   assets,
   binaries,
+  packages,
+  node,
 }: {
   component: Component;
   kindTitle: string;
   modules: Module[];
   assets: Asset[];
   binaries: Binary[];
+  packages: NpmPackage[];
+  node: Catalog['node'];
 }) {
   const provides = Object.entries(component.provides);
   const requires = Object.entries(component.requires);
@@ -270,6 +330,43 @@ function ComponentEntry({
             </tbody>
           </table>
         </div>
+      )}
+      {packages.length > 0 && (
+        <>
+          <div
+            className="docs-table"
+            tabIndex={0}
+            role="region"
+            aria-label={`npm packages of ${component.name} table`}
+          >
+            <table aria-label={`npm packages of ${component.name}`}>
+              <thead>
+                <tr>
+                  <th scope="col">Package</th>
+                  <th scope="col">Role</th>
+                  <th scope="col">Version</th>
+                </tr>
+              </thead>
+              <tbody>
+                {packages.map((pkg) => (
+                  <tr key={pkg.name}>
+                    <td>
+                      <code>{pkg.name}</code>
+                    </td>
+                    <td>{NPM_ROLES[pkg.role]}</td>
+                    <td>
+                      <code>{pkg.version}</code>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p>
+            Generating it needs Node.js <code>{node.range}</code>; the project&apos;s tooling uses
+            Node.js <code>{node.default}</code>.
+          </p>
+        </>
       )}
     </article>
   );

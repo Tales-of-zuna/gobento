@@ -207,6 +207,7 @@ docker run --rm --publish 8080:8080 --volume shop-data:/data shop
 
 To use a directory of the host instead (`--volume "$PWD/data:/data"`), make
 it writable for the user 65532, for example with `--user "$(id -u)"`.
+
 The pages and their static files are compiled into the binary, so the image
 needs nothing else to serve them: the pages are at `/`, and the JSON API, its
 health check included, is under `/api/` (`/api/health`).

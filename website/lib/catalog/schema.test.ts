@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { catalogSchema } from './schema';
-import { fixtureData, type CatalogData } from '@/lib/test/catalog';
+import { addViteFrontend, fixtureData, type CatalogData } from '@/lib/test/catalog';
 
 describe('catalog schema', () => {
   it('accepts the exported catalog', () => {
@@ -73,6 +73,29 @@ describe('catalog schema', () => {
     expect(result.data?.tooling.images[0]?.tag).toBe('{go}');
     data.tooling.tools = [{ name: 'golangci-lint', version: '' }];
     expect(catalogSchema.safeParse(data).success).toBe(false);
+  });
+
+  it('accepts the npm packages and the Node.js rule, and defaults them to none', () => {
+    const data = fixtureData();
+    delete data.node;
+    data.npm = null;
+    const none = catalogSchema.safeParse(data);
+    expect(none.error?.issues).toBeUndefined();
+    expect(none.data?.npm).toEqual([]);
+    expect(none.data?.node).toEqual({ range: '', default: '' });
+    addViteFrontend(data, 'react');
+    addViteFrontend(data, 'vue');
+    const result = catalogSchema.safeParse(data);
+    expect(result.error?.issues).toBeUndefined();
+    expect(result.data?.npm).toEqual([
+      {
+        name: 'create-vite',
+        components: ['frontend/react', 'frontend/vue'],
+        role: 'scaffolder',
+        version: '9.3.3',
+      },
+    ]);
+    expect(result.data?.node).toEqual({ range: '>=v22.12.0', default: '26' });
   });
 
   const sqlite = (data: CatalogData) => data.modules.find((m) => m.path === 'modernc.org/sqlite')!;
@@ -254,6 +277,59 @@ describe('catalog schema', () => {
       name: 'supported selection naming an unknown CSS framework',
       edit: (d) => (d.supported[0]!.css = 'bootstrap'),
       expected: 'supported selection names unknown component "css/bootstrap"',
+    },
+    {
+      name: 'npm package of an unknown component',
+      edit: (d) => {
+        addViteFrontend(d, 'react');
+        d.npm![0]!.components = ['frontend/solid'];
+      },
+      expected: 'create-vite: unknown component "frontend/solid"',
+    },
+    {
+      name: 'unknown npm package role',
+      edit: (d) => {
+        addViteFrontend(d, 'react');
+        (d.npm![0]! as { role: string }).role = 'plugin';
+      },
+      expected: 'Invalid option',
+    },
+    {
+      name: 'duplicate npm package',
+      edit: (d) => {
+        addViteFrontend(d, 'react');
+        d.npm!.push({ ...d.npm![0]! });
+      },
+      expected: 'duplicate npm package name',
+    },
+    {
+      name: 'npm packages with a malformed Node.js range',
+      edit: (d) => {
+        addViteFrontend(d, 'react');
+        d.node!.range = '^22';
+      },
+      expected: 'malformed range "^22"',
+    },
+    {
+      name: 'Node.js release line outside its range',
+      edit: (d) => {
+        addViteFrontend(d, 'react');
+        d.node!.default = '20';
+      },
+      expected: 'node: release line 20 is outside its range >=v22.12.0',
+    },
+    {
+      name: 'malformed Node.js release line',
+      edit: (d) => {
+        addViteFrontend(d, 'react');
+        d.node!.default = 'lts';
+      },
+      expected: 'node: malformed release line "lts"',
+    },
+    {
+      name: 'Node.js rule without npm packages',
+      edit: (d) => (d.node = { range: '>=v22.12.0', default: '26' }),
+      expected: 'a Node.js rule without npm packages',
     },
     {
       name: 'no supported selection',

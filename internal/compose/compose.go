@@ -72,6 +72,10 @@ type Input struct {
 	Base *catalog.Component
 	// Tooling holds the tooling versions: images, actions, and tools.
 	Tooling compat.ToolingVersions
+	// Node is the Node.js release line of the generated tooling.
+	Node string
+	// NPM maps the selected components' npm packages to their versions.
+	NPM map[string]string
 }
 
 // Plan is the composed project: every file to write, in path order. It
@@ -195,6 +199,8 @@ func (c *composer) run() {
 		Images:   orEmpty(c.in.Tooling.Images),
 		Actions:  orEmpty(c.in.Tooling.Actions),
 		Tools:    orEmpty(c.in.Tooling.Tools),
+		Node:     c.in.Node,
+		NPM:      orEmpty(c.in.NPM),
 	}
 	if sel.Frontend != nil {
 		c.data.APIPrefix = FrontendAPIPrefix
@@ -278,16 +284,24 @@ func (c *composer) declarer(point string) *catalog.Component {
 	return nil
 }
 
-// contribFunc returns the template function "contrib" of owner's
-// templates: it returns the contributions to one of owner's points, joined
-// with newlines, or "" if no selected component contributes.
-func (c *composer) contribFunc(owner *catalog.Component) func(string) (string, error) {
-	return func(point string) (string, error) {
-		if _, ok := owner.Point(point); !ok {
-			if owner.IsBase() {
-				return "", fmt.Errorf("the base layer declares no contribution point %q in %s", point, catalog.BaseManifestFile)
-			}
-			return "", fmt.Errorf("%s declares no contribution point %q in its %s", owner.ID(), point, catalog.ManifestFile)
+// contribsFunc returns the template function "contribs" of owner's
+// templates and notes: it returns the contributions to a point of the base
+// layer or of owner (its own or its kind's), one per contributing
+// component, for example to separate Markdown paragraphs with blank lines.
+func (c *composer) contribsFunc(owner *catalog.Component) func(string) ([]string, error) {
+	return func(point string) ([]string, error) {
+		_, own := owner.Point(point)
+		base := false
+		if c.in.Base != nil {
+			_, base = c.in.Base.Point(point)
+		}
+		switch {
+		case own || base:
+		case owner.IsBase():
+			return nil, fmt.Errorf("the base layer declares no contribution point %q in %s", point, catalog.BaseManifestFile)
+		default:
+			return nil, fmt.Errorf("%s declares no contribution point %q in its %s or its kind's %s, and the base layer declares none in %s",
+				owner.ID(), point, catalog.ManifestFile, catalog.KindManifestFile, catalog.BaseManifestFile)
 		}
 		c.included[point] = true
 		var parts []string
@@ -296,18 +310,31 @@ func (c *composer) contribFunc(owner *catalog.Component) func(string) (string, e
 				parts = append(parts, k.Content)
 			}
 		}
-		return strings.Join(parts, "\n"), nil
+		return parts, nil
 	}
 }
 
-// funcsFor returns the extra template functions of comp's templates: the
-// base layer's templates, and those of a component that declares points,
-// may include the contributions to their own points.
+// contribFunc returns the template function "contrib" of owner's
+// templates: the contributions to the point, as contribs returns them,
+// joined with newlines, or "" if no selected component contributes.
+func (c *composer) contribFunc(owner *catalog.Component) func(string) (string, error) {
+	list := c.contribsFunc(owner)
+	return func(point string) (string, error) {
+		parts, err := list(point)
+		return strings.Join(parts, "\n"), err
+	}
+}
+
+// funcsFor returns the extra template functions of comp's templates and
+// notes: they may include the contributions to the points of the base
+// layer and to comp's own points (those of its kind), so that one component
+// can extend a file another one owns. Contribution templates themselves
+// get no extra functions.
 func (c *composer) funcsFor(comp *catalog.Component) template.FuncMap {
-	if len(comp.Points) == 0 && comp != c.in.Base {
+	if len(comp.Points) == 0 && c.in.Base == nil {
 		return nil
 	}
-	return template.FuncMap{"contrib": c.contribFunc(comp)}
+	return template.FuncMap{"contrib": c.contribFunc(comp), "contribs": c.contribsFunc(comp)}
 }
 
 // checkSelection reports required kinds without a component and components

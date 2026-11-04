@@ -29,7 +29,7 @@ server as the non-root user 65532 on port 8080. Building needs BuildKit, the
 default builder of Docker 23 and later. The image reads `PORT` and
 `DATABASE_URL` like the binary; `make docker-run DATABASE_URL=...` passes a
 connection string to it.
-{{- with contrib "readme-docker"}}
+{{- range contribs "readme-docker"}}
 
 {{.}}
 {{- end}}

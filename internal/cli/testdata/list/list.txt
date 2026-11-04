@@ -166,7 +166,7 @@ Downloaded binaries (fixed per gobento release):
 BINARY       VERSION  USED BY       PLATFORMS
 tailwindcss  4.3.4    css/tailwind  darwin/amd64, darwin/arm64, linux/amd64, linux/arm64, windows/amd64, windows/arm64
 
-Project tooling (fixed per gobento release; {go} is the selected Go version):
+Project tooling (fixed per gobento release; {go} is the selected Go version, {node} the Node.js line):
 
 TYPE    NAME                           VERSION                                    PINNED BY
 image   go                             golang:{go}                                -

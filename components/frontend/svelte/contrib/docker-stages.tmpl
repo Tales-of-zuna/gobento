@@ -1,0 +1,7 @@
+# Build the frontend; the build stage copies only its output.
+FROM {{.Images.node}} AS frontend
+WORKDIR /src/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci
+COPY frontend/ ./
+RUN npm run build

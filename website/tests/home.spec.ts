@@ -125,6 +125,9 @@ test.describe('home page', () => {
       'sqlc',
       'htmx + templ',
       'Tailwind CSS',
+      'React',
+      'Vue',
+      'Svelte',
     ]) {
       await expect(belt.getByText(name, { exact: true }).first()).toBeAttached();
     }
@@ -135,12 +138,16 @@ test.describe('home page', () => {
     await expect(
       page.getByText('modernc.org/sqlite v1.61.1 needs Go 1.26 or newer'),
     ).toBeAttached();
-    // The optional frontend kind has its own compartment, with the roadmap.
-    const frontend = page.getByRole('list', { name: 'Frontend roadmap' });
-    for (const name of ['React', 'Vue', 'Svelte']) {
-      await expect(frontend.getByText(name, { exact: true })).toBeAttached();
+    // The optional frontend kind has its own compartment: the shipped
+    // frontends as options, and nothing they ship on its roadmap.
+    const roadmap = page.getByRole('list', { name: 'Frontend roadmap' });
+    await expect(roadmap).toContainText('more later');
+    const stack = page.getByRole('region', { name: 'One choice per compartment.' });
+    for (const name of ['htmx + templ', 'React', 'Vue', 'Svelte']) {
+      await expect(stack.getByText(name, { exact: true })).toBeAttached();
+      await expect(roadmap.getByText(name, { exact: true })).toHaveCount(0);
     }
-    await expect(frontend.getByText('Tailwind CSS', { exact: true })).toHaveCount(0);
+    await expect(roadmap.getByText('Tailwind CSS', { exact: true })).toHaveCount(0);
     // The optional CSS framework kind has its own compartment with Tailwind CSS.
     const css = page.getByRole('heading', { level: 3, name: /^CSS framework/ });
     await expect(css).toContainText('optional');

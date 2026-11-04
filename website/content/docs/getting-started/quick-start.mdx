@@ -17,8 +17,10 @@ sqlc. Swap `--framework nethttp` for `chi` or `gin` to use another router; the
 generated API is the same. SQLite needs no database server;
 [Use PostgreSQL](#use-postgresql) shows what changes with `--db postgres`,
 [With GORM](#with-gorm) what changes with `--data gorm`,
-[With htmx](#with-htmx) how to add web pages with `--frontend htmx`, and
-[With Tailwind CSS](#with-tailwind-css) how to style them with `--css tailwind`.
+[With htmx](#with-htmx) how to add web pages with `--frontend htmx`,
+[With Tailwind CSS](#with-tailwind-css) how to style them with `--css tailwind`,
+and [With React, Vue, or Svelte](#with-react-vue-or-svelte) how to add a
+single-page app built with Vite.
 
 ## Generate and run it
 
@@ -56,7 +58,8 @@ and `ddd` in domain-driven layers (see
 `chi`, or `gin`. `--db` picks the database: `sqlite` or `postgres` (see
 [Use PostgreSQL](#use-postgresql)). `--data` picks the data access: `sqlc` or
 `gorm` (see [With GORM](#with-gorm)). There is no `--frontend`, so the project
-is an HTTP API (see [With htmx](#with-htmx) for web pages). If you leave out
+is an HTTP API (see [With htmx](#with-htmx) and
+[With React, Vue, or Svelte](#with-react-vue-or-svelte) for web pages). If you leave out
 one of these flags in a terminal, gobento asks you to choose; you can also run
 plain `gobento new` and answer the questions for the name, module path, and
 components. The same command with every choice spelled out, which never asks
@@ -422,6 +425,82 @@ user cache directory. Add `--watch` instead of `--minify` to rebuild on every
 change while you work. To use a `tailwindcss` binary you already have, for
 example on musl-based Linux, set `TAILWINDCSS` to its path. The CI workflow
 fails when the committed stylesheet is not what the pinned CLI compiles.
+
+## With React, Vue, or Svelte
+
+Add `--frontend react`, `--frontend vue`, or `--frontend svelte` to serve a
+single-page app in TypeScript, built with [Vite](https://vite.dev). These
+frontends need [Node.js v22.12.0 or newer and npm](/docs/getting-started/installation#nodejs-for-react-vue-and-svelte),
+and network access to the npm registry, when you generate the project:
+
+```sh
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend react
+```
+
+During generation, gobento runs Vite's official scaffolder,
+`npm create vite@9.3.3`, with the `react-ts` template (`vue-ts`,
+`svelte-ts`) to create `frontend/`, adds its own example page on top, and
+has npm write `frontend/package-lock.json`. It does not install the
+dependencies. The next steps include the two npm commands that do, and that
+build the app:
+
+```text
+Created example.com/shop in shop.
+
+Next steps:
+  cd shop
+  go test ./...
+  npm --prefix frontend ci
+  npm --prefix frontend run build
+  go run ./cmd/shop
+```
+
+`make build` runs the same npm commands and then builds the binary into
+`bin/`. Open [http://localhost:8080/](http://localhost:8080/): the page lists
+the items and has a form that adds one without reloading the page; an API
+error, such as a blank name, is shown on the page. As with htmx, the JSON
+API moves under `/api`:
+
+```sh
+curl -i http://localhost:8080/api/health
+curl -i -X POST http://localhost:8080/api/items -d '{"name":"onigiri"}'
+curl -i http://localhost:8080/
+```
+
+While you work on the page, run the Go server with `make run` and, in a
+second terminal, the Vite dev server with `make dev` (or
+`npm --prefix frontend run dev`). Open
+[http://localhost:5173/](http://localhost:5173/): the dev server reloads the
+page as you edit it and forwards `/api` to the Go server on port 8080.
+
+The project gains `frontend/` and one Go package, `internal/views`
+(`internal/web` with `--arch vertical-slice`, `internal/adapters/web` with
+`--arch ddd`). gobento owns these files; everything else in `frontend/`, such
+as `package.json`, `index.html`, and `src/main.tsx`, is the scaffolder's:
+
+| Path                             | Contents                                                                                                                 |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `frontend/vite.config.ts`        | The framework's Vite plugin, the build output `../internal/views/dist/app`, and the dev server's proxy for `/api`        |
+| `frontend/src/App.tsx`           | The example page (`App.vue` with Vue, `App.svelte` with Svelte)                                                          |
+| `frontend/src/api.ts`            | The client for `GET /api/items` and `POST /api/items`                                                                    |
+| `frontend/src/index.css`         | The page's styles (`style.css` with Vue, `app.css` with Svelte): the stylesheet the scaffolded entry imports             |
+| `frontend/package-lock.json`     | Every npm dependency at an exact version, written by npm; Dependabot keeps them current                                  |
+| `internal/views/handler.go`      | `NewHandler`, serving the build embedded with `//go:embed`; tests in `handler_test.go`                                   |
+| `internal/views/dist/.gitignore` | Keeps `dist/` in the repository and ignores the build in `dist/app/`, so the package builds before the frontend is built |
+
+The binary embeds the build, so it needs no files next to it. It serves the
+build's files, and `index.html` for every other path without a file
+extension, so client-side routes survive a reload; a missing file with an
+extension, and any path under `/api/`, is `404`. Until you build the
+frontend, `/` shows a page that names the build commands, so `go build` and
+`go test ./...` work without Node.js.
+
+The [tooling](/docs/concepts/project-tooling#frontend-tooling) builds the
+frontend too: the CI workflow sets up Node.js and runs `npm ci`, the
+scaffolded project's checks, and `npm run build` before the Go checks, and
+the Dockerfile builds the app in a `node` stage. The three frontends are
+alike: the same files apart from the framework's file names, the same page,
+and the same tooling.
 
 ## Next steps
 

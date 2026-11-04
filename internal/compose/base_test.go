@@ -167,19 +167,19 @@ func TestComposeBaseLayerErrors(t *testing.T) {
 			want:    []string{"base/files/root/Dockerfile.tmpl", `no contribution point "docker-build"`},
 		},
 		{
-			name:    "contrib outside the base layer",
-			changes: map[string]string{"data/query/files/root/query.yaml.tmpl": "{{contrib \"make\"}}\n"},
+			name:    "contrib in a contribution",
+			changes: map[string]string{"database/lite/contrib/ci-steps.tmpl": "{{contrib \"make\"}}\n"},
 			wantErr: ErrTemplate,
-			want:    []string{"data/query/files/root/query.yaml.tmpl", `"contrib" not defined`},
+			want:    []string{"database/lite/contrib/ci-steps.tmpl", `"contrib" not defined`},
 		},
 		{
-			name: "component template names a point of the base layer",
+			name: "component template names a point of another kind",
 			changes: map[string]string{
-				"data/kind.yaml":                        "contributions:\n  queries: Queries.\n",
-				"data/query/files/root/query.yaml.tmpl": "{{contrib \"make\"}}\n",
+				"data/kind.yaml": "contributions:\n  queries: Queries.\n",
+				"database/lite/files/database/db.go.tmpl": "{{contrib \"queries\"}}\n",
 			},
 			wantErr: ErrTemplate,
-			want:    []string{"data/query/files/root/query.yaml.tmpl", `data/query declares no contribution point "make"`},
+			want:    []string{"database/lite/files/database/db.go.tmpl", `database/lite declares no contribution point "queries"`},
 		},
 		{
 			name:    "contribution fails to render",
@@ -271,5 +271,25 @@ func TestComposeKindPoints(t *testing.T) {
 	}
 	if _, ok := plan.File("orm.yaml"); ok {
 		t.Error("orm.yaml is planned, but its template renders only whitespace")
+	}
+}
+
+// TestComponentTemplatesIncludePoints covers the spec scenario "CSS
+// contribution to a Vite frontend": a component's own template includes the
+// contributions of another component to a declared point.
+func TestComponentTemplatesIncludePoints(t *testing.T) {
+	t.Parallel()
+
+	cat := loadCatalog(t, withBase(map[string]string{
+		"data/query/files/root/query.yaml.tmpl": "steps:\n{{indent 2 (contrib \"ci-steps\")}}\n",
+		"database/lite/contrib/ci-steps.tmpl":   "- run: lite\n",
+	}))
+	plan, err := Compose(baseInput(cat, pick(t, cat, "layered", "web", "lite", "query")))
+	if err != nil {
+		t.Fatalf("Compose() error = %v", err)
+	}
+	f, _ := plan.File("query.yaml")
+	if got := string(f.Content); got != "steps:\n  - run: lite\n" {
+		t.Errorf("query.yaml = %q", got)
 	}
 }

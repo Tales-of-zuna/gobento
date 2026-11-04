@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { KIND_IDS } from '@/lib/catalog/kinds';
 import { buildCommand } from '@/lib/command/build';
 import { defaultState } from '@/lib/command/url-state';
-import { addPostgres, catalogWith, moduleOf } from '@/lib/test/catalog';
+import { addPostgres, addViteFrontend, catalogWith, moduleOf } from '@/lib/test/catalog';
 import {
   blockedMessage,
   errorsByField,
@@ -35,6 +35,14 @@ const tailwind = (state: typeof defaults) => ({
   ...state,
   components: { ...state.components, css: 'tailwind' },
 });
+
+/** The labels inside internal/ of the tree. */
+const internal = (state: typeof defaults, from = catalog) => {
+  const tree = fileTree(from, state, true);
+  const start = tree.findIndex((l) => l.label === 'internal/');
+  const end = tree.findIndex((l, i) => i > start && l.depth < 2);
+  return tree.slice(start + 1, end).map((l) => l.label);
+};
 
 describe('goVersions', () => {
   it('lists every minor in the range', () => {
@@ -179,14 +187,6 @@ describe('trayCells and fileTree', () => {
     expect(fileTree(catalog, { ...defaults, name: 'My App' }, false)[0]!.label).toBe('<name>/');
   });
 
-  /** The labels inside internal/ of the tree. */
-  const internal = (state: typeof defaults, from = catalog) => {
-    const tree = fileTree(from, state, true);
-    const start = tree.findIndex((l) => l.label === 'internal/');
-    const end = tree.findIndex((l, i) => i > start && l.depth < 2);
-    return tree.slice(start + 1, end).map((l) => l.label);
-  };
-
   it('lists the tooling every project gets', () => {
     const tree = fileTree(catalog, { ...mvc, name: 'shop' }, true).map((l) => [l.depth, l.label]);
     expect(tree).toEqual([
@@ -279,9 +279,20 @@ describe('optional frontend (spec: Frontend is optional)', () => {
     expect(group.options.map((o) => [o.value, o.title, o.status])).toEqual([
       [NONE, 'None (API only)', 'selected'],
       ['htmx', 'htmx + templ', 'available'],
-      ['react', 'React via Vite', 'soon'],
-      ['vue', 'Vue via Vite', 'soon'],
-      ['svelte', 'Svelte via Vite', 'soon'],
+    ]);
+  });
+
+  it('offers the Vite frontends from the catalog before the roadmap', () => {
+    const withVite = catalogWith((data) => {
+      for (const name of ['react', 'svelte', 'vue'] as const) addViteFrontend(data, name);
+    });
+    const group = kindGroups(withVite, mvc, new Map()).find((g) => g.kind === 'frontend')!;
+    expect(group.options.map((o) => [o.value, o.title, o.status])).toEqual([
+      [NONE, 'None (API only)', 'selected'],
+      ['htmx', 'htmx + templ', 'available'],
+      ['react', 'React', 'available'],
+      ['svelte', 'Svelte', 'available'],
+      ['vue', 'Vue', 'available'],
     ]);
   });
 
@@ -326,6 +337,83 @@ describe('optional frontend (spec: Frontend is optional)', () => {
       expect.arrayContaining(['web/', 'web/pages.templ', 'web/static/']),
     );
     expect(lines(mvc).some((l) => l.startsWith('views/'))).toBe(false);
+  });
+
+  describe('a Vite frontend', () => {
+    const withVite = catalogWith((data) => {
+      for (const name of ['react', 'svelte', 'vue'] as const) addViteFrontend(data, name);
+    });
+    const vite = (name: string, state: typeof defaults = mvc) => ({
+      ...state,
+      components: { ...state.components, frontend: name },
+    });
+
+    it('lists its scaffolder with the fixed version from the catalog', () => {
+      const fields = moduleFields(withVite, vite('react'), new Map());
+      expect(fields.at(-1)).toEqual({
+        path: 'create-vite',
+        usedBy: 'React, Svelte, Vue',
+        fixed: true,
+        tag: 'Scaffolder',
+        value: '9.3.3',
+        hint: 'Scaffolds the app at generation time and needs Node.js >=v22.12.0; its version is fixed per gobento release.',
+      });
+      expect(moduleFields(withVite, htmx(mvc), new Map()).map((f) => f.path)).not.toContain(
+        'create-vite',
+      );
+    });
+
+    it('previews the handler in the web package and gobento-owned files in frontend/', () => {
+      const tree = fileTree(withVite, { ...vite('react'), name: 'shop' }, true);
+      expect(internal(vite('react'), withVite)).toEqual([
+        'controllers/',
+        'database/',
+        'models/',
+        'store/',
+        'views/',
+        'views/dist/.gitignore',
+        'views/handler.go',
+        'views/handler_test.go',
+      ]);
+      const start = tree.findIndex((l) => l.label === 'frontend/');
+      expect(tree[start]).toEqual({
+        label: 'frontend/',
+        depth: 1,
+        dir: true,
+        note: 'completed by create-vite 9.3.3 at generation time',
+      });
+      expect(tree.slice(start + 1, start + 5).map((l) => [l.depth, l.label])).toEqual([
+        [2, 'src/App.tsx'],
+        [2, 'src/api.ts'],
+        [2, 'src/index.css'],
+        [2, 'vite.config.ts'],
+      ]);
+      expect(tree[start + 5]!.depth).toBe(1);
+    });
+
+    it('names the page and stylesheet after the framework', () => {
+      const app = (name: string) => {
+        const tree = fileTree(withVite, vite(name, withArch('vertical-slice')), true);
+        const start = tree.findIndex((l) => l.label === 'frontend/');
+        return tree.slice(start + 1, start + 5).map((l) => l.label);
+      };
+      expect(app('vue')).toEqual(['src/App.vue', 'src/api.ts', 'src/style.css', 'vite.config.ts']);
+      expect(app('svelte')).toEqual([
+        'src/App.svelte',
+        'src/api.ts',
+        'src/app.css',
+        'vite.config.ts',
+      ]);
+      expect(internal(vite('svelte', withArch('vertical-slice')), withVite)).toContain(
+        'web/handler.go',
+      );
+    });
+
+    it('shows no frontend/ directory without a Vite frontend', () => {
+      for (const state of [mvc, htmx(mvc)]) {
+        expect(fileTree(withVite, state, true).map((l) => l.label)).not.toContain('frontend/');
+      }
+    });
   });
 
   it('previews the pages in the web adapter for ddd', () => {

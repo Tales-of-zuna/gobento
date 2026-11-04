@@ -25,8 +25,8 @@ describe('beltPlates', () => {
     expect(plates.filter((p) => p.status === 'roadmap')).toHaveLength(ROADMAP.length);
   });
 
-  it('keeps React, Vue, and Svelte on the roadmap, but not the shipped Tailwind CSS', () => {
-    expect(ROADMAP.map((item) => item.name)).toEqual(['React', 'Vue', 'Svelte']);
+  it('keeps nothing that ships on the roadmap', () => {
+    expect(ROADMAP.map((item) => item.name)).toEqual([]);
   });
 
   it('follows the catalog when a component is added', () => {

@@ -14,12 +14,14 @@ of a list of values.
 
 Both are keys of `component.yaml`. In the current catalog:
 
-| Component             | `provides`                                                                | `requires`                                                                              |
-| --------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `postgres` (database) | `sql-dialect: postgresql`, `conn: database/sql`, `sql-schema: schema.sql` | none                                                                                    |
-| `sqlite` (database)   | `sql-dialect: sqlite`, `conn: database/sql`, `sql-schema: schema.sql`     | none                                                                                    |
-| `gorm` (data access)  | none                                                                      | `sql-dialect: [sqlite, postgresql]`, `conn: [database/sql]`, `sql-schema: [schema.sql]` |
-| `sqlc` (data access)  | none                                                                      | `sql-dialect: [sqlite, postgresql]`, `conn: [database/sql]`, `sql-schema: [schema.sql]` |
+| Component                           | `provides`                                                                | `requires`                                                                              |
+| ----------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `postgres` (database)               | `sql-dialect: postgresql`, `conn: database/sql`, `sql-schema: schema.sql` | none                                                                                    |
+| `sqlite` (database)                 | `sql-dialect: sqlite`, `conn: database/sql`, `sql-schema: schema.sql`     | none                                                                                    |
+| `gorm` (data access)                | none                                                                      | `sql-dialect: [sqlite, postgresql]`, `conn: [database/sql]`, `sql-schema: [schema.sql]` |
+| `sqlc` (data access)                | none                                                                      | `sql-dialect: [sqlite, postgresql]`, `conn: [database/sql]`, `sql-schema: [schema.sql]` |
+| `htmx` (frontend)                   | `frontend-build: go`                                                      | none                                                                                    |
+| `react`, `vue`, `svelte` (frontend) | `frontend-build: vite`                                                    | none                                                                                    |
 
 Trait names match `^[a-z][a-z0-9-]*$`. A provided value must not be empty,
 and a requirement lists at least one accepted value.
@@ -46,6 +48,15 @@ and a requirement lists at least one accepted value.
   schema stays the single source of truth. Traits carry the
   few facts one component needs about another's files, without naming the
   other component.
+- **`frontend-build`**: how the frontend is built. `go` means the Go
+  toolchain alone builds it (htmx, whose templ code is shipped generated);
+  `vite` means Vite builds it from the Node.js sources in `frontend/` (React,
+  Vue, and Svelte). Every frontend provides it, so a component that works
+  with only some frontends requires this trait instead of naming them. A CSS
+  component, such as the planned Tailwind CSS one, requires
+  `frontend-build: [go, vite]` and reaches a Vite frontend through the
+  `vite-imports`, `vite-plugins`, and `vite-styles`
+  [contribution points](/docs/contributing/adding-a-component#contribution-points-in-component-files).
 
 - **`frontend-build`**: how a frontend's assets are built: `go` when the Go
   toolchain alone builds them (htmx: templ code and static files are
@@ -99,15 +110,17 @@ provides, no selection containing it would be listed as supported. The
 website's configurator uses the same rules to disable incompatible options
 and explain why.
 
-Today every database provides what both data-access components require, so
-all 36 candidate selections (3 architectures × 3 frameworks × 2 databases × 2
-data-access components) are supported, for example:
+Today every database provides what both data-access components require,
+and no frontend requires anything, so all 180 candidate selections (3
+architectures × 3 frameworks × 2 databases × 2 data-access components × 5
+frontend choices: none, htmx, React, Vue, or Svelte) are supported, for
+example:
 
 ```text
 mvc + nethttp + postgres + gorm
 mvc + nethttp + sqlite + sqlc
-vertical-slice + nethttp + sqlite + sqlc
-ddd + gin + postgres + sqlc
+vertical-slice + nethttp + sqlite + sqlc + htmx
+ddd + gin + postgres + sqlc + react
 ```
 
 The [Components reference](/docs/components) lists the traits of every

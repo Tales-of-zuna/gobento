@@ -62,17 +62,20 @@ started.
 | HTTP framework | `nethttp` (the standard library's `net/http`), `chi`, `gin`                                             |
 | Database       | `sqlite` (pure Go, no cgo), `postgres` (PostgreSQL through pgx, pure Go)                                |
 | Data access    | `sqlc` or `gorm` (GORM)                                                                                 |
-| Frontend       | none (API only, the default) or `htmx` (htmx + templ pages)                                             |
+| Frontend       | none (API only, the default), `htmx` (htmx + templ pages), or `react`, `vue`, `svelte` (Vite apps)      |
 | CSS framework  | none (the frontend's own CSS, the default) or `tailwind` (Tailwind CSS, with a frontend)                |
 
 Every architecture uses the same framework, database, and data-access
 components, arranged in a different layout, and every framework serves
 exactly the same API. Every combination generates a project with a health
 endpoint and one example resource, `/items`, stored in the database you
-chose. With `--frontend htmx`, it also serves a page at `/` that lists and
-adds items, and the API moves under `/api`; `--css tailwind` styles those
-pages with Tailwind CSS. More architectures and frontends
-(React, Vue, and Svelte via Vite) are on the roadmap; the
+chose. With a frontend, it also serves a page at `/` that lists and adds
+items, and the API moves under `/api`: `htmx` renders the page on the server
+with templ, while `react`, `vue`, and `svelte` are TypeScript single-page
+apps that Vite's official scaffolder creates in `frontend/` and that the Go
+binary embeds once built (they need
+[Node.js](/docs/getting-started/installation#nodejs-for-react-vue-and-svelte)).
+With htmx, `--css tailwind` styles the pages with Tailwind CSS. The
 [Components](/docs/components) reference always lists exactly what the
 catalog supports, and [`gobento list`](/docs/cli/list) shows the same from the
 command line.

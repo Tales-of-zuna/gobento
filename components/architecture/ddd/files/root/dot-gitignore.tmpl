@@ -11,8 +11,7 @@
 
 # Test output
 coverage.out
-{{- if .Slots.web.Filled}}
+{{- with contrib "gitignore"}}
 
-# Written by templ generate --watch for live reload
-*_templ.txt
+{{.}}
 {{- end}}

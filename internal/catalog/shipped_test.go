@@ -2,6 +2,7 @@ package catalog_test
 
 import (
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -60,8 +61,8 @@ func TestShippedCatalog(t *testing.T) {
 
 // TestShippedCatalogCandidates checks the shipped candidates: every
 // architecture with every framework, database, and data access, each
-// without a frontend, with htmx, and with htmx and Tailwind CSS; never
-// Tailwind CSS without a frontend.
+// without a frontend and with every frontend, with and without Tailwind
+// CSS; never Tailwind CSS without a frontend.
 func TestShippedCatalogCandidates(t *testing.T) {
 	t.Parallel()
 
@@ -79,7 +80,10 @@ func TestShippedCatalogCandidates(t *testing.T) {
 			for _, db := range []string{"postgres", "sqlite"} {
 				for _, data := range []string{"gorm", "sqlc"} {
 					sel := arch + "/" + fw + "/" + db + "/" + data
-					want = append(want, sel, sel+"/htmx", sel+"/htmx/tailwind")
+					want = append(want, sel)
+					for _, ui := range []string{"htmx", "react", "svelte", "vue"} {
+						want = append(want, sel+"/"+ui, sel+"/"+ui+"/tailwind")
+					}
 				}
 			}
 		}
@@ -119,6 +123,86 @@ func TestFrameworksShareTheAPITest(t *testing.T) {
 		if c.Files[i].Template != refTest {
 			t.Errorf("handlers/%s.tmpl of %s differs from %s; framework components must share one API test", apiTest, c.ID(), ref.ID())
 		}
+	}
+}
+
+// viteShared lists the templates every Vite frontend ships with the same
+// text, as slot:path; each frontend's stylesheet is compared separately,
+// because its name follows the scaffolded entry's import.
+var viteShared = []string{
+	"web:handler.go",
+	"web:handler_test.go",
+	"web:dist/.gitignore",
+	"root:frontend/src/api.ts",
+}
+
+// viteOwn lists, per Vite frontend, its page and the stylesheet its
+// scaffolded entry imports, which gobento replaces.
+var viteOwn = map[string][2]string{
+	"react":  {"frontend/src/App.tsx", "frontend/src/index.css"},
+	"svelte": {"frontend/src/App.svelte", "frontend/src/app.css"},
+	"vue":    {"frontend/src/App.vue", "frontend/src/style.css"},
+}
+
+// TestViteFrontendsAlike covers the spec scenario "The three frontends are
+// alike": every Vite frontend provides frontend-build: vite, is scaffolded
+// by the same scaffolder into frontend/, ships the same web package, API
+// client, stylesheet, and contributions, byte for byte, and owns the same
+// set of files apart from its page.
+func TestViteFrontendsAlike(t *testing.T) {
+	t.Parallel()
+
+	cat, err := catalog.Load(components.FS())
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	files := func(c *catalog.Component) map[string]string {
+		out := make(map[string]string)
+		for _, f := range c.Files {
+			out[f.Slot+":"+f.Path] = f.Template
+		}
+		return out
+	}
+	ref, _ := cat.Component(catalog.KindFrontend, "react")
+	refFiles := files(ref)
+	refCSS := refFiles["root:"+viteOwn["react"][1]]
+	if refCSS == "" {
+		t.Fatal("react has no stylesheet")
+	}
+	for name, own := range viteOwn {
+		c, ok := cat.Component(catalog.KindFrontend, name)
+		if !ok {
+			t.Errorf("frontend %s not found", name)
+			continue
+		}
+		if c.Provides["frontend-build"] != "vite" {
+			t.Errorf("%s provides frontend-build %q, want vite", name, c.Provides["frontend-build"])
+		}
+		if sc := c.Scaffold; sc == nil || sc.With != "create-vite" || sc.Dir != "frontend" || sc.Template != name+"-ts" {
+			t.Errorf("%s scaffold = %+v, want create-vite with %s-ts into frontend", name, sc, name)
+		}
+		got := files(c)
+		for _, p := range viteShared {
+			if got[p] == "" || got[p] != refFiles[p] {
+				t.Errorf("%s: %s differs from react's or is missing", name, p)
+			}
+		}
+		if got["root:"+own[1]] != refCSS {
+			t.Errorf("%s: %s differs from react's stylesheet", name, own[1])
+		}
+		if got["root:"+own[0]] == "" || got["root:frontend/vite.config.ts"] == "" {
+			t.Errorf("%s: missing %s or frontend/vite.config.ts", name, own[0])
+		}
+		if len(got) != len(refFiles) {
+			t.Errorf("%s has %d templates, react %d; the Vite frontends own the same files", name, len(got), len(refFiles))
+		}
+		if !maps.Equal(c.Contributions, ref.Contributions) {
+			t.Errorf("%s: contributions differ from react's", name)
+		}
+	}
+	htmx, _ := cat.Component(catalog.KindFrontend, "htmx")
+	if htmx.Provides["frontend-build"] != "go" {
+		t.Errorf("htmx provides frontend-build %q, want go", htmx.Provides["frontend-build"])
 	}
 }
 

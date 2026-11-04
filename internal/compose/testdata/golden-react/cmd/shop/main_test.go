@@ -1,0 +1,53 @@
+package main
+
+import (
+	"context"
+	"mime"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"example.com/shop/internal/models"
+)
+
+// memStore is an in-memory models.ItemStore, so the routing test
+// needs no database.
+type memStore struct {
+	items []models.Item
+}
+
+func (s *memStore) List(context.Context) ([]models.Item, error) {
+	return s.items, nil
+}
+
+func (s *memStore) Create(_ context.Context, name string) (models.Item, error) {
+	item := models.Item{ID: int64(len(s.items) + 1), Name: name, CreatedAt: time.Now()}
+	s.items = append(s.items, item)
+	return item, nil
+}
+
+// TestHandlerRoutes checks which handler serves which path: the API under
+// /api/ and the web pages at every other path.
+func TestHandlerRoutes(t *testing.T) {
+	tests := []struct {
+		target    string
+		mediaType string
+	}{
+		{"/api/health", "application/json"},
+		{"/api/items", "application/json"},
+		{"/", "text/html"},
+	}
+	h := newHandler(&memStore{})
+	for _, tt := range tests {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.target, nil))
+		if rec.Code != http.StatusOK {
+			t.Errorf("GET %s status = %d, want %d", tt.target, rec.Code, http.StatusOK)
+			continue
+		}
+		if mt, _, err := mime.ParseMediaType(rec.Header().Get("Content-Type")); err != nil || mt != tt.mediaType {
+			t.Errorf("GET %s Content-Type = %q, want %s", tt.target, rec.Header().Get("Content-Type"), tt.mediaType)
+		}
+	}
+}

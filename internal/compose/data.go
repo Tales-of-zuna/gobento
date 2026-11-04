@@ -44,6 +44,12 @@ type Data struct {
 	// Tools maps tool names to their exact versions, for example
 	// {{index .Tools "golangci-lint"}}.
 	Tools map[string]string
+	// Node is the Node.js release line of the generated tooling, for
+	// example 26, as in node-version: {{.Node}}.
+	Node string
+	// NPM maps the npm packages the selected components use to their
+	// versions, for example {{index .NPM "create-vite"}}.
+	NPM map[string]string
 }
 
 // FrontendAPIPrefix is the value of Data.APIPrefix when a frontend is

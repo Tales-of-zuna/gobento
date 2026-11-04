@@ -146,6 +146,8 @@ func TestShippedToolingGoImage(t *testing.T) {
 		Versions:  res.Versions(),
 		Base:      cat.Base(),
 		Tooling:   res.Tooling,
+		Node:      res.Node,
+		NPM:       res.NPMVersions(),
 	})
 	if err != nil {
 		t.Fatal(err)

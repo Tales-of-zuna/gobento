@@ -44,6 +44,9 @@
 
 You need [Go](https://go.dev/dl/) 1.26 or newer: gobento uses your Go
 toolchain to fetch the exact dependency versions of the project it generates.
+Only the React, Vue, and Svelte frontends also need
+[Node.js](https://nodejs.org/) v22.12.0 or newer with npm, because gobento
+creates them with Vite's official scaffolder.
 Install gobento with `go install`:
 
 ```sh
@@ -76,11 +79,12 @@ an application service), the HTTP framework with
 `--framework` (`nethttp`, `chi`, or `gin`), the database with `--db`
 (`sqlite` or `postgres`), and the data access with `--data` (`sqlc` or
 `gorm`). A frontend is optional: without `--frontend` the project is an
-HTTP API, and `--frontend htmx` adds server-rendered pages (htmx + templ) at
-`/`, with the API under `/api`. With a frontend, `--css tailwind` styles the
-pages with Tailwind CSS, using the standalone Tailwind CLI, so no Node.js is
-needed; without `--css`, the frontend keeps its plain CSS. A component kind
-with a single option is
+HTTP API; `--frontend htmx` adds server-rendered pages (htmx + templ) at
+`/`, and `--frontend react`, `vue`, or `svelte` a TypeScript single-page app
+built with Vite and embedded in the binary, with the API under `/api`. With
+htmx, `--css tailwind` styles the pages with Tailwind CSS, using the
+standalone Tailwind CLI, so no Node.js is needed; without `--css`, the
+frontend keeps its plain CSS. A component kind with a single option is
 chosen automatically, and versions come from gobento's compatibility rules. In
 a terminal, gobento asks for anything it still needs: run `gobento new` to be
 asked for the name, module path, and each component kind with several
@@ -117,6 +121,9 @@ gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --fronte
 # Style those pages with Tailwind CSS (no Node.js needed)
 gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx --css tailwind
 
+# Add a React single-page app built with Vite (or vue, svelte); needs Node.js
+gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend react
+
 # See the files gobento would create, without writing anything
 gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --dry-run
 
@@ -135,7 +142,7 @@ gobento new --help
 
 See what your gobento binary supports, from the catalog built into it: the
 components of each kind, the supported selections, and the Go, module,
-vendored asset, and tooling versions. Add `--json` for scripts.
+vendored asset, npm package, and tooling versions. Add `--json` for scripts.
 
 ```sh
 gobento list                              # everything
@@ -145,7 +152,9 @@ gobento list versions --json              # version ranges and defaults as JSON
 ```
 
 Generation runs `go get` and `go mod tidy`, so it needs access to the Go module
-proxy. gobento checks every input before writing anything, refuses non-empty
+proxy; with React, Vue, or Svelte, it also runs `npm create vite` and npm,
+so it needs Node.js, npm, and access to the npm registry (`--dry-run` needs
+neither). gobento checks every input before writing anything, refuses non-empty
 directories, and removes everything it created if a step fails or you press
 Ctrl-C. After an interrupt it prints `interrupted; nothing was left behind`
 and exits with status 130; the same goes for Ctrl-C or Esc at a question.
@@ -267,6 +276,31 @@ with `internal/tools/tailwindcss`, a small Go program that downloads the
 pinned standalone Tailwind CLI for your platform, checks its SHA-256, and
 caches it.
 
+With `--frontend react`, `vue`, or `svelte`, gobento runs Vite's official
+scaffolder, [`create-vite`](https://vite.dev/guide/#scaffolding-your-first-vite-project),
+to create `frontend/`, adds its own example page, API client, stylesheet,
+and Vite configuration on top, and has npm record the dependencies in
+`frontend/package-lock.json` (nothing is installed yet). The next steps it
+prints include `npm --prefix frontend ci` and `npm --prefix frontend run build`;
+`make build` runs both, and `make dev` starts the Vite dev server, which
+forwards `/api` to the Go server. The web package embeds the build and
+serves `index.html` for client-side routes; until the frontend is built, it
+serves a page that names the build commands, so `go build` and `go test`
+work without Node.js. The CI workflow and the Dockerfile build the frontend
+too.
+
+```text
+shop/
+├── cmd/shop/              # mounts the API at /api/ and the app at /; routing test
+├── frontend/              # created by create-vite; gobento adds vite.config.ts,
+│   │                      # package-lock.json (from npm), and in src/:
+│   └── src/               # App.tsx (App.vue, App.svelte), api.ts, index.css
+├── internal/
+│   ├── views/             # handler embedding dist/app (the Vite build), tests
+│   └── ...                # models, controllers, database, store as above
+└── ...
+```
+
 ## How it works
 
 ```mermaid
@@ -283,6 +317,10 @@ flowchart LR
 - **Resolve with Go itself.** The plan is written to a temporary directory, and
   the Go toolchain fetches the exact versions you chose. gobento then checks
   that nothing was raised behind your back.
+- **Use the official scaffolder.** Where a framework has one, such as
+  `create-vite` for React, Vue, and Svelte, gobento runs it at the version in
+  its rules and adds only its own few files, instead of keeping a copy of the
+  framework's templates.
 - **Leave nothing behind.** gobento only fills a new or empty directory, and on
   any failure or Ctrl-C it cleans up after itself.
 - **Compose, never copy.** Components fill an architecture's slots, and a base
@@ -298,7 +336,7 @@ flowchart LR
 - [x] PostgreSQL
 - [x] GORM
 - [x] Frontends: htmx + templ
-- [ ] Frontends: React, Vue, and Svelte via Vite
+- [x] Frontends: React, Vue, and Svelte via Vite
 - [x] Tailwind CSS
 - [x] More architectures: vertical slice
 - [x] More architectures: DDD

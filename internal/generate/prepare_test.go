@@ -351,10 +351,30 @@ func TestPrepareFrontend(t *testing.T) {
 		t.Error("internal/views/static/htmx.min.js is not planned")
 	}
 
-	_, err = Prepare(cat, spec("react", nil))
+	_, err = Prepare(cat, spec("angular", nil))
 	var se *SelectionError
-	if !errors.As(err, &se) || se.Kind != catalog.KindFrontend || strings.Join(se.Supported, ",") != "none,htmx" {
-		t.Errorf("Prepare(react) error = %v, want a frontend SelectionError listing none and htmx", err)
+	if !errors.As(err, &se) || se.Kind != catalog.KindFrontend || strings.Join(se.Supported, ",") != "none,htmx,react,svelte,vue" {
+		t.Errorf("Prepare(angular) error = %v, want a frontend SelectionError listing every frontend", err)
+	}
+	if len(p.Scaffolds) != 0 {
+		t.Errorf("htmx has scaffold steps: %+v", p.Scaffolds)
+	}
+
+	// Spec scenario "Scaffolder version from the rules".
+	p, err = Prepare(cat, spec("svelte", nil))
+	if err != nil {
+		t.Fatalf("Prepare(svelte) error = %v", err)
+	}
+	if len(p.Scaffolds) != 1 || p.Scaffolds[0].Command() != "npm create vite@9.3.3 frontend -- --template svelte-ts" {
+		t.Errorf("Prepare(svelte) scaffolds = %+v", p.Scaffolds)
+	}
+	req := p.Request("shop")
+	if len(req.Scaffolds) != 1 || req.Node.Range.String() != ">=v22.12.0" {
+		t.Errorf("Request() scaffolds = %+v, node = %v", req.Scaffolds, req.Node)
+	}
+	_, err = Prepare(cat, spec("react", map[string]string{"create-vite": "9.0.0"}))
+	if !errors.Is(err, compat.ErrNotPinnable) {
+		t.Errorf("Prepare(pin create-vite) error = %v, want ErrNotPinnable", err)
 	}
 
 	_, err = Prepare(cat, spec("htmx", map[string]string{"htmx.org": "2.0.10"}))

@@ -27,6 +27,8 @@ func composeDefaults(t *testing.T, cat *catalog.Catalog, sel catalog.Selection) 
 		Versions:  res.Versions(),
 		Base:      cat.Base(),
 		Tooling:   res.Tooling,
+		Node:      res.Node,
+		NPM:       res.NPMVersions(),
 	})
 	if err != nil {
 		t.Fatalf("Compose(%s) error = %v", sel, err)

@@ -13,9 +13,6 @@ contributions:
   vite-config-imports: >-
     JavaScript import lines at the top of the Vite configuration
     (vite.config.*), for example a Vite plugin's import.
-  vite-plugins: >-
-    Entries of the plugins array of the Vite configuration, each ending in
-    a comma, for example "tailwindcss(),".
   css-imports: >-
     CSS lines at the top of the app's main stylesheet, before its own
     rules, for example an @import of the CSS framework.

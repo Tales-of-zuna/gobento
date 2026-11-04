@@ -26,6 +26,9 @@ an issue.
 
   The official guide also covers Homebrew, Windows, and other package managers.
   Please use the same version as CI, so local results match.
+- [Node.js](https://nodejs.org/) v22.12.0 or newer, with npm, only for the
+  integration tests (see below) and the website. `make test` does not need
+  it: the unit tests use a fake `node` and `npm`.
 
 ## First build
 
@@ -62,8 +65,13 @@ commands, so you can always run them directly.
 `make test-all` includes `TestIntegration` in `internal/generate`, which
 generates every supported selection without a frontend or CSS framework,
 plus a pairwise covering set of those with one (`compose.Coverage`), and runs
-`go test ./...`
-inside each project. The tests of a PostgreSQL project are skipped unless
+`go test ./...` inside each project. The selections with React, Vue, or
+Svelte run `npm create vite` during generation, so the integration test needs
+Node.js v22.12.0 or newer, npm, and access to the npm registry; with the
+default versions it also builds each of these frontends (`npm ci`, the
+frontend's lint and check scripts, and `npm run build`) before the Go checks.
+CI sets up Node.js 26 on Linux and Windows and the range floor, 22.12.0, on
+macOS. The tests of a PostgreSQL project are skipped unless
 `TEST_DATABASE_URL` names a server; CI sets it on Linux, so the PostgreSQL code
 paths always run there. To run them locally, start a throwaway server with
 Docker and pass its URL:
@@ -83,7 +91,7 @@ it installs actionlint and the golangci-lint version of
 `components/versions.yaml` into a temporary directory (so the first run needs
 a few minutes more), runs actionlint on the generated workflow and
 golangci-lint on the code, and, where `make` is installed, runs `make`,
-`make build`, and `make lint`; with a frontend, it also runs
+`make build`, and `make lint`; with htmx, it also runs
 `go generate` in the web package and checks that the shipped templ code is
 unchanged, and with Tailwind CSS, it rebuilds the stylesheet with the pinned
 standalone Tailwind CLI (downloaded once into your user cache directory,

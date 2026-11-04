@@ -117,6 +117,10 @@ type Prepared struct {
 	Versions compat.Resolved
 	// Plan is the composed project.
 	Plan *compose.Plan
+	// Scaffolds lists the scaffold steps of the selection, in kind order.
+	Scaffolds []Scaffold
+	// Node is the rules' Node.js rule.
+	Node compat.NodeRule
 }
 
 // Request returns the generation request for p in target.
@@ -127,6 +131,8 @@ func (p *Prepared) Request(target string) Request {
 		GoVersion: p.Versions.Go,
 		Modules:   p.Versions.Modules,
 		Target:    target,
+		Scaffolds: p.Scaffolds,
+		Node:      p.Node,
 	}
 }
 
@@ -214,11 +220,15 @@ func Prepare(cat *catalog.Catalog, spec Spec) (*Prepared, error) {
 		Binaries:  res.BinaryVersions(),
 		Base:      cat.Base(),
 		Tooling:   res.Tooling,
+		Node:      res.Node,
+		NPM:       res.NPMVersions(),
 	})
 	if err != nil {
 		return nil, err
 	}
 	p.Plan = plan
+	p.Scaffolds = scaffolds(sel, res)
+	p.Node = cat.Rules().Node
 	return p, nil
 }
 
@@ -229,6 +239,9 @@ func Prepare(cat *catalog.Catalog, spec Spec) (*Prepared, error) {
 // versions apply: the selected ones, and every component of a kind that
 // could not be resolved.
 func selectComponents(cat *catalog.Catalog, chosen map[catalog.Kind]string) (catalog.Selection, []string, []error) {
+	if sel, ids, ok := selectNamed(cat, chosen); ok {
+		return sel, ids, nil
+	}
 	supported := compose.Supported(cat)
 	var (
 		errs []error
@@ -294,6 +307,34 @@ func providerHint(cat *catalog.Catalog, sel catalog.Selection) string {
 		}
 	}
 	return strings.Join(hints, "; ")
+}
+
+// selectNamed is the fast path of selectComponents: when every required
+// kind names an existing component and the selection composes, it is
+// supported by definition, and composing every candidate (to auto-select
+// or to list the supported names in an error) is not needed. Otherwise ok
+// is false and selectComponents does the full check.
+func selectNamed(cat *catalog.Catalog, chosen map[catalog.Kind]string) (catalog.Selection, []string, bool) {
+	var (
+		sel catalog.Selection
+		ids []string
+	)
+	for _, kind := range catalog.Kinds() {
+		value := chosen[kind]
+		if kind.Optional() && (value == "" || value == catalog.None) {
+			continue
+		}
+		c, ok := cat.Component(kind, value)
+		if !ok {
+			return catalog.Selection{}, nil, false
+		}
+		sel = sel.With(c)
+		ids = append(ids, c.ID())
+	}
+	if sel.CheckTraits() != nil || compose.Check(cat, sel) != nil {
+		return catalog.Selection{}, nil, false
+	}
+	return sel, ids, true
 }
 
 // supportedNames returns the sorted, unique names of kind in the supported

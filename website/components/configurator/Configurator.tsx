@@ -381,6 +381,12 @@ export function Configurator({ catalog, released = false }: ConfiguratorProps) {
                 {tree.map((line, i) => (
                   <li key={i} data-depth={line.depth} data-dir={line.dir}>
                     {line.label}
+                    {line.note && (
+                      <>
+                        {' '}
+                        <span className={styles.treeNote}>{line.note}</span>
+                      </>
+                    )}
                   </li>
                 ))}
               </ul>
