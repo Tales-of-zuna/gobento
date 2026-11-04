@@ -6,18 +6,19 @@ description: Reference for gobento new, the command that generates a Go project 
 ## Synopsis
 
 ```text
-gobento new <name> [flags]
+gobento new [name] [flags]
 ```
 
 `gobento new` generates a Go project called `<name>` from one architecture,
 one HTTP framework, one database, and one data-access component. Every flag
-is optional.
+is optional. In a terminal, gobento asks for what is missing, including the
+name; see [Questions](#questions).
 
 ## Arguments
 
-| Argument | Rules                                                                                                                                                                                                                                                                                                              |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `<name>` | Required, exactly one. Starts with a lowercase letter and contains only lowercase letters, digits, `-`, and `_`. It must not be a name Windows reserves for devices: `con`, `prn`, `aux`, `nul`, `com1` to `com9`, or `lpt1` to `lpt9`. Used for the default directory, the default module path, and `cmd/<name>`. |
+| Argument | Rules                                                                                                                                                                                                                                                                                                                                                                       |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<name>` | At most one; required unless gobento asks for it (see [Questions](#questions)). Starts with a lowercase letter and contains only lowercase letters, digits, `-`, and `_`. It must not be a name Windows reserves for devices: `con`, `prn`, `aux`, `nul`, `com1` to `com9`, or `lpt1` to `lpt9`. Used for the default directory, the default module path, and `cmd/<name>`. |
 
 ## Flags
 
@@ -32,10 +33,12 @@ is optional.
 | `--pin`        | `module=version`, repeatable | rules defaults | Version of a library module, for example `--pin modernc.org/sqlite=v1.61.0`. Must be inside the module's range, and a selected component must use the module. Tool modules cannot be pinned.                                   |
 | `--dir`        | path                         | `./<name>`     | Directory to generate into, for example `.` for the current one. See [Output location](#output-location).                                                                                                                      |
 | `--dry-run`    | bool                         | `false`        | Check the input and list the files that would be created, without writing anything. See [Dry run](#dry-run).                                                                                                                   |
+| `--no-input`   | bool                         | `false`        | Never ask a question, even in a terminal. See [Questions](#questions).                                                                                                                                                         |
 | `-h`, `--help` | bool                         | `false`        | Show the command's help.                                                                                                                                                                                                       |
 
 **auto**: if the kind has exactly one supported component, it is selected. If
-it has several, gobento stops with a problem such as
+it has several, gobento asks for one in a terminal (see
+[Questions](#questions)); otherwise it stops with a problem such as
 `--db: choose a database; supported: <names>`.
 
 **rules default**: the default from the [version rules](/docs/concepts/version-rules).
@@ -79,6 +82,78 @@ Show the files that would be created, without writing anything:
 
 ```sh
 gobento new shop --dry-run
+```
+
+Never ask a question, even in a terminal (as in scripts):
+
+```sh
+gobento new shop --no-input
+```
+
+## Questions
+
+When stdin and stdout are both terminals, `gobento new` asks for what it
+cannot decide by itself, before it checks or writes anything:
+
+- **Project name**, when `<name>` is omitted, checked with the
+  [name rules](#arguments). Then the **Go module path**; press Enter to use
+  the name.
+- **Each component kind** whose flag is omitted and that has several options,
+  in the order architecture, framework, database, data access. Only options
+  that form a [supported selection](/docs/concepts/components#supported-selections)
+  with your flags and earlier answers are offered, so you cannot pick a
+  combination that does not build. A kind left with one option is selected
+  without a question.
+
+Flags skip their questions: `gobento new shop` asks nothing about the name or
+module path, and `--framework nethttp` skips the framework question. Versions
+(`--go`, `--pin`) are never asked; the defaults come from the
+[version rules](/docs/concepts/version-rules).
+
+If a value you gave on the command line is invalid, such as
+`--framework express` or a malformed `--pin`, gobento asks nothing and
+reports every problem, as in [Errors](#errors).
+
+After the questions, gobento prints the equivalent command on stderr, so you
+can repeat the run in a script:
+
+```text
+Equivalent command: gobento new shop --module example.com/shop
+```
+
+`--dry-run` asks the same questions, then lists the files.
+
+### Turning questions off
+
+gobento never asks when stdin or stdout is not a terminal (pipes, CI, output
+redirected to a file), or when you pass `--no-input`. It then behaves exactly
+as without questions: `<name>` is required, and a kind with several options
+needs its flag. On Windows, questions need a console such as Windows Terminal
+or the classic console window; Git Bash's mintty is not one, so use flags
+there or start gobento with `winpty`.
+
+### Keys and cancelling
+
+Use the arrow keys (or `j` and `k`) and Enter to choose, and type text
+answers. Ctrl-C or Esc cancels: gobento prints
+`gobento: interrupted; nothing was left behind`, writes nothing, and exits
+with status `130`. If the input ends before the last answer (Ctrl-D in
+accessible mode), gobento exits with status `1` and writes nothing.
+
+### Accessible mode
+
+Set `ACCESSIBLE` to any non-empty value to get plain, line-based questions
+instead of the full-screen form, for example for screen readers. gobento also
+uses this mode when `TERM=dumb`. Each question is a line of text, the options
+of a choice are numbered, and you answer by typing a line:
+
+```text
+$ ACCESSIBLE=1 gobento new
+Used for the directory, the default module path, and cmd/<name>; start with a lowercase letter and use only lowercase letters, digits, - and _.
+Project name shop
+
+For example example.com/shop; press Enter to use shop. Skip this question with --module.
+Go module path example.com/shop
 ```
 
 ## What happens
@@ -179,11 +254,11 @@ through unchanged.
 
 ## Exit status
 
-| Status | Meaning                                                                                                                                                                        |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `0`    | The project was generated, or a dry run found no problems.                                                                                                                     |
-| `1`    | Any problem: invalid arguments or input, an unsupported selection, a version or constraint error, a failed preflight, or a failed `go` command. Nothing is left behind.        |
-| `130`  | Interrupted by Ctrl-C (or `SIGTERM`). gobento removes everything it created and prints `gobento: interrupted; nothing was left behind`, or lists any file it could not remove. |
+| Status | Meaning                                                                                                                                                                                                                        |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `0`    | The project was generated, or a dry run found no problems.                                                                                                                                                                     |
+| `1`    | Any problem: invalid arguments or input, an unsupported selection, a version or constraint error, a failed preflight, or a failed `go` command. Nothing is left behind.                                                        |
+| `130`  | Interrupted by Ctrl-C (or `SIGTERM`), or a question was cancelled with Ctrl-C or Esc. gobento removes everything it created and prints `gobento: interrupted; nothing was left behind`, or lists any file it could not remove. |
 
 ## Errors
 

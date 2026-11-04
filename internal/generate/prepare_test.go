@@ -231,3 +231,57 @@ func TestPrepareRejectsWindowsReservedNames(t *testing.T) {
 		}
 	}
 }
+
+func TestCheckName(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]string{
+		"shop":   "",
+		"my-app": "",
+		"a_1":    "",
+		"My App": NameRule,
+		"":       NameRule,
+		"1shop":  NameRule,
+		"con":    ReservedNameRule,
+		"lpt9":   ReservedNameRule,
+	}
+	for name, want := range tests {
+		err := CheckName(name)
+		if want == "" {
+			if err != nil {
+				t.Errorf("CheckName(%q) = %v, want nil", name, err)
+			}
+			continue
+		}
+		if !errors.Is(err, ErrInvalidName) || !strings.Contains(err.Error(), want) {
+			t.Errorf("CheckName(%q) = %v, want ErrInvalidName explaining %q", name, err, want)
+		}
+	}
+}
+
+func TestCheckModule(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		path, name string
+		want       string
+	}{
+		{path: "example.com/shop", name: "shop"},
+		{path: "shop", name: "shop"},
+		{path: "Not A Path", name: "shop", want: "use a path such as example.com/shop"},
+		{path: "con", name: "con", want: "use a path such as example.com/app"},
+		{path: "", name: "My App", want: "use a path such as example.com/app"},
+	}
+	for _, tt := range tests {
+		err := CheckModule(tt.path, tt.name)
+		if tt.want == "" {
+			if err != nil {
+				t.Errorf("CheckModule(%q, %q) = %v, want nil", tt.path, tt.name, err)
+			}
+			continue
+		}
+		if !errors.Is(err, ErrInvalidModule) || !strings.Contains(err.Error(), tt.want) {
+			t.Errorf("CheckModule(%q, %q) = %v, want ErrInvalidModule containing %q", tt.path, tt.name, err, tt.want)
+		}
+	}
+}

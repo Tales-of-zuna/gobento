@@ -278,7 +278,7 @@ func TestNewHelp(t *testing.T) {
 		t.Fatal(err)
 	}
 	examples := out[strings.Index(out, "Examples:"):strings.Index(out, "Flags:")]
-	for _, name := range []string{"module", "arch", "framework", "db", "data", "go", "pin", "dir", "dry-run"} {
+	for _, name := range []string{"module", "arch", "framework", "db", "data", "go", "pin", "dir", "dry-run", "no-input"} {
 		flagLine := ""
 		for line := range strings.SplitSeq(out, "\n") {
 			if strings.Contains(line, "--"+name+" ") {

@@ -25,8 +25,11 @@ architecture, one framework, one database, and one data-access component.
 You choose with the flags above. If you omit a flag:
 
 - and the kind has exactly one supported option, gobento selects it for you;
-- and the kind has several options, gobento stops, names the flag, and lists
-  the supported values.
+- and the kind has several options, gobento asks you to choose one when it
+  runs in a terminal, offering only the options that work with your other
+  choices;
+- otherwise (in scripts and CI, or with `--no-input`), gobento stops, names
+  the flag, and lists the supported values.
 
 With one option per kind in the first slice, the project name is enough:
 

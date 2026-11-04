@@ -42,8 +42,11 @@ It prints `Dry run: nothing was written.`, the module, the selection
 gobento new shop --module example.com/shop
 ```
 
-Each component kind has one option today, so gobento selects them for you. The
-same command with every choice spelled out is:
+Each component kind has one option today, so gobento selects them for you.
+When a kind has several options and you leave out its flag, gobento asks you
+to choose in the terminal. You can also run plain `gobento new` and answer
+the questions for the name, module path, and components. The same command
+with every choice spelled out, which never asks anything, is:
 
 ```sh
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
