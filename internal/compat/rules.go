@@ -41,6 +41,9 @@ type Rules struct {
 	Modules []Module
 	// Assets lists every vendored asset, sorted by name.
 	Assets []Asset
+	// Tooling lists the versions of the project tooling that are not Go
+	// modules: container images, GitHub Actions, and tools.
+	Tooling Tooling
 }
 
 // Asset is a file that components ship unmodified from an upstream release,
@@ -150,6 +153,7 @@ type rulesFile struct {
 	} `yaml:"go"`
 	Modules map[string]moduleFile `yaml:"modules"`
 	Assets  map[string]assetFile  `yaml:"assets"`
+	Tooling toolingFile           `yaml:"tooling"`
 }
 
 type assetFile struct {
@@ -177,10 +181,11 @@ type constraintFile struct {
 // ParseRules parses and validates a rules file. It reports every problem it
 // finds, joined with errors.Join: unknown fields, malformed ranges or
 // versions, defaults outside their range, tool modules without an exact
-// range, constraints that refer to unknown targets, and assets without
-// components or with a malformed version, source, path, or checksum. References to
-// components are checked separately with CheckComponents, because the
-// component catalog is loaded elsewhere.
+// range, constraints that refer to unknown targets, assets without
+// components or with a malformed version, source, path, or checksum, and
+// malformed tooling entries. References to components are checked
+// separately with CheckComponents, because the component catalog is loaded
+// elsewhere.
 func ParseRules(data []byte) (*Rules, error) {
 	var file rulesFile
 	dec := yaml.NewDecoder(bytes.NewReader(data))
@@ -223,6 +228,10 @@ func ParseRules(data []byte) (*Rules, error) {
 			errs = append(errs, fmt.Errorf("asset %s: the name is also a module; use another one", name))
 		}
 	}
+
+	tooling, terrs := parseTooling(file.Tooling)
+	rules.Tooling = tooling
+	errs = append(errs, terrs...)
 
 	if err := errors.Join(errs...); err != nil {
 		return nil, fmt.Errorf("invalid rules: %w", err)

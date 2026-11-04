@@ -16,7 +16,7 @@ import (
 // DefaultURL is the database the application uses when DATABASE_URL is
 // unset: the database shop of a local development server, as
 // started by the command in README.md. Set DATABASE_URL everywhere else.
-const DefaultURL = "postgres://postgres:postgres@localhost:5432/shop?sslmode=disable"
+const DefaultURL = "postgres://postgres:postgres@localhost:5432/shop?sslmode=disable" //nolint:gosec // G101: the well-known password of a local development server, not a secret
 
 //go:embed schema.sql
 var schema string

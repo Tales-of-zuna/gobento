@@ -49,6 +49,8 @@ type Resolved struct {
 	// Assets lists every asset the selected components ship, sorted by
 	// name.
 	Assets []AssetVersion
+	// Tooling holds the tooling versions for the chosen Go version.
+	Tooling ToolingVersions
 }
 
 // AssetVersion is one vendored asset with its version.
@@ -157,6 +159,7 @@ func (r *Rules) Resolve(req Request) (Resolved, error) {
 	if err := errors.Join(errs...); err != nil {
 		return Resolved{}, err
 	}
+	res.Tooling = r.Tooling.Resolve(res.Go)
 	return res, nil
 }
 

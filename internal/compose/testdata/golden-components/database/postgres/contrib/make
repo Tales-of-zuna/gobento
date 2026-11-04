@@ -1,0 +1,3 @@
+# Let the container reach a PostgreSQL server on the Docker host as
+# host.docker.internal (Docker Desktop does this by itself).
+DOCKER_RUN_FLAGS += --add-host=host.docker.internal:host-gateway

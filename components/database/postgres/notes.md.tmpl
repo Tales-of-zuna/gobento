@@ -15,7 +15,7 @@ Start such a server with Docker, or use any PostgreSQL server and set
 
 ```sh
 docker run --rm -d --name {{.Project.Name}}-postgres -p 5432:5432 \
-  -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB={{.Project.Name}} postgres:18-alpine
+  -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB={{.Project.Name}} {{.Images.postgres}}
 ```
 
 Stop it with `docker stop {{.Project.Name}}-postgres`; its data is deleted with
@@ -32,7 +32,9 @@ which it drops when it ends, so the tests never touch the application's tables:
 TEST_DATABASE_URL='postgres://postgres:postgres@localhost:5432/{{.Project.Name}}?sslmode=disable' go test ./...
 ```
 
-Run `go test -v ./...` to see which tests were skipped.
+Run `go test -v ./...` to see which tests were skipped. The CI workflow
+starts a PostgreSQL service and sets `TEST_DATABASE_URL`, so these tests run
+on every pull request.
 
 ### Schema
 

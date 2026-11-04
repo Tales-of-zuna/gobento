@@ -13,7 +13,7 @@ indent_size = 2
 indent_style = tab
 indent_size = 4
 
-[{Makefile,*.mk}]
+[{Makefile,*.mk,Makefile.tmpl}]
 indent_style = tab
 
 # Two trailing spaces are a line break in Markdown.

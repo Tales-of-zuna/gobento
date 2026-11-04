@@ -1,0 +1,61 @@
+# Continuous integration: the checks of `make check`, and a build of the
+# container image. Actions are pinned by full commit SHA; Dependabot
+# (.github/dependabot.yml) keeps them current.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{"{{"}} github.workflow }}-${{"{{"}} github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: build, lint, and test
+    runs-on: ubuntu-latest
+{{- with contrib "ci-services"}}
+    services:
+{{indent 6 .}}
+{{- end}}
+{{- with contrib "ci-env"}}
+    env:
+{{indent 6 .}}
+{{- end}}
+    steps:
+      - uses: {{index .Actions "actions/checkout"}}
+        with:
+          persist-credentials: false
+      - uses: {{index .Actions "actions/setup-go"}}
+        with:
+          go-version-file: go.mod
+{{- with contrib "ci-steps"}}
+{{indent 6 .}}
+{{- end}}
+      - name: Check that go.mod and go.sum are tidy
+        run: go mod tidy -diff
+      - name: Build
+        run: go build ./...
+      - name: Vet
+        run: go vet ./...
+      - name: Lint
+        uses: {{index .Actions "golangci/golangci-lint-action"}}
+        with:
+          version: {{index .Tools "golangci-lint"}}
+      - name: Test
+        run: go test -race ./...
+
+  docker:
+    name: container image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: {{index .Actions "actions/checkout"}}
+        with:
+          persist-credentials: false
+      - name: Build the image
+        run: docker build --tag {{.Project.Name}} .

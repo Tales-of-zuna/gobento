@@ -1,0 +1,126 @@
+# Spec Delta
+
+## Purpose
+Gives every generated project the developer tooling a production service
+needs from day one: a task runner, a minimal container image, continuous
+integration, and lint and dependency-update configuration, correct for the
+selected components and usable on Linux, macOS, and Windows.
+
+## ADDED Requirements
+
+### Requirement: Tooling files in every project
+A project generated from any supported selection SHALL contain a `Makefile`,
+a `Dockerfile`, a `.dockerignore`, a GitHub Actions workflow
+`.github/workflows/ci.yml`, a Dependabot configuration
+`.github/dependabot.yml`, and a golangci-lint configuration `.golangci.yml`.
+These files SHALL be the same for every architecture apart from the slot
+directories they name, and SHALL contain only the parts that the selected
+components need.
+
+#### Scenario: Files for every architecture
+- **WHEN** the user runs `gobento new shop --arch <any architecture> --framework nethttp --db sqlite --data sqlc --dry-run`
+- **THEN** the listed files include `Makefile`, `Dockerfile`, `.dockerignore`, `.github/workflows/ci.yml`, `.github/dependabot.yml`, and `.golangci.yml`
+
+### Requirement: Make targets with plain-command fallbacks
+The `Makefile` SHALL offer at least the targets `help` (the default), `build`,
+`run`, `test`, `cover`, `vet`, `lint`, `fmt`, `tidy`, `check`, `docker-build`,
+`docker-run`, and `clean`, and each target SHALL run plain `go` or `docker`
+commands. The generated README SHALL list, for every task, the command to run
+without make, so the project is usable on Windows without make. `make build`
+SHALL write the binary to `bin/`, with an `.exe` suffix on Windows.
+
+#### Scenario: Build with make
+- **WHEN** `make build` runs in a generated project named `shop`
+- **THEN** it creates `bin/shop` and exits 0
+
+#### Scenario: Default target
+- **WHEN** `make` runs without a target in a generated project
+- **THEN** it lists the targets with a one-line description each
+
+#### Scenario: Without make
+- **WHEN** a user reads the generated README
+- **THEN** its Development section shows, next to each make target, the `go` or `docker` command that does the same
+
+### Requirement: Static, non-root container image
+The `Dockerfile` SHALL build the application in a Go build stage with cgo
+disabled (`CGO_ENABLED=0`) and SHALL copy only the binary into a minimal
+runtime image without a shell or package manager, which runs it as a
+non-root user. The Go build image SHALL follow the project's selected Go
+version, and the runtime image SHALL be pinned by digest.
+
+#### Scenario: Image builds and serves
+- **WHEN** `docker build` runs in a project generated with `--db sqlite` and the image is started with port 8080 published
+- **THEN** `GET /health` responds 200
+
+#### Scenario: Image runs as non-root
+- **WHEN** the image of any generated project is inspected
+- **THEN** its user is the numeric non-root user `65532:65532`
+
+#### Scenario: Go version follows the selection
+- **WHEN** a project is generated with `--go 1.26`
+- **THEN** the `Dockerfile` builds with the Go 1.26 image
+
+### Requirement: Writable data for file databases in the image
+When the selected database stores its data in a file, the image SHALL keep
+that file in a volume at `/data` that the non-root user can write, and SHALL
+set `DATABASE_URL` to a file in it. The generated README SHALL explain how to
+keep the data with a named volume.
+
+#### Scenario: SQLite data in the container
+- **WHEN** the image of a project generated with `--db sqlite` is started and receives `POST /items`
+- **THEN** the item is stored in a database file under `/data`, and `GET /items` returns it
+
+### Requirement: Server databases in the container
+When the selected database needs a server, the README SHALL explain how to
+point the container at a server with `DATABASE_URL`, including a server that
+runs on the Docker host, and `make docker-run` SHALL pass `DATABASE_URL` to the
+container when it is set.
+
+#### Scenario: PostgreSQL image builds
+- **WHEN** `docker build` runs in a project generated with `--db postgres`
+- **THEN** the build succeeds
+
+### Requirement: Continuous integration workflow
+The CI workflow SHALL run on pushes to `main` and on pull requests, with
+read-only repository permissions, and SHALL check that `go.mod` and `go.sum`
+are tidy, build, vet, lint with golangci-lint, run the tests with the race
+detector, and build the Docker image. Every action SHALL be pinned by full
+commit SHA. The workflow SHALL pass actionlint.
+
+#### Scenario: Valid workflow
+- **WHEN** actionlint checks the generated `.github/workflows/ci.yml` of any supported selection
+- **THEN** it reports no problems
+
+#### Scenario: Actions pinned by SHA
+- **WHEN** a project is generated
+- **THEN** every `uses:` in its workflow names a 40-character commit SHA, followed by a comment with the release version
+
+#### Scenario: Database tests run in CI
+- **WHEN** a project is generated with `--db postgres`
+- **THEN** its workflow starts a PostgreSQL service container and sets `TEST_DATABASE_URL` for the tests, so the database tests run instead of being skipped
+
+#### Scenario: No server for file databases
+- **WHEN** a project is generated with `--db sqlite`
+- **THEN** its workflow starts no service container and sets no `TEST_DATABASE_URL`
+
+#### Scenario: Generated code is checked in CI
+- **WHEN** a project is generated with `--data sqlc`
+- **THEN** its workflow fails when the committed sqlc code differs from what the pinned sqlc generates from the queries and the schema
+
+### Requirement: Lint configuration that the project passes
+The generated `.golangci.yml` SHALL configure golangci-lint (configuration
+version 2) with formatting checks, and every generated project SHALL pass
+`golangci-lint run` with it, at the version the Makefile and the workflow use.
+
+#### Scenario: Fresh project lints clean
+- **WHEN** `make lint` runs in a project generated from any supported selection
+- **THEN** it reports no issues and exits 0
+
+### Requirement: Dependency updates
+The generated `.github/dependabot.yml` SHALL ask for updates of the Go
+modules, the GitHub Actions, and the Docker base images, so the pinned
+versions do not go stale.
+
+#### Scenario: Ecosystems
+- **WHEN** a project is generated
+- **THEN** its `.github/dependabot.yml` lists the `gomod`, `github-actions`, and `docker` ecosystems

@@ -1,0 +1,3 @@
+COPY --from=build --chown=65532:65532 /out/data /data
+ENV DATABASE_URL=/data/{{.Project.Name}}.db
+VOLUME /data

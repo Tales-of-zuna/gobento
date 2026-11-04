@@ -67,12 +67,48 @@ type Component struct {
 	// Notes is the template of the component's notes.md.tmpl, or "" if it
 	// has none. Rendered notes are appended to the project README.
 	Notes string
+	// Contributions maps contribution points of the base layer to the
+	// component's template for that point, from contrib/<point>.tmpl.
+	Contributions map[string]string
+	// Points lists the contribution points the base layer declares,
+	// sorted by name. Only the base layer declares points.
+	Points []Point
 }
 
+// Point is a contribution point of the base layer: a named place in its
+// files where the selected components' contributions are inserted.
+type Point struct {
+	// Name identifies the point, for example ci-services. It is also the
+	// file name, without .tmpl, of a contribution in contrib/.
+	Name string
+	// Description says what the point accepts and where it ends up.
+	Description string
+}
+
+// BaseID is the ID of the base layer, which has no kind.
+const BaseID = "base"
+
 // ID returns the component's identifier, "<kind>/<name>", as used in the
-// rules file.
+// rules file, or BaseID for the base layer.
 func (c *Component) ID() string {
+	if c.Kind == "" {
+		return c.Name
+	}
 	return string(c.Kind) + "/" + c.Name
+}
+
+// IsBase reports whether c is the base layer.
+func (c *Component) IsBase() bool {
+	return c.Kind == "" && c.Name == BaseID
+}
+
+// Point returns the contribution point with the given name declared by c.
+func (c *Component) Point(name string) (Point, bool) {
+	i := slices.IndexFunc(c.Points, func(p Point) bool { return p.Name == name })
+	if i < 0 {
+		return Point{}, false
+	}
+	return c.Points[i], true
 }
 
 // Slot returns the slot with the given name declared by c.

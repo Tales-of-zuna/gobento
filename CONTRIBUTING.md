@@ -76,6 +76,17 @@ docker stop gobento-postgres
 
 Each test creates a schema of its own on that server and drops it at the end.
 
+With the default versions, `TestIntegration` also checks each project's
+[tooling](https://tales-of-zuna.github.io/gobento/docs/concepts/project-tooling/):
+it installs actionlint and the golangci-lint version of
+`components/versions.yaml` into a temporary directory (so the first run needs
+a few minutes more), runs actionlint on the generated workflow and
+golangci-lint on the code, and, where `make` is installed, runs `make`,
+`make build`, and `make lint`. `TestIntegrationDocker` (matched by the same
+`-run TestIntegration`) builds the images of one SQLite and one PostgreSQL
+project with the generated `Dockerfile` and runs the SQLite one; it is skipped
+when no Docker daemon runs Linux containers, so in CI it runs on Linux only.
+
 ### Notes for Windows
 
 - If you do not have `make`, run the plain commands from the table above in

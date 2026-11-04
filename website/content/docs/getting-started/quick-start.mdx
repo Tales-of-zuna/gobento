@@ -163,6 +163,12 @@ This is the list `--dry-run` prints for `shop`, as a tree:
 
 <Files>
   <Folder name="shop" defaultOpen>
+    <Folder name=".github" defaultOpen>
+      <Folder name="workflows" defaultOpen>
+        <File name="ci.yml" />
+      </Folder>
+      <File name="dependabot.yml" />
+    </Folder>
     <Folder name="cmd" defaultOpen>
       <Folder name="shop" defaultOpen>
         <File name="main.go" />
@@ -197,7 +203,11 @@ This is the list `--dry-run` prints for `shop`, as a tree:
         <File name="store_test.go" />
       </Folder>
     </Folder>
+    <File name=".dockerignore" />
     <File name=".gitignore" />
+    <File name=".golangci.yml" />
+    <File name="Dockerfile" />
+    <File name="Makefile" />
     <File name="README.md" />
     <File name="go.mod" />
     <File name="go.sum" />
@@ -205,7 +215,8 @@ This is the list `--dry-run` prints for `shop`, as a tree:
   </Folder>
 </Files>
 
-Each directory is one Go package, filled by one component:
+Each directory under `cmd/` and `internal/` is one Go package, filled by one
+component; the tooling at the top comes from gobento's base layer:
 
 | Path                                          | Filled by     | Contents                                                                                                                                                                                  |
 | --------------------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -216,6 +227,8 @@ Each directory is one Go package, filled by one component:
 | `internal/store/`                             | data access   | `queries.sql`, the `New` adapter, and a test against a real database; sqlc's generated code is in the `sqlcgen` subpackage                                                                |
 | `sqlc.yaml`                                   | data access   | sqlc configuration                                                                                                                                                                        |
 | `README.md`, `.gitignore`, `go.mod`, `go.sum` | project files | `go.mod` is rendered by gobento, `go.sum` comes from the Go toolchain, and the README includes notes from each component                                                                  |
+| `Makefile`, `Dockerfile`, `.dockerignore`     | base layer    | `make` tasks (build, test, lint, docker-build, ...) and a static, distroless, non-root container image; see [Project tooling](/docs/concepts/project-tooling)                             |
+| `.github/`, `.golangci.yml`                   | base layer    | A CI workflow (tidy check, build, vet, golangci-lint, tests, image build), Dependabot, and the linter configuration                                                                       |
 
 `go.mod` requires every direct dependency at an exact version: the defaults
 from the [version rules](/docs/concepts/version-rules), or the versions you
@@ -224,7 +237,7 @@ chose with `--go` and `--pin`.
 The sqlc output in `internal/store/sqlcgen` is shipped pre-generated, so you
 do not need sqlc to build the project. The generated README explains how to
 regenerate it with the pinned sqlc version (v1.31.1 today) after you change
-`queries.sql` or the schema:
+`queries.sql` or the schema, with `make generate` or:
 
 ```sh
 go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate

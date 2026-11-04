@@ -93,6 +93,14 @@ keys are rejected:
 | `provides`    | all               | [Traits](/docs/concepts/traits) it provides: trait → value       |
 | `requires`    | all               | Traits it needs from the others: trait → list of accepted values |
 
+## The base layer
+
+Besides the four selected components, every selection gets gobento's **base
+layer** (`components/base/`): the [project tooling](/docs/concepts/project-tooling),
+such as the Makefile, the Dockerfile, and the CI workflow. It is not a kind,
+has no flag, and only writes files at the project root; components extend
+its files through contribution points instead of writing them.
+
 To see every component with its traits and
 versions, open the [Components reference](/docs/components), which is
 generated from the catalog. To write one, see

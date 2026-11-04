@@ -1,0 +1,12 @@
+In the image, the SQLite database is `/data/shop.db` (`DATABASE_URL`), in
+a volume at `/data` that the non-root user can write. Without a named volume,
+Docker creates an anonymous one, and `docker run --rm` deletes it with the
+container. `make docker-run` keeps the data in the named volume
+`shop-data`; without make:
+
+```sh
+docker run --rm --publish 8080:8080 --volume shop-data:/data shop
+```
+
+To use a directory of the host instead (`--volume "$PWD/data:/data"`), make
+it writable for the user 65532, for example with `--user "$(id -u)"`.

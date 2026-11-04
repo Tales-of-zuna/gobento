@@ -14,6 +14,7 @@ import (
 	"text/template"
 
 	"github.com/Tales-of-zuna/gobento/internal/catalog"
+	"github.com/Tales-of-zuna/gobento/internal/compat"
 )
 
 // Errors returned by Compose, wrapped with details. Test for them with
@@ -63,6 +64,11 @@ type Input struct {
 	// Assets maps the names of the selected components' vendored assets
 	// to their versions.
 	Assets map[string]string
+	// Base is the base layer composed into every selection, or nil for
+	// none (catalog.Catalog.Base).
+	Base *catalog.Component
+	// Tooling holds the tooling versions: images, actions, and tools.
+	Tooling compat.ToolingVersions
 }
 
 // Plan is the composed project: every file to write, in path order. It
@@ -72,6 +78,21 @@ type Plan struct {
 	Files []File
 	// Slots locates every slot of the architecture, as given to templates.
 	Slots map[string]SlotData
+	// Contributions lists the rendered contributions of the selected
+	// components to the base layer's points, in kind order and then by
+	// point. It is empty without a base layer.
+	Contributions []Contribution
+}
+
+// Contribution is one component's rendered contribution to a point.
+type Contribution struct {
+	// Component is the ID of the contributing component.
+	Component string
+	// Point is the name of the contribution point.
+	Point string
+	// Content is the rendered contribution, without leading and trailing
+	// newlines.
+	Content string
 }
 
 // File is one planned file.
@@ -107,7 +128,8 @@ func (p *Plan) File(path string) (File, bool) {
 }
 
 // Compose checks the selection and renders every template of every selected
-// component into a Plan. It reports every problem it finds, joined with
+// component, and of the base layer with the components' contributions, into
+// a Plan. It reports every problem it finds, joined with
 // errors.Join: an incomplete selection, unmet traits, unknown or unfilled
 // slots, slots with more than one owner, path conflicts, and templates that
 // fail to render or, for .go files, to format. Nothing is written to disk.
@@ -118,7 +140,7 @@ func Compose(in Input) (*Plan, error) {
 		return nil, err
 	}
 	slices.SortFunc(c.files, func(a, b File) int { return strings.Compare(a.Path, b.Path) })
-	return &Plan{Files: c.files, Slots: c.data.Slots}, nil
+	return &Plan{Files: c.files, Slots: c.data.Slots, Contributions: c.contribs}, nil
 }
 
 // composer holds the state of one Compose call.
@@ -129,6 +151,18 @@ type composer struct {
 	files []File
 	// owner maps each output path to the component that produced it.
 	owner map[string]string
+	// contribs holds the rendered contributions, in kind order.
+	contribs []Contribution
+}
+
+// components returns the selected components in kind order, followed by
+// the base layer if there is one.
+func (c *composer) components() []*catalog.Component {
+	comps := c.in.Selection.Components()
+	if c.in.Base != nil {
+		comps = append(comps, c.in.Base)
+	}
+	return comps
 }
 
 func (c *composer) fail(format string, args ...any) {
@@ -149,14 +183,11 @@ func (c *composer) run() {
 		Project:  c.in.Project,
 		Slots:    make(map[string]SlotData),
 		Traits:   sel.Traits(),
-		Versions: c.in.Versions,
-		Assets:   c.in.Assets,
-	}
-	if c.data.Versions == nil {
-		c.data.Versions = map[string]string{}
-	}
-	if c.data.Assets == nil {
-		c.data.Assets = map[string]string{}
+		Versions: orEmpty(c.in.Versions),
+		Assets:   orEmpty(c.in.Assets),
+		Images:   orEmpty(c.in.Tooling.Images),
+		Actions:  orEmpty(c.in.Tooling.Actions),
+		Tools:    orEmpty(c.in.Tooling.Tools),
 	}
 	if sel.Frontend != nil {
 		c.data.APIPrefix = FrontendAPIPrefix
@@ -164,14 +195,78 @@ func (c *composer) run() {
 	c.resolveSlots()
 	c.checkOwnership()
 	c.checkRootFiles()
+	c.renderContributions()
 
 	c.owner = make(map[string]string)
-	for _, comp := range sel.Components() {
+	for _, comp := range c.components() {
 		for _, f := range comp.Files {
 			c.render(comp, f)
 		}
 	}
 	c.appendNotes()
+}
+
+// orEmpty returns m, or an empty map if m is nil, so that templates report
+// a missing key instead of rendering "<no value>".
+func orEmpty(m map[string]string) map[string]string {
+	if m == nil {
+		return map[string]string{}
+	}
+	return m
+}
+
+// renderContributions renders every selected component's contributions to
+// the base layer's points, in kind order and then by point. Without a base
+// layer nothing would include them, so none are rendered.
+func (c *composer) renderContributions() {
+	base := c.in.Base
+	if base == nil {
+		return
+	}
+	for _, comp := range c.in.Selection.Components() {
+		for _, point := range slices.Sorted(maps.Keys(comp.Contributions)) {
+			source := comp.ID() + "/" + catalog.ContribDir + "/" + point + catalog.TemplateSuffix
+			if _, ok := base.Point(point); !ok {
+				c.fail("%w: %s: the base layer declares no contribution point %q", ErrTemplate, source, point)
+				continue
+			}
+			content, err := c.execute(source, comp.Contributions[point], nil)
+			if err != nil {
+				c.fail("%w: %s: %w", ErrTemplate, source, err)
+				continue
+			}
+			text := strings.Trim(string(content), "\n")
+			if strings.TrimSpace(text) == "" {
+				continue
+			}
+			c.contribs = append(c.contribs, Contribution{Component: comp.ID(), Point: point, Content: text})
+		}
+	}
+}
+
+// contrib returns the contributions to point, joined with newlines, or ""
+// if no selected component contributes. It is the template function
+// "contrib" of the base layer's templates.
+func (c *composer) contrib(point string) (string, error) {
+	if _, ok := c.in.Base.Point(point); !ok {
+		return "", fmt.Errorf("the base layer declares no contribution point %q in %s", point, catalog.BaseManifestFile)
+	}
+	var parts []string
+	for _, k := range c.contribs {
+		if k.Point == point {
+			parts = append(parts, k.Content)
+		}
+	}
+	return strings.Join(parts, "\n"), nil
+}
+
+// funcsFor returns the extra template functions of comp's templates: the
+// base layer's templates may include contributions.
+func (c *composer) funcsFor(comp *catalog.Component) template.FuncMap {
+	if comp != c.in.Base {
+		return nil
+	}
+	return template.FuncMap{"contrib": c.contrib}
 }
 
 // checkSelection reports required kinds without a component and components
@@ -195,7 +290,7 @@ func (c *composer) resolveSlots() {
 	dirs := make(map[string]string) // rendered dir -> slot name
 	for _, s := range arch.Slots {
 		var buf bytes.Buffer
-		tmpl, err := newTemplate(arch.ID()+": slot "+s.Name+" dir", s.Dir)
+		tmpl, err := newTemplate(arch.ID()+": slot "+s.Name+" dir", s.Dir, nil)
 		if err == nil {
 			err = tmpl.Execute(&buf, c.data)
 		}
@@ -232,7 +327,7 @@ func (c *composer) checkOwnership() {
 	sel := c.in.Selection
 	arch := sel.Architecture
 	fillers := make(map[string][]*catalog.Component)
-	for _, comp := range sel.Components() {
+	for _, comp := range c.components() {
 		for _, name := range comp.FilledSlots() {
 			if _, ok := arch.Slot(name); !ok {
 				c.fail("%w: %s has templates for slot %s, which %s does not declare", ErrUnknownSlot, comp.ID(), name, arch.ID())
@@ -268,7 +363,7 @@ func (c *composer) checkOwnership() {
 func (c *composer) checkRootFiles() {
 	owners := make(map[string][]string)
 	var order []string
-	for _, comp := range c.in.Selection.Components() {
+	for _, comp := range c.components() {
 		for _, f := range comp.Files {
 			if f.Slot != catalog.RootSlot {
 				continue
@@ -312,7 +407,7 @@ func (c *composer) render(comp *catalog.Component, f catalog.File) {
 		}
 	}
 
-	content, err := c.execute(f.Source, f.Template)
+	content, err := c.execute(f.Source, f.Template, c.funcsFor(comp))
 	if err != nil {
 		c.fail("%w: %s: %s: %w", ErrTemplate, comp.ID(), f.Source, err)
 		return
@@ -352,16 +447,16 @@ func (c *composer) nestedSlot(owner, out string) (string, bool) {
 	return "", false
 }
 
-// appendNotes renders every component's notes, in kind order, and appends
-// them to the README.
+// appendNotes renders every component's notes, in kind order and then the
+// base layer's, and appends them to the README.
 func (c *composer) appendNotes() {
 	var notes []string
 	var from []string
-	for _, comp := range c.in.Selection.Components() {
+	for _, comp := range c.components() {
 		if comp.Notes == "" {
 			continue
 		}
-		content, err := c.execute(comp.ID()+"/"+catalog.NotesFile, comp.Notes)
+		content, err := c.execute(comp.ID()+"/"+catalog.NotesFile, comp.Notes, c.funcsFor(comp))
 		if err != nil {
 			c.fail("%w: %s: %s: %w", ErrTemplate, comp.ID(), catalog.NotesFile, err)
 			continue
@@ -381,9 +476,10 @@ func (c *composer) appendNotes() {
 	c.files[i].Content = []byte(readme + "\n\n" + strings.Join(notes, "\n\n") + "\n")
 }
 
-// execute parses and renders one template with the composition data.
-func (c *composer) execute(name, text string) ([]byte, error) {
-	tmpl, err := newTemplate(name, text)
+// execute parses and renders one template with the composition data and the
+// extra functions funcs.
+func (c *composer) execute(name, text string, funcs template.FuncMap) ([]byte, error) {
+	tmpl, err := newTemplate(name, text, funcs)
 	if err != nil {
 		return nil, err
 	}
@@ -395,9 +491,32 @@ func (c *composer) execute(name, text string) ([]byte, error) {
 }
 
 // newTemplate parses a template that fails on missing map keys, so a typo
-// such as .Slots.handler is an error instead of "<no value>".
-func newTemplate(name, text string) (*template.Template, error) {
-	return template.New(name).Option("missingkey=error").Parse(text)
+// such as .Slots.handler is an error instead of "<no value>". Every
+// template may use the functions indent and prefix, and the functions in
+// funcs.
+func newTemplate(name, text string, funcs template.FuncMap) (*template.Template, error) {
+	return template.New(name).Option("missingkey=error").
+		Funcs(template.FuncMap{"indent": indent, "prefix": prefix}).
+		Funcs(funcs).
+		Parse(text)
+}
+
+// indent returns s with n spaces before every line that is not empty, for
+// placing a contribution written at column zero inside YAML.
+func indent(n int, s string) string {
+	return prefix(strings.Repeat(" ", n), s)
+}
+
+// prefix returns s with p before every line that is not empty, for example
+// a tab before every line of a Make recipe.
+func prefix(p, s string) string {
+	lines := strings.Split(s, "\n")
+	for i, l := range lines {
+		if l != "" {
+			lines[i] = p + l
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 // checkRelPath reports whether p is a clean, relative, slash-separated

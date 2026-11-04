@@ -1,0 +1,13 @@
+Inside the container, `localhost` is the container itself, so the default
+`DATABASE_URL` finds no server. Pass the server's address; a server on the
+Docker host, such as the one started above, is `host.docker.internal`, which
+`make docker-run` maps to the host:
+
+```sh
+make docker-run DATABASE_URL='postgres://postgres:postgres@host.docker.internal:5432/shop?sslmode=disable'
+```
+
+Without make, add `--add-host=host.docker.internal:host-gateway` and
+`--env DATABASE_URL=...` to `docker run`. A firewall on the host must let the
+container reach the server's port; a server in another container is easier to
+reach on a shared Docker network.

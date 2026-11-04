@@ -197,3 +197,23 @@ To bump it:
 3. Run `golangci-lint run` locally with the new version and fix any new
    findings, or adjust [.golangci.yml](../.golangci.yml), in the same pull
    request.
+
+### Tooling versions of generated projects
+
+Generated projects get their own images, action SHAs, and golangci-lint
+version from the `tooling` section of
+[components/versions.yaml](../components/versions.yaml), separately from
+gobento's own CI. Dependabot does not update that file, so check it when
+gobento's own actions or golangci-lint are bumped, and at least once per
+release:
+
+1. Look up the latest releases and their commit SHAs with
+   `gh api repos/<owner/repo>/releases/latest --jq .tag_name` and
+   `gh api repos/<owner/repo>/commits/<tag> --jq .sha`, and the runtime image
+   digest with `docker buildx imagetools inspect gcr.io/distroless/static-debian13:nonroot`.
+2. Update the entries and the "Last checked" date, then run
+   `go test ./internal/compose -run TestGolden -update` and review the diff.
+3. Run `go test -count=1 -run TestIntegration ./internal/generate/`: it lints
+   every generated project with the new golangci-lint version, runs actionlint
+   on every workflow, and builds the images. Fix new findings in the templates
+   in the same pull request.

@@ -123,3 +123,48 @@ assets:
     source: https://registry.npmjs.org/htmx.org/-/htmx.org-2.0.11.tgz
     path: package/dist/htmx.min.js
     sha256: d6fdc75f204e6bdefa99b69bf1e6d4ac69b8a364f77929f45c13476b4000f717
+
+# Versions of the project tooling that are not Go module requirements: the
+# images of the generated Dockerfile and CI workflow, the GitHub Actions the
+# workflow uses, and tools the Makefile and the workflow run. They are fixed
+# per gobento release and cannot be pinned; generated projects keep them
+# current with Dependabot (.github/dependabot.yml).
+#
+# Templates read them as {{.Images.<key>}} (name:tag[@digest]),
+# {{index .Actions "<owner/repo>"}} (the complete uses: value, the commit SHA
+# followed by "# <version>"), and {{index .Tools "<name>"}}.
+#
+# Last checked: 2026-11-04, against Docker Hub and gcr.io with
+# `docker buildx imagetools inspect <image>` and against GitHub with
+# `gh api repos/<owner/repo>/commits/<version>`.
+tooling:
+  images:
+    # Build stage of the Dockerfile. The tag is the selected Go version, so
+    # builds use its newest patch release; the image never ships.
+    go:
+      image: golang
+      tag: "{go}"
+    # Runtime stage of the Dockerfile: no shell or package manager, and a
+    # non-root user (65532). Pinned by digest because it ships.
+    runtime:
+      image: gcr.io/distroless/static-debian13
+      tag: nonroot
+      digest: sha256:25ac8f0c3b2334a9eb05452266bd4697864a8c8ef0ef71e5e6480d7f92868329
+    # The PostgreSQL server of the CI service and the README's local server.
+    postgres:
+      image: postgres
+      tag: 18-alpine
+
+  actions:
+    actions/checkout:
+      version: v7.0.1
+      sha: 3d3c42e5aac5ba805825da76410c181273ba90b1
+    actions/setup-go:
+      version: v7.0.0
+      sha: b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+    golangci/golangci-lint-action:
+      version: v9.3.0
+      sha: ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a
+
+  tools:
+    golangci-lint: v2.15.0

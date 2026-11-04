@@ -3,9 +3,10 @@ title: Version rules
 description: How gobento describes supported Go and module versions as data, lets you choose within them, and guarantees what your go.mod gets.
 ---
 
-All version data lives in one rules file, `components/versions.yaml`. Templates
-never contain version numbers, so a version bump is a one-line, reviewable
-change.
+All version data lives in one rules file, `components/versions.yaml`: Go and
+module versions, and the [tooling versions](#tooling-versions) of images and
+actions. Templates never contain version numbers, so a version bump is a
+one-line, reviewable change.
 
 ## The rules file
 
@@ -178,6 +179,50 @@ gobento's tests check both ends: the file the component renders has the
 recorded checksum, and, with network access, so does the file at `path` in
 `source`. To update an asset, replace the file and change `version`,
 `source`, and `sha256` together.
+
+## Tooling versions
+
+The [project tooling](/docs/concepts/project-tooling) uses versions that are not
+Go module requirements: container images, GitHub Actions, and golangci-lint.
+They live in the `tooling` section of the same file:
+
+```yaml title="components/versions.yaml"
+tooling:
+  images:
+    go: # build stage of the Dockerfile
+      image: golang
+      tag: '{go}' # the selected Go version, for example 1.27
+    runtime: # runtime stage, pinned by digest because it ships
+      image: gcr.io/distroless/static-debian13
+      tag: nonroot
+      digest: sha256:25ac8f0c3b2334a9eb05452266bd4697864a8c8ef0ef71e5e6480d7f92868329
+    postgres: # the CI service and the README's local server
+      image: postgres
+      tag: 18-alpine
+  actions:
+    actions/checkout:
+      version: v7.0.1
+      sha: 3d3c42e5aac5ba805825da76410c181273ba90b1
+  tools:
+    golangci-lint: v2.15.0
+```
+
+| Field                  | Meaning                                                                                                                          |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `images.<key>`         | An image; templates read `{{.Images.<key>}}`, the full reference `image:tag`, followed by `@digest` when it has one              |
+| `image`, `tag`         | The image name without tag, and the tag; `{go}` in a tag is the selected Go version, the only placeholder                        |
+| `digest`               | Optional `sha256:` digest that pins the image                                                                                    |
+| `actions.<owner/repo>` | A GitHub Action; templates read `{{index .Actions "<owner/repo>"}}`, the complete `uses:` value `<owner/repo>@<sha> # <version>` |
+| `version`, `sha`       | The release and the full 40-character commit SHA its tag points to                                                               |
+| `tools.<name>`         | An exact tool version, read as `{{index .Tools "<name>"}}`                                                                       |
+
+gobento rejects a malformed name, tag, digest, version, or SHA when it loads
+the file. Like tool modules, tooling versions are fixed per gobento release
+and cannot be changed with `--pin`; the generated Dependabot configuration
+keeps them current in your project. When you bump one, check the SHA with
+`gh api repos/<owner/repo>/commits/<version>` and a digest with
+`docker buildx imagetools inspect <image>:<tag>`, and update the "Last
+checked" date in the file.
 
 ## Constraint errors
 

@@ -125,3 +125,27 @@ unknown component.
 #### Scenario: Malformed checksum
 - **WHEN** an asset's checksum is not 64 hexadecimal digits
 - **THEN** loading the rules fails with an error naming the asset
+
+### Requirement: Tooling versions are fixed data
+The rules file SHALL list the project tooling versions that are not Go
+modules: each container image as a name, a tag (which MAY follow the selected
+Go version), and optionally a digest; each GitHub Action as a release and its
+full commit SHA; and each tool as an exact version. They SHALL be fixed per
+gobento release, not overridable with `--pin`, and a malformed entry SHALL be
+rejected, naming it.
+
+#### Scenario: Image tag follows the Go version
+- **WHEN** the Go build image's tag follows the Go version and the user passes `--go 1.26`
+- **THEN** templates see the build image with the tag `1.26`
+
+#### Scenario: Malformed action SHA
+- **WHEN** the rules file lists an action whose SHA is not 40 hexadecimal characters
+- **THEN** loading the rules fails with an error naming the action
+
+#### Scenario: Pin for a tooling entry
+- **WHEN** the user passes `--pin golangci-lint=<any version>`
+- **THEN** gobento exits non-zero because no selected component uses such a module, and writes nothing
+
+#### Scenario: Updating a pinned action
+- **WHEN** a maintainer changes the version and commit SHA of an action in the rules file
+- **THEN** newly generated workflows use that SHA and version without any template change

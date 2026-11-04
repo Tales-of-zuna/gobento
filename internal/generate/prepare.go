@@ -207,6 +207,8 @@ func Prepare(cat *catalog.Catalog, spec Spec) (*Prepared, error) {
 		Selection: sel,
 		Versions:  res.Versions(),
 		Assets:    res.AssetVersions(),
+		Base:      cat.Base(),
+		Tooling:   res.Tooling,
 	})
 	if err != nil {
 		return nil, err

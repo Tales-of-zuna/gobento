@@ -26,6 +26,13 @@ const (
 	NotesFile = "notes.md.tmpl"
 	// TemplateSuffix ends every template file name.
 	TemplateSuffix = ".tmpl"
+	// BaseDir is the directory of the base layer at the catalog root.
+	BaseDir = "base"
+	// BaseManifestFile is the manifest of the base layer.
+	BaseManifestFile = "base.yaml"
+	// ContribDir holds a component's contributions to the base layer's
+	// points, one <point>.tmpl file per point.
+	ContribDir = "contrib"
 	// DotPrefix at the start of a path element maps to ".", so that
 	// templates for dotfiles are not dotfiles themselves.
 	DotPrefix = "dot-"
@@ -48,9 +55,10 @@ var (
 )
 
 // Catalog is a loaded and validated component catalog together with its
-// version-compatibility rules.
+// version-compatibility rules and the base layer.
 type Catalog struct {
 	components []*Component // sorted by kind order, then name
+	base       *Component   // nil if the catalog has no base layer
 	rules      *compat.Rules
 }
 
@@ -64,6 +72,13 @@ type manifest struct {
 	Requires    map[string][]string     `yaml:"requires"`
 }
 
+// baseManifest mirrors the YAML layout of base.yaml.
+type baseManifest struct {
+	Title         string            `yaml:"title"`
+	Description   string            `yaml:"description"`
+	Contributions map[string]string `yaml:"contributions"`
+}
+
 type slotManifest struct {
 	Dir      string `yaml:"dir"`
 	Package  string `yaml:"package"`
@@ -71,14 +86,16 @@ type slotManifest struct {
 	Required bool   `yaml:"required"`
 }
 
-// Load reads a catalog from fsys, whose root holds versions.yaml and one
+// Load reads a catalog from fsys, whose root holds versions.yaml, one
 // directory per kind (architecture/, framework/, database/, data/,
-// frontend/), each with one directory per component.
+// frontend/), each with one directory per component, and optionally the base
+// layer in base/.
 //
 // Load validates every manifest, enforces that every file other than
 // component.yaml, versions.yaml, and embed.go ends in .tmpl and that no
 // file or directory name starts with ".", parses the rules file, and checks
-// that every component referenced by the rules exists. It reports every
+// that every component referenced by the rules exists and that every
+// contribution names a point the base layer declares. It reports every
 // problem found, joined with errors.Join.
 func Load(fsys fs.FS) (*Catalog, error) {
 	var errs []error
@@ -93,6 +110,10 @@ func Load(fsys fs.FS) (*Catalog, error) {
 		switch {
 		case !e.IsDir() && (name == RulesFile || name == embedFile):
 		case e.IsDir() && Kind(name).valid():
+		case e.IsDir() && name == BaseDir:
+			base, berrs := loadBase(fsys)
+			cat.base = base
+			errs = append(errs, berrs...)
 		case e.IsDir():
 			errs = append(errs, fmt.Errorf("%s: unknown component kind; want one of %s", name, kindList()))
 		default:
@@ -105,6 +126,7 @@ func Load(fsys fs.FS) (*Catalog, error) {
 		cat.components = append(cat.components, comps...)
 		errs = append(errs, kerrs...)
 	}
+	errs = append(errs, checkContributions(cat.components, cat.base)...)
 
 	data, err := fs.ReadFile(fsys, RulesFile)
 	if err != nil {
@@ -194,8 +216,12 @@ func loadComponent(fsys fs.FS, kind Kind, dir string) (*Component, []error) {
 			files, ferrs := loadFiles(fsys, path.Join(dir, filesDir))
 			c.Files = files
 			errs = append(errs, ferrs...)
+		case name == ContribDir && e.IsDir():
+			contribs, cerrs := loadContributions(fsys, path.Join(dir, ContribDir))
+			c.Contributions = contribs
+			errs = append(errs, cerrs...)
 		default:
-			fail("unexpected entry %q; a component holds only %s, %s, and %s/", name, ManifestFile, NotesFile, filesDir)
+			fail("unexpected entry %q; a component holds only %s, %s, %s/, and %s/", name, ManifestFile, NotesFile, filesDir, ContribDir)
 		}
 	}
 
@@ -259,6 +285,128 @@ func loadComponent(fsys fs.FS, kind Kind, dir string) (*Component, []error) {
 		return nil, errs
 	}
 	return c, nil
+}
+
+// loadBase loads and validates the base layer in BaseDir: base.yaml, an
+// optional notes.md.tmpl, and templates under files/root/ only.
+func loadBase(fsys fs.FS) (*Component, []error) {
+	var errs []error
+	fail := func(format string, args ...any) {
+		errs = append(errs, fmt.Errorf("%s: "+format, append([]any{BaseDir}, args...)...))
+	}
+	c := &Component{Name: BaseID}
+
+	entries, err := fs.ReadDir(fsys, BaseDir)
+	if err != nil {
+		return nil, []error{fmt.Errorf("%s: %w", BaseDir, err)}
+	}
+	for _, e := range entries {
+		switch name := e.Name(); {
+		case name == BaseManifestFile && !e.IsDir():
+		case name == NotesFile && !e.IsDir():
+			notes, err := readTemplate(fsys, path.Join(BaseDir, name))
+			if err != nil {
+				fail("%w", err)
+			}
+			c.Notes = notes
+		case name == filesDir && e.IsDir():
+			files, ferrs := loadFiles(fsys, path.Join(BaseDir, filesDir))
+			errs = append(errs, ferrs...)
+			for _, f := range files {
+				if f.Slot != RootSlot {
+					fail("%s: the base layer has no slots; its templates belong in %s/%s/", f.Source, filesDir, RootSlot)
+				}
+			}
+			c.Files = files
+		default:
+			fail("unexpected entry %q; the base layer holds only %s, %s, and %s/%s/", name, BaseManifestFile, NotesFile, filesDir, RootSlot)
+		}
+	}
+
+	var m baseManifest
+	data, err := fs.ReadFile(fsys, path.Join(BaseDir, BaseManifestFile))
+	if err == nil {
+		dec := yaml.NewDecoder(bytes.NewReader(data))
+		dec.KnownFields(true)
+		if err = dec.Decode(&m); err != nil {
+			err = fmt.Errorf("%s: %w", BaseManifestFile, err)
+		}
+	}
+	if err != nil {
+		fail("%w", err)
+		return nil, errs
+	}
+	c.Title, c.Description = m.Title, m.Description
+	if strings.TrimSpace(m.Title) == "" {
+		fail("title is required")
+	}
+	for _, name := range sortedKeys(m.Contributions) {
+		if !namePattern.MatchString(name) {
+			fail("contributions: point name %q must match %s", name, namePattern)
+		}
+		if strings.TrimSpace(m.Contributions[name]) == "" {
+			fail("contributions: point %s needs a description", name)
+		}
+		c.Points = append(c.Points, Point{Name: name, Description: strings.TrimSpace(m.Contributions[name])})
+	}
+	if len(errs) > 0 {
+		return nil, errs
+	}
+	return c, nil
+}
+
+// loadContributions loads the <point>.tmpl files in dir, a component's
+// contrib/ directory.
+func loadContributions(fsys fs.FS, dir string) (map[string]string, []error) {
+	var errs []error
+	entries, err := fs.ReadDir(fsys, dir)
+	if err != nil {
+		return nil, []error{err}
+	}
+	out := make(map[string]string, len(entries))
+	for _, e := range entries {
+		p := path.Join(dir, e.Name())
+		point, ok := strings.CutSuffix(e.Name(), TemplateSuffix)
+		switch {
+		case e.IsDir() || !ok:
+			errs = append(errs, fmt.Errorf("%s: %s/ holds only <point>%s files", p, ContribDir, TemplateSuffix))
+			continue
+		case !namePattern.MatchString(point):
+			errs = append(errs, fmt.Errorf("%s: point name %q must match %s", p, point, namePattern))
+			continue
+		}
+		text, err := readTemplate(fsys, p)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		out[point] = text
+	}
+	return out, errs
+}
+
+// checkContributions reports every contribution to a point the base layer
+// does not declare.
+func checkContributions(comps []*Component, base *Component) []error {
+	var errs []error
+	for _, c := range comps {
+		for _, point := range sortedKeys(c.Contributions) {
+			if base == nil {
+				errs = append(errs, fmt.Errorf("%s/%s/%s%s: the catalog has no base layer (%s/) to contribute to",
+					c.ID(), ContribDir, point, TemplateSuffix, BaseDir))
+				continue
+			}
+			if _, ok := base.Point(point); !ok {
+				names := make([]string, len(base.Points))
+				for i, p := range base.Points {
+					names[i] = p.Name
+				}
+				errs = append(errs, fmt.Errorf("%s/%s/%s%s: the base layer declares no contribution point %q; declared points: %s",
+					c.ID(), ContribDir, point, TemplateSuffix, point, strings.Join(names, ", ")))
+			}
+		}
+	}
+	return errs
 }
 
 func readManifest(fsys fs.FS, name string) (manifest, error) {
@@ -391,6 +539,12 @@ func kindList() string {
 		names = append(names, string(k))
 	}
 	return strings.Join(names, ", ")
+}
+
+// Base returns the base layer, which is composed into every selection, or
+// nil if the catalog has none.
+func (c *Catalog) Base() *Component {
+	return c.base
 }
 
 // Rules returns the catalog's version-compatibility rules.

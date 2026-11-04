@@ -366,6 +366,19 @@ const FRONTEND_FILES: Readonly<Record<string, readonly string[]>> = {
   'frontend/htmx': ['pages.templ', 'static/'],
 };
 
+/**
+ * Files the base layer (components/base) adds to every project: the
+ * developer tooling. Files under .github/ are listed inside that directory.
+ */
+const BASE_FILES: readonly string[] = [
+  '.github/workflows/ci.yml',
+  '.github/dependabot.yml',
+  '.dockerignore',
+  '.golangci.yml',
+  'Dockerfile',
+  'Makefile',
+];
+
 /** The project tree preview for the chosen components. */
 export function fileTree(catalog: Catalog, state: ConfigState, nameValid: boolean): TreeLine[] {
   const name = nameValid ? state.name : '<name>';
@@ -385,9 +398,17 @@ export function fileTree(catalog: Catalog, state: ConfigState, nameValid: boolea
     .filter((f) => f.startsWith('internal/'))
     .map((f) => f.slice('internal/'.length))
     .sort();
-  const top = files.filter((f) => !f.startsWith('internal/')).sort();
+  const top = [
+    ...files.filter((f) => !f.startsWith('internal/')),
+    ...BASE_FILES.filter((f) => !f.startsWith('.github/')),
+  ].sort();
+  const github = BASE_FILES.filter((f) => f.startsWith('.github/'))
+    .map((f) => f.slice('.github/'.length))
+    .sort();
   return [
     { label: `${name}/`, depth: 0, dir: true },
+    { label: '.github/', depth: 1, dir: true },
+    ...github.map((label) => ({ label, depth: 2 as const, dir: false })),
     { label: `cmd/${name}/main.go`, depth: 1, dir: false },
     ...(internal.length > 0
       ? [
