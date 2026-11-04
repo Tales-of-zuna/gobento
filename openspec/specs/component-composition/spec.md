@@ -235,13 +235,12 @@ conflict.
 - **THEN** gobento exits non-zero naming the file, the base layer, and the component, and writes nothing
 
 ### Requirement: Components contribute through declared points
-The base layer SHALL declare named contribution points, and a component kind
-MAY declare points for its components' templates. A component of any kind
-MAY contribute to a declared point with one template per point, and a
-template of the base layer or of a component of the declaring kind SHALL
-include the selected components' contributions to a point, in kind order,
-where it names that point. A contribution SHALL depend only on traits and the
-template data, never on which other component is selected.
+The base layer, and any component kind, MAY declare named contribution
+points. A component of any kind MAY contribute to a declared point with one
+template per point, and a template of the base layer or of a component of the
+declaring kind SHALL include the selected components' contributions to a
+point, in kind order, where it names it. A contribution SHALL depend only on
+traits and the template data, never on which other component is selected.
 
 #### Scenario: Database contributes a CI service
 - **WHEN** a project is generated with a database that contributes to the point for CI service containers

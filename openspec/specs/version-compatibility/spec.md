@@ -8,14 +8,11 @@ and rejecting combinations known not to work.
 ## Requirements
 
 ### Requirement: Compatibility rules are data
-gobento SHALL read supported versions from a rules file that lists the project's
-Go version range and, for each module, the components using it, optionally the
-trait values a selection must provide for the module to be used, its role
-(library or tool), supported range, default, and constraints on other versions,
-every vendored asset (a file shipped unmodified from an upstream release)
-with its components, version, source, and checksum, and every platform
-binary a generated project downloads on demand. Templates SHALL NOT contain
-version numbers.
+gobento SHALL read supported versions from a rules file: the project's Go
+range and, for each module, its components, optional trait conditions, role
+(library or tool), range, default, and constraints, plus every vendored asset
+and platform binary with its components, version, source, and checksums.
+Templates SHALL NOT contain version numbers.
 
 #### Scenario: Updating a supported version
 - **WHEN** a maintainer raises a library module's default version in the rules file
