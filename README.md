@@ -68,9 +68,11 @@ covers every platform, including Windows. To build from a clone instead, run
 `make build` or `go install ./cmd/gobento`.
 
 Generate a project. A component kind with a single option is chosen
-automatically, so you only name the kinds with several options (today the
-HTTP framework: `nethttp`, `chi`, or `gin`). Versions come from gobento's
-compatibility rules.
+automatically, and versions come from gobento's compatibility rules. In a
+terminal, gobento asks for anything else it needs: run `gobento new` to be
+asked for the name, module path, and each component kind with several options
+(today the HTTP framework: `nethttp`, `chi`, or `gin`). Flags skip their
+questions; in scripts and CI, name every kind with several options.
 
 ```sh
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
@@ -91,6 +93,9 @@ gobento new shop --framework gin --go 1.26 --pin modernc.org/sqlite=v1.61.0
 # Fill the current directory, which must be empty
 mkdir shop && cd shop && gobento new shop --framework nethttp --dir .
 
+# Never ask a question (pipes and CI never get any either)
+gobento new shop --no-input
+
 # List every flag
 gobento new --help
 ```
@@ -99,7 +104,8 @@ Generation runs `go get` and `go mod tidy`, so it needs access to the Go module
 proxy. gobento checks every input before writing anything, refuses non-empty
 directories, and removes everything it created if a step fails or you press
 Ctrl-C. After an interrupt it prints `interrupted; nothing was left behind`
-and exits with status 130.
+and exits with status 130; the same goes for Ctrl-C or Esc at a question.
+Set `ACCESSIBLE=1` for plain-text questions that work with screen readers.
 
 Project names start with a lowercase letter and use only lowercase letters,
 digits, `-`, and `_`. Names that Windows reserves for devices, such as `con`,
@@ -150,7 +156,7 @@ flowchart LR
 ## Roadmap
 
 - [x] First slice: MVC, `net/http`, SQLite, and sqlc (v0.1.0)
-- [ ] Interactive prompts
+- [x] Interactive prompts
 - [x] More frameworks: gin, chi
 - [ ] PostgreSQL
 - [ ] GORM

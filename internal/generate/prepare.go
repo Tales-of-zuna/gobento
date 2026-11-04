@@ -65,6 +65,29 @@ func ReservedNames() []string {
 	return names
 }
 
+// CheckName reports whether name follows the project name rules, with an
+// error wrapping ErrInvalidName that explains the rule it breaks. Prepare
+// applies the same check.
+func CheckName(name string) error {
+	switch {
+	case !namePattern.MatchString(name):
+		return fmt.Errorf("%w %q: %s", ErrInvalidName, name, NameRule)
+	case isWindowsReserved(name):
+		return fmt.Errorf("%w %q: %s", ErrInvalidName, name, ReservedNameRule)
+	}
+	return nil
+}
+
+// CheckModule reports whether path is a valid module path, with an error
+// wrapping ErrInvalidModule that suggests a path built from the project
+// name. Prepare applies the same check.
+func CheckModule(path, name string) error {
+	if err := module.CheckImportPath(path); err != nil {
+		return fmt.Errorf("%w %q: %w; use a path such as example.com/%s", ErrInvalidModule, path, err, safeExample(name))
+	}
+	return nil
+}
+
 // Spec is the user's description of a project, before validation.
 type Spec struct {
 	// Name is the project name, for example shop.
@@ -138,14 +161,11 @@ func Prepare(cat *catalog.Catalog, spec Spec) (*Prepared, error) {
 		p.Module = spec.Name
 	}
 
-	switch {
-	case !namePattern.MatchString(spec.Name):
-		errs = append(errs, fmt.Errorf("%w %q: %s", ErrInvalidName, spec.Name, NameRule))
-	case isWindowsReserved(spec.Name):
-		errs = append(errs, fmt.Errorf("%w %q: %s", ErrInvalidName, spec.Name, ReservedNameRule))
+	if err := CheckName(spec.Name); err != nil {
+		errs = append(errs, err)
 	}
-	if err := module.CheckImportPath(p.Module); err != nil {
-		errs = append(errs, fmt.Errorf("%w %q: %w; use a path such as example.com/%s", ErrInvalidModule, p.Module, err, safeExample(spec.Name)))
+	if err := CheckModule(p.Module, spec.Name); err != nil {
+		errs = append(errs, err)
 	}
 
 	sel, ids, selErrs := selectComponents(cat, spec.Components)

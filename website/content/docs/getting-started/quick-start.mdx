@@ -45,7 +45,10 @@ gobento new shop --module example.com/shop --framework nethttp
 
 `--framework` picks the HTTP framework: `nethttp` (the standard library),
 `chi`, or `gin`. The other kinds have one option each today, so gobento selects
-them for you. The same command with every choice spelled out is:
+them for you. If you leave out `--framework` in a terminal, gobento asks you to
+choose; you can also run plain `gobento new` and answer the questions for the
+name, module path, and components. The same command with every choice spelled
+out, which never asks anything, is:
 
 ```sh
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc

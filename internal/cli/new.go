@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Tales-of-zuna/gobento/internal/catalog"
+	"github.com/Tales-of-zuna/gobento/internal/compose"
 	"github.com/Tales-of-zuna/gobento/internal/generate"
 )
 
@@ -24,6 +25,7 @@ type newFlags struct {
 	pins      []string
 	dir       string
 	dryRun    bool
+	noInput   bool
 }
 
 // kindFlag returns the flag that selects components of kind k.
@@ -44,7 +46,7 @@ func kindFlag(k catalog.Kind) string {
 func newNewCommand(a *app) *cobra.Command {
 	var f newFlags
 	cmd := &cobra.Command{
-		Use:   "new <name>",
+		Use:   "new [name]",
 		Short: "Create a new Go project",
 		Long: `Create a new Go project named <name> in ./<name>, or in --dir.
 
@@ -54,6 +56,12 @@ gobento's compatibility rules.
 All input is checked before anything is written, and every problem is
 reported at once. If generation fails or is interrupted, nothing is left
 behind.
+
+In a terminal, gobento asks for what is missing: the name (and then the module
+path) when <name> is omitted, and each component kind with several options
+whose flag is omitted. Flags skip their questions. Without a terminal, or with
+--no-input, gobento asks nothing: <name> is required, and a kind with several
+options needs its flag. Set ACCESSIBLE=1 for plain-text questions.
 
 Generation runs the go command (go get and go mod tidy), so it needs Go and
 access to the Go module proxy. --dry-run needs neither.`,
@@ -70,15 +78,18 @@ access to the Go module proxy. --dry-run needs neither.`,
   gobento new shop --framework nethttp --dir .
 
   # Show the files that would be created, without writing anything
-  gobento new shop --framework gin --dry-run`,
+  gobento new shop --framework gin --dry-run
+
+  # Never ask a question, even in a terminal (as in scripts)
+  gobento new shop --framework nethttp --no-input`,
 		Args: func(_ *cobra.Command, args []string) error {
-			if len(args) != 1 {
-				return fmt.Errorf("expected exactly one project name, for example: gobento new shop (got %d arguments)", len(args))
+			if len(args) > 1 {
+				return nameArgError(len(args))
 			}
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return a.runNew(cmd, args[0], f)
+			return a.runNew(cmd, args, f)
 		},
 	}
 
@@ -92,29 +103,71 @@ access to the Go module proxy. --dry-run needs neither.`,
 	fl.StringArrayVar(&f.pins, "pin", nil, "library version as module=version, for example modernc.org/sqlite=v1.61.0 (repeatable)")
 	fl.StringVar(&f.dir, "dir", "", "target directory, for example . for the current one (default: ./<name>)")
 	fl.BoolVar(&f.dryRun, "dry-run", false, "check the input and list the files that would be created, without writing anything")
+	fl.BoolVar(&f.noInput, "no-input", false, "never ask a question; fail on missing input instead, as without a terminal")
 	return cmd
 }
 
-// runNew validates the input, composes the project, and either lists the
-// planned files (--dry-run) or generates the project and prints next steps.
-func (a *app) runNew(cmd *cobra.Command, name string, f newFlags) error {
+// nameArgError reports a wrong number of project name arguments.
+func nameArgError(got int) error {
+	return fmt.Errorf("expected exactly one project name, for example: gobento new shop (got %d arguments)", got)
+}
+
+// mayAsk reports whether gobento may ask questions in this run.
+func (a *app) mayAsk(f newFlags) bool {
+	return !f.noInput && a.interactive != nil && a.interactive()
+}
+
+// runNew asks for missing input in a terminal, validates the input,
+// composes the project, and either lists the planned files (--dry-run) or
+// generates the project and prints next steps.
+func (a *app) runNew(cmd *cobra.Command, args []string, f newFlags) error {
+	asking := a.mayAsk(f)
+	if len(args) == 0 && !asking {
+		return nameArgError(0)
+	}
 	cat, err := catalog.Load(a.catalog)
 	if err != nil {
 		return fmt.Errorf("load the component catalog: %w", err)
 	}
 
-	pins, pinErrs := parsePins(f.pins)
-	prepared, err := generate.Prepare(cat, generate.Spec{
-		Name:   name,
-		Module: f.module,
-		Components: map[catalog.Kind]string{
+	in := newInput{
+		hasName:   len(args) == 1,
+		module:    f.module,
+		hasModule: f.module != "", // --module "" means the default, as without it
+		components: map[catalog.Kind]string{
 			catalog.KindArchitecture: f.arch,
 			catalog.KindFramework:    f.framework,
 			catalog.KindDatabase:     f.db,
 			catalog.KindData:         f.data,
 		},
-		Go:   f.goVersion,
-		Pins: pins,
+	}
+	if in.hasName {
+		in.name = args[0]
+	}
+	pins, pinErrs := parsePins(f.pins)
+	if asking {
+		supported := compose.Supported(cat)
+		if canAsk(supported, in, pinErrs) {
+			asked, err := interview(cmd.Context(), supported, &in, a.questions())
+			if err != nil {
+				return err
+			}
+			if asked {
+				_, _ = fmt.Fprintf(a.stderr, "Equivalent command: %s\n", equivalentCommand(supported, in, f))
+			}
+		}
+	}
+	if !in.hasName {
+		return nameArgError(0)
+	}
+
+	name := in.name
+	prepared, err := generate.Prepare(cat, generate.Spec{
+		Name:       name,
+		Module:     in.module,
+		Components: in.components,
+		Go:         f.goVersion,
+		Pins:       pins,
 	})
 	if err != nil || len(pinErrs) > 0 {
 		return problemsError(name, append(pinErrs, err))
