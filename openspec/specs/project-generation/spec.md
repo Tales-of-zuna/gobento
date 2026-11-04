@@ -8,8 +8,9 @@ components with a single `gobento new` command that is safe to run anywhere.
 
 ### Requirement: Generate a project from a component selection
 `gobento new <name>` SHALL create a Go project from one selected architecture,
-HTTP framework, database, and data-access component, using the given Go module
-path, or the project name when `--module` is omitted.
+HTTP framework, database, and data-access component, and optionally one
+frontend (`--frontend`), using the given Go module path, or the project name
+when `--module` is omitted.
 
 #### Scenario: Fully specified by flags
 - **WHEN** the user runs `gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc`
@@ -21,6 +22,11 @@ path, or the project name when `--module` is omitted.
 - **THEN** a directory `shop` is created whose store is implemented with GORM on the SQLite database
 - **AND** the command exits with status 0
 
+#### Scenario: htmx frontend
+- **WHEN** the user runs `gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx`
+- **THEN** a directory `shop` is created that serves HTML pages at `/` and the API under `/api`
+- **AND** the command exits with status 0
+
 #### Scenario: Module path defaults to the project name
 - **WHEN** the user runs `gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc` without `--module`
 - **THEN** the generated module is named `shop`
@@ -30,18 +36,30 @@ path, or the project name when `--module` is omitted.
 - **THEN** gobento exits non-zero naming `--arch` and listing `mvc` and `vertical-slice`, and writes nothing
 
 ### Requirement: Automatic selection of the only option
-When a selection flag is omitted and its component kind has exactly one
-supported value, gobento SHALL select that value. When the kind has several
-values and gobento does not ask questions (see "Ask for missing input in a
-terminal"), gobento SHALL exit non-zero naming the flag and listing the values.
+When a selection flag of a required kind is omitted and the kind has exactly
+one supported value, gobento SHALL select that value. When the kind has
+several values and gobento does not ask questions (see "Ask for missing input
+in a terminal"), gobento SHALL exit non-zero naming the flag and listing the
+values. When the flag of an optional kind is omitted, gobento SHALL select no
+component of that kind without asking for the flag; the value `none` SHALL
+select no component explicitly. An unknown value of an optional kind SHALL be
+reported with the supported values, including `none`.
 
 #### Scenario: Single option is chosen automatically
 - **WHEN** the user omits `--db` and `sqlite` is the only supported database
 - **THEN** the project is generated with `sqlite`
 
 #### Scenario: Several options require a choice
-- **WHEN** the user omits a selection flag whose kind has several supported values, and stdin is not a terminal or `--no-input` is given
+- **WHEN** the user omits a selection flag of a required kind that has several supported values, and stdin is not a terminal or `--no-input` is given
 - **THEN** gobento exits non-zero naming the flag and its supported values, and writes nothing
+
+#### Scenario: Optional kind needs no flag
+- **WHEN** the user omits `--frontend` without a terminal while `htmx` is a supported frontend
+- **THEN** the project is generated without a frontend
+
+#### Scenario: Unknown frontend
+- **WHEN** the user passes `--frontend react` while only `htmx` is a supported frontend
+- **THEN** gobento exits non-zero naming `--frontend` and listing `none` and `htmx`, and writes nothing
 
 ### Requirement: Project name and module path rules
 The project name SHALL start with a lowercase letter and contain only lowercase
@@ -119,7 +137,7 @@ SHALL also compile with cgo disabled (`CGO_ENABLED=0`), so it needs no C
 compiler on Linux, macOS, or Windows.
 
 #### Scenario: Build check after generation
-- **WHEN** a project is generated with the selection mvc/nethttp/sqlite/sqlc, vertical-slice/nethttp/sqlite/sqlc, or mvc/nethttp/sqlite/gorm
+- **WHEN** a project is generated with the selection mvc/nethttp/sqlite/sqlc, vertical-slice/nethttp/sqlite/sqlc, mvc/nethttp/sqlite/gorm, or mvc/nethttp/sqlite/sqlc with the htmx frontend
 - **THEN** `go build ./...`, `go vet ./...` and `go test ./...` succeed inside it, and `gofmt -l .` lists no files
 
 #### Scenario: Build check without a database server
@@ -136,8 +154,8 @@ compiler on Linux, macOS, or Windows.
 
 #### Scenario: Example functionality is present
 - **WHEN** the generated project is running
-- **THEN** `GET /health` responds 200
-- **AND** an item created with `POST /items` is returned by `GET /items`, persisted in the selected database
+- **THEN** `GET /health` responds 200 at the API's base path (`/` without a frontend, `/api` with one)
+- **AND** an item created with `POST /items` at that base path is returned by `GET /items` there, persisted in the selected database
 
 ### Requirement: No partial projects
 If generation fails or is interrupted after it began writing, gobento SHALL
@@ -175,9 +193,11 @@ main module version recorded by the Go toolchain without its leading `v`, and
 In a terminal (stdin and stdout) without `--no-input`, `gobento new` SHALL
 ask, before validating, for the project name when no `<name>` is given, then
 for the module path (empty keeps the name), and for each kind whose flag is
-omitted and that has several compatible options, in kind order. Answers SHALL
-follow the name and module path rules. Nothing given by a flag SHALL be asked,
-and `--dry-run` SHALL ask the same questions.
+omitted and that has several compatible options, in kind order. For an
+optional kind, "none" counts as an option and SHALL be offered first, as the
+preselected answer. Answers SHALL follow the name and module path rules.
+Nothing given by a flag SHALL be asked, and `--dry-run` SHALL ask the same
+questions.
 
 #### Scenario: Several frameworks, framework flag omitted
 - **WHEN** the user runs `gobento new shop` in a terminal and the catalog has several supported frameworks
@@ -191,6 +211,10 @@ and `--dry-run` SHALL ask the same questions.
 #### Scenario: Flags skip their questions
 - **WHEN** the user runs `gobento new shop --framework nethttp` in a terminal
 - **THEN** gobento does not ask for the framework
+
+#### Scenario: Frontend question
+- **WHEN** the user runs `gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc` in a terminal
+- **THEN** gobento asks for the frontend, offering "None (API only)" first and then `htmx`
 
 ### Requirement: Questions offer only supported options
 A component question SHALL offer only the options that form a supported
@@ -214,11 +238,16 @@ SHALL ask nothing and report the problems as it does without a terminal.
 After asking at least one question, gobento SHALL print on stderr the
 equivalent `gobento new` command, with every answer as an argument or flag
 and the other flags of the run, so the run can be repeated without
-questions.
+questions. An optional kind answered with "none" SHALL be left out unless its
+flag was given, because leaving out the flag means the same.
 
 #### Scenario: Framework chosen by a question
 - **WHEN** the user answers `gin` to the framework question of `gobento new shop --dry-run`
 - **THEN** stderr shows a command that starts with `gobento new shop` and contains `--framework gin` and `--dry-run`
+
+#### Scenario: No frontend chosen by a question
+- **WHEN** the user answers "None (API only)" to the frontend question
+- **THEN** the equivalent command contains no `--frontend` flag
 
 ### Requirement: Disable questions
 gobento SHALL NOT ask any question when `--no-input` is given or when stdin or
@@ -275,3 +304,19 @@ server, and how the schema is applied.
 #### Scenario: Database is a choice
 - **WHEN** the user runs `gobento new shop` without `--db` and without a terminal
 - **THEN** gobento exits non-zero naming `--db` and listing `postgres` and `sqlite`, and writes nothing
+
+### Requirement: Supported selections are verified in CI
+gobento's CI SHALL generate and check projects on Linux, macOS, and Windows,
+each with the default versions and with the floor of every range. It SHALL
+cover every supported selection without an optional component, and a subset
+of the selections with one in which every pair of components that appears
+together in such a selection appears together at least once, chosen
+deterministically from the catalog.
+
+#### Scenario: Backend combinations are exhaustive
+- **WHEN** CI runs the integration test
+- **THEN** every supported selection without a frontend is generated and checked
+
+#### Scenario: Frontend combinations are covered pairwise
+- **WHEN** CI runs the integration test and the catalog has a frontend
+- **THEN** for every architecture, framework, database, and data-access component that can be combined with that frontend, a project with the frontend and that component is checked, and for every two such components that can appear together with the frontend, a project with the frontend and both of them is checked
