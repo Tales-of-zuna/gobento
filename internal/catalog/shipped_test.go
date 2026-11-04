@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/Tales-of-zuna/gobento/components"
@@ -57,7 +58,7 @@ func TestShippedCatalog(t *testing.T) {
 	}
 }
 
-func TestShippedCatalogFirstSlice(t *testing.T) {
+func TestShippedCatalogCandidates(t *testing.T) {
 	t.Parallel()
 
 	cat, err := catalog.Load(components.FS())
@@ -68,8 +69,42 @@ func TestShippedCatalogFirstSlice(t *testing.T) {
 	for _, s := range cat.Candidates() {
 		got = append(got, s.String())
 	}
-	if len(got) != 1 || got[0] != "mvc/nethttp/sqlite/sqlc" {
-		t.Errorf("Candidates() = %v, want [mvc/nethttp/sqlite/sqlc]", got)
+	want := []string{"mvc/chi/sqlite/sqlc", "mvc/gin/sqlite/sqlc", "mvc/nethttp/sqlite/sqlc"}
+	if !slices.Equal(got, want) {
+		t.Errorf("Candidates() = %v, want %v", got, want)
+	}
+}
+
+// apiTest is the framework-independent API test every framework component
+// ships in its handlers slot.
+const apiTest = "router_test.go"
+
+// TestFrameworksShareTheAPITest enforces the spec requirement "Framework
+// components serve one API contract": every framework component ships the
+// same API test, byte for byte, so the generated projects of all frameworks
+// are held to the same behavior.
+func TestFrameworksShareTheAPITest(t *testing.T) {
+	t.Parallel()
+
+	cat, err := catalog.Load(components.FS())
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	var ref *catalog.Component
+	var refTest string
+	for _, c := range cat.Components(catalog.KindFramework) {
+		i := slices.IndexFunc(c.Files, func(f catalog.File) bool { return f.Slot == "handlers" && f.Path == apiTest })
+		if i < 0 {
+			t.Errorf("%s has no handlers/%s.tmpl; every framework ships the shared API test", c.ID(), apiTest)
+			continue
+		}
+		if ref == nil {
+			ref, refTest = c, c.Files[i].Template
+			continue
+		}
+		if c.Files[i].Template != refTest {
+			t.Errorf("handlers/%s.tmpl of %s differs from %s; framework components must share one API test", apiTest, c.ID(), ref.ID())
+		}
 	}
 }
 

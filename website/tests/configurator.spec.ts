@@ -5,8 +5,12 @@ import { releaseStatus } from './helpers';
 
 const { released } = releaseStatus();
 
-/** Opens the configurator and waits until it has read the URL (after hydration). */
-async function open(page: Page, query = '') {
+/**
+ * Opens the configurator and waits until it has read the URL (after
+ * hydration). The framework kind has several options, so tests start from
+ * net/http unless they pass their own query.
+ */
+async function open(page: Page, query = '?framework=nethttp') {
   await page.goto(`configurator/${query}`);
   await expect(page.locator('[data-hydrated="true"]')).toBeAttached();
 }
@@ -18,7 +22,7 @@ test.describe('configurator', () => {
   test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
   test('Defaults: single options and default versions are preselected', async ({ page }) => {
-    await open(page);
+    await open(page, '');
     await expect(page.getByRole('heading', { level: 1, name: 'Pack your project' })).toBeVisible();
     // The pre-release notice follows the release manifest (spec "Pre-release notice").
     const notice = page.getByText('Early development · not released yet');
@@ -26,15 +30,18 @@ test.describe('configurator', () => {
     else await expect(notice).toBeVisible();
     for (const [kind, option] of [
       ['Architecture', 'Model-View-Controller'],
-      ['HTTP framework', 'net/http'],
       ['Database', 'SQLite'],
       ['Data access', 'sqlc'],
       ['Go version', 'Go 1.27'],
     ]) {
       await expect(group(page, kind!).getByRole('radio', { name: option })).toBeChecked();
     }
-    await expect(group(page, 'HTTP framework').getByRole('radio', { name: 'gin' })).toBeDisabled();
-    await expect(command(page)).toHaveText('gobento new myapp');
+    // Several frameworks: none is preselected, and the CLI needs --framework.
+    const framework = group(page, 'HTTP framework');
+    await expect(framework.getByRole('radio', { checked: true })).toHaveCount(0);
+    await expect(framework.getByText('Choose one of: chi, gin, nethttp.')).toBeVisible();
+    await framework.getByText('net/http', { exact: true }).click();
+    await expect(command(page)).toHaveText('gobento new myapp --framework nethttp');
     await page.getByRole('button', { name: /Advanced/ }).click();
     await expect(page.getByLabel('modernc.org/sqlite')).toHaveValue('v1.61.1');
     await expect(page.getByText('Tool versions are fixed per gobento release.')).toBeVisible();
@@ -44,9 +51,13 @@ test.describe('configurator', () => {
     await open(page);
     await page.getByLabel('Project name').fill('shop');
     await page.getByLabel('Module path').fill('example.com/shop');
-    await expect(command(page)).toHaveText('gobento new shop --module example.com/shop');
+    await expect(command(page)).toHaveText(
+      'gobento new shop --module example.com/shop --framework nethttp',
+    );
     await group(page, 'Go version').getByText('Go 1.26').click();
-    await expect(command(page)).toHaveText('gobento new shop --module example.com/shop --go 1.26');
+    await expect(command(page)).toHaveText(
+      'gobento new shop --module example.com/shop --framework nethttp --go 1.26',
+    );
     await expect(page.getByRole('list', { name: 'Generated files' })).toContainText(
       'cmd/shop/main.go',
     );
@@ -98,7 +109,9 @@ test.describe('configurator', () => {
     await expect(sqlite).toHaveAccessibleDescription(/outside the supported range >=v1\.61\.0/);
     await sqlite.fill('v1.62.0');
     await expect(sqlite).toHaveAttribute('aria-invalid', 'false');
-    await expect(command(page)).toHaveText('gobento new myapp --pin modernc.org/sqlite=v1.62.0');
+    await expect(command(page)).toHaveText(
+      'gobento new myapp --framework nethttp --pin modernc.org/sqlite=v1.62.0',
+    );
     await expect(group(page, 'Go version').getByRole('radio', { name: 'Go 1.26' })).toBeEnabled();
   });
 
@@ -129,10 +142,10 @@ test.describe('configurator', () => {
     const notice = page.getByRole('status').filter({ hasText: 'shared link was reset' });
     await expect(notice).toContainText('framework "fiber"');
     await expect(notice).toContainText('Go 1.19');
-    await expect(
-      group(page, 'HTTP framework').getByRole('radio', { name: 'net/http' }),
-    ).toBeChecked();
-    await expect(command(page)).toHaveText('gobento new blog');
+    // There is no single framework to fall back to, so a choice is required.
+    const framework = group(page, 'HTTP framework');
+    await expect(framework.getByRole('radio', { checked: true })).toHaveCount(0);
+    await expect(framework.getByText('Choose one of: chi, gin, nethttp.')).toBeVisible();
     await notice.getByRole('button', { name: 'Dismiss' }).click();
     await expect(notice).toHaveCount(0);
   });
@@ -158,7 +171,9 @@ test.describe('configurator', () => {
     await expect(go127).toBeFocused();
     await page.keyboard.press('ArrowLeft');
     await expect(group(page, 'Go version').getByRole('radio', { name: 'Go 1.26' })).toBeChecked();
-    await expect(command(page)).toHaveText('gobento new shop --module example.com/shop --go 1.26');
+    await expect(command(page)).toHaveText(
+      'gobento new shop --module example.com/shop --framework nethttp --go 1.26',
+    );
 
     await page.keyboard.press('Tab');
     const advanced = page.getByRole('button', { name: /Advanced/ });
@@ -177,7 +192,7 @@ test.describe('configurator', () => {
     expect(outline).toBe('3px');
     await page.keyboard.press('Enter');
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-      'gobento new shop --module example.com/shop --go 1.26',
+      'gobento new shop --module example.com/shop --framework nethttp --go 1.26',
     );
   });
 
@@ -205,7 +220,7 @@ test.describe('configurator', () => {
       const nameBox = await page.getByLabel('Project name').boundingBox();
       expect((await stage.boundingBox())!.y).toBeLessThan(nameBox!.y);
       const bar = command(page);
-      await expect(bar).toHaveText('gobento new myapp');
+      await expect(bar).toHaveText('gobento new myapp --framework nethttp');
       const box = await bar.boundingBox();
       expect(box!.y + box!.height).toBeGreaterThan(844 - 100);
       await page.mouse.wheel(0, 1500);

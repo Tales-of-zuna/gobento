@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"testing/fstest"
 
 	"github.com/Tales-of-zuna/gobento/components"
 	"github.com/Tales-of-zuna/gobento/internal/generate"
@@ -78,14 +77,14 @@ func TestNew(t *testing.T) {
 			// Spec: Module path defaults to the project name, and
 			// Automatic selection of the only option.
 			name:       "defaults",
-			args:       []string{"new", "shop"},
+			args:       []string{"new", "shop", "--framework", "nethttp"},
 			wantTarget: "shop",
 			wantModule: "shop",
 			wantGo:     "1.27",
 		},
 		{
 			name:       "versions and directory",
-			args:       []string{"new", "my-app", "--go", "1.26", "--pin", "modernc.org/sqlite=v1.61.0", "--dir", "out/app"},
+			args:       []string{"new", "my-app", "--framework", "nethttp", "--go", "1.26", "--pin", "modernc.org/sqlite=v1.61.0", "--dir", "out/app"},
 			wantTarget: "out/app",
 			wantModule: "my-app",
 			wantGo:     "1.26",
@@ -125,7 +124,7 @@ func TestNewPinVersionIsUsed(t *testing.T) {
 	t.Parallel()
 
 	gen := &fakeGenerator{}
-	if _, _, err := run(t, components.FS(), gen, "new", "shop", "--pin", "modernc.org/sqlite=v1.61.0"); err != nil {
+	if _, _, err := run(t, components.FS(), gen, "new", "shop", "--framework", "nethttp", "--pin", "modernc.org/sqlite=v1.61.0"); err != nil {
 		t.Fatal(err)
 	}
 	for _, m := range gen.calls[0].Modules {
@@ -158,10 +157,9 @@ func TestNewErrors(t *testing.T) {
 		},
 		{
 			// Spec: Several options require a choice.
-			name:    "several options",
-			catalog: twoFrameworkFS(t),
-			args:    []string{"new", "shop"},
-			want:    []string{"--framework: choose a framework; supported: chi, nethttp"},
+			name: "several options",
+			args: []string{"new", "shop"},
+			want: []string{"--framework: choose a framework; supported: chi, gin, nethttp"},
 		},
 		{
 			name: "tool pin",
@@ -229,7 +227,7 @@ func TestNewGenerateFailure(t *testing.T) {
 	t.Parallel()
 
 	gen := &fakeGenerator{err: errors.New("go get: no network")}
-	_, _, err := run(t, components.FS(), gen, "new", "shop")
+	_, _, err := run(t, components.FS(), gen, "new", "shop", "--framework", "nethttp")
 	if err == nil || !strings.Contains(err.Error(), "  - go get: no network") {
 		t.Errorf("error = %v, want the generation error in the report", err)
 	}
@@ -244,7 +242,7 @@ func TestNewDryRun(t *testing.T) {
 	t.Parallel()
 
 	gen := &fakeGenerator{}
-	out, _, err := run(t, components.FS(), gen, "new", "drytest", "--dry-run")
+	out, _, err := run(t, components.FS(), gen, "new", "drytest", "--framework", "nethttp", "--dry-run")
 	if err != nil {
 		t.Fatalf("--dry-run error = %v", err)
 	}
@@ -295,37 +293,13 @@ func TestNewHelp(t *testing.T) {
 	}
 }
 
-// twoFrameworkFS is the shipped catalog plus a copy of nethttp named chi.
-func twoFrameworkFS(t *testing.T) fs.FS {
-	t.Helper()
-	m := fstest.MapFS{}
-	err := fs.WalkDir(components.FS(), ".", func(p string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return err
-		}
-		data, err := fs.ReadFile(components.FS(), p)
-		m[p] = &fstest.MapFile{Data: data}
-		if rest, ok := strings.CutPrefix(p, "framework/nethttp/"); ok {
-			if rest == "component.yaml" {
-				data = []byte("name: chi\ntitle: chi\n")
-			}
-			m["framework/chi/"+rest] = &fstest.MapFile{Data: data}
-		}
-		return err
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return m
-}
-
 // TestNewIntoCurrentDirectory covers spec "Generate into the current empty
 // directory": the target is "." and no cd step is printed.
 func TestNewIntoCurrentDirectory(t *testing.T) {
 	t.Chdir(t.TempDir())
 
 	gen := &fakeGenerator{}
-	out, _, err := run(t, components.FS(), gen, "new", "shop", "--dir", ".")
+	out, _, err := run(t, components.FS(), gen, "new", "shop", "--framework", "nethttp", "--dir", ".")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -397,7 +371,7 @@ func TestNewInterrupted(t *testing.T) {
 		stderr: &stderr,
 	}
 	cmd := newRootCommand("dev", a)
-	cmd.SetArgs([]string{"new", "shop"})
+	cmd.SetArgs([]string{"new", "shop", "--framework", "nethttp"})
 	if got := a.exitStatus(ctx, cmd.ExecuteContext(ctx)); got != ExitInterrupted {
 		t.Errorf("exit status = %d, want %d", got, ExitInterrupted)
 	}

@@ -77,7 +77,7 @@ describe('buildCommand', () => {
     const catalog = catalogWith(addPostgres);
     expect(buildCommand(catalog, defaultState(catalog))).toEqual({
       ok: false,
-      errors: [{ field: 'database', message: 'Choose a database: sqlite, postgres.' }],
+      errors: [{ field: 'database', message: 'Choose one of: sqlite, postgres.' }],
     });
   });
 

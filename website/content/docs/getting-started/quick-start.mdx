@@ -12,8 +12,9 @@ Install gobento first, with
 [GitHub Releases](https://github.com/Tales-of-zuna/gobento/releases); see
 [Installation](/docs/getting-started/installation) for checksums and details.
 
-This guide generates a project called `shop` with the first supported stack:
-MVC, `net/http`, SQLite, and sqlc.
+This guide generates a project called `shop` with MVC, `net/http`, SQLite, and
+sqlc. Swap `--framework nethttp` for `chi` or `gin` to use another router; the
+generated API is the same.
 
 ## Generate and run it
 
@@ -26,7 +27,7 @@ MVC, `net/http`, SQLite, and sqlc.
 writes nothing and does not run the Go toolchain.
 
 ```sh
-gobento new shop --module example.com/shop --dry-run
+gobento new shop --module example.com/shop --framework nethttp --dry-run
 ```
 
 It prints `Dry run: nothing was written.`, the module, the selection
@@ -39,11 +40,12 @@ It prints `Dry run: nothing was written.`, the module, the selection
 ### Generate it
 
 ```sh
-gobento new shop --module example.com/shop
+gobento new shop --module example.com/shop --framework nethttp
 ```
 
-Each component kind has one option today, so gobento selects them for you. The
-same command with every choice spelled out is:
+`--framework` picks the HTTP framework: `nethttp` (the standard library),
+`chi`, or `gin`. The other kinds have one option each today, so gobento selects
+them for you. The same command with every choice spelled out is:
 
 ```sh
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc

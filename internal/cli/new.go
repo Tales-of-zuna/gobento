@@ -48,28 +48,29 @@ func newNewCommand(a *app) *cobra.Command {
 		Short: "Create a new Go project",
 		Long: `Create a new Go project named <name> in ./<name>, or in --dir.
 
-Every flag is optional. A component kind with a single supported option is
-selected automatically, and versions default to gobento's compatibility rules.
+A component kind with a single supported option is selected automatically;
+for a kind with several, choose one with its flag. Versions default to
+gobento's compatibility rules.
 All input is checked before anything is written, and every problem is
 reported at once. If generation fails or is interrupted, nothing is left
 behind.
 
 Generation runs the go command (go get and go mod tidy), so it needs Go and
 access to the Go module proxy. --dry-run needs neither.`,
-		Example: `  # Create ./shop with the default components and versions
-  gobento new shop
+		Example: `  # Create ./shop with the chi router and the default components and versions
+  gobento new shop --framework chi
 
   # Choose every component and the module path explicitly
   gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
 
   # Choose versions within the supported ranges
-  gobento new shop --go 1.26 --pin modernc.org/sqlite=v1.61.0
+  gobento new shop --framework nethttp --go 1.26 --pin modernc.org/sqlite=v1.61.0
 
   # Fill the current, empty directory
-  gobento new shop --dir .
+  gobento new shop --framework nethttp --dir .
 
   # Show the files that would be created, without writing anything
-  gobento new shop --dry-run`,
+  gobento new shop --framework gin --dry-run`,
 		Args: func(_ *cobra.Command, args []string) error {
 			if len(args) != 1 {
 				return fmt.Errorf("expected exactly one project name, for example: gobento new shop (got %d arguments)", len(args))
@@ -84,7 +85,7 @@ access to the Go module proxy. --dry-run needs neither.`,
 	fl := cmd.Flags()
 	fl.StringVar(&f.module, "module", "", "Go module path, for example example.com/shop (default: the project name)")
 	fl.StringVar(&f.arch, "arch", "", "architecture, for example mvc (default: the only supported one)")
-	fl.StringVar(&f.framework, "framework", "", "HTTP framework, for example nethttp (default: the only supported one)")
+	fl.StringVar(&f.framework, "framework", "", "HTTP framework, for example chi, gin, or nethttp (default: the only supported one)")
 	fl.StringVar(&f.db, "db", "", "database, for example sqlite (default: the only supported one)")
 	fl.StringVar(&f.data, "data", "", "data-access library, for example sqlc (default: the only supported one)")
 	fl.StringVar(&f.goVersion, "go", "", "Go version for go.mod, for example 1.26 (default: from the compatibility rules)")

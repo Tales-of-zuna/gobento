@@ -1,0 +1,20 @@
+## API
+
+| Request | Response |
+|---|---|
+| `GET /health` | `200` with `{"status":"ok"}` |
+| `GET /items` | `200` with a JSON array of items, oldest first |
+| `POST /items` with `{"name":"..."}` | `201` with the created item |
+
+Errors are JSON objects such as `{"error":"name is required"}`:
+
+- `400` when the body is not exactly one JSON object with a non-empty `name`
+  (unknown fields and data after the object are rejected);
+- `413` when the body is larger than 1 MiB;
+- `500` when storage fails. The details are logged, not sent to the client.
+
+Routes are registered on a [Gin](https://gin-gonic.com) engine in
+`{{.Slots.handlers.Dir}}/router.go`. The engine has no middleware attached,
+so add the ones you need with `r.Use(...)`, for example `gin.Logger()`. Gin
+runs in debug mode and logs every route at startup unless you set
+`GIN_MODE=release`.

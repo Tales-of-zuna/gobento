@@ -4,7 +4,7 @@
  * `arch`, `framework`, `db`, `data`, `go`, and repeated `pin=<path>=<version>`.
  * Values equal to their default are left out to keep links short.
  */
-import { KIND_IDS } from '@/lib/catalog/kinds';
+import { KIND_IDS, titleInSentence } from '@/lib/catalog/kinds';
 import type { Catalog } from '@/lib/catalog/schema';
 import { parseGoVersion, parseModuleVersion, sameVersion, satisfies } from '@/lib/catalog/semver';
 import { KIND_FLAGS, type ConfigState } from './build';
@@ -66,8 +66,9 @@ export function decodeState(catalog: Catalog, query: string | URLSearchParams): 
       components[kind] = name;
     } else {
       const title = catalog.kinds.find((k) => k.id === kind)?.title ?? kind;
+      const single = catalog.components.filter((c) => c.kind === kind).length === 1;
       notices.push(
-        `The link names ${title.toLowerCase()} "${name}", which is not available; the default is used.`,
+        `The link names ${titleInSentence(title)} "${name}", which is not available; ${single ? 'the default is used' : 'choose one of the available options'}.`,
       );
     }
   }

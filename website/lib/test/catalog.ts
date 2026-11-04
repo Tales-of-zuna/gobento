@@ -1,9 +1,12 @@
 /**
- * Test helpers for building catalogs from `catalog.json`, the real catalog
- * exported by `internal/tools/catalogexport`.
+ * Test helpers for building catalogs from `fixture-catalog.json`, a frozen
+ * catalog in the format exported by `internal/tools/catalogexport`: one
+ * component per kind (mvc, nethttp, sqlite, sqlc). Tests edit copies of it
+ * for the cases they need, so they do not change whenever a component ships.
+ * Tests about the real catalog import `@/lib/catalog/data` instead.
  */
 import type { z } from 'zod';
-import fixture from '@/src/generated/catalog.json';
+import fixture from './fixture-catalog.json';
 import { parseCatalog, type catalogSchema, type Catalog } from '@/lib/catalog/schema';
 
 /** Catalog data before validation, as found in catalog.json. */

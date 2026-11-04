@@ -120,7 +120,7 @@ jobs:
         with:
           go-version: "1.27" # newest Go in versions.yaml: the reference project defaults to it
       - name: Generate the reference project
-        run: go run ./cmd/gobento new shop --module example.com/shop --dir "$RUNNER_TEMP/shop"
+        run: go run ./cmd/gobento new shop --module example.com/shop --framework nethttp --dir "$RUNNER_TEMP/shop"
       - name: Regenerate with the pinned sqlc and compare
         working-directory: ${{ runner.temp }}/shop
         run: |

@@ -10,7 +10,7 @@ import {
   selectedModules,
   type Selection,
 } from '@/lib/catalog/compat';
-import { KIND_IDS } from '@/lib/catalog/kinds';
+import { KIND_IDS, titleInSentence } from '@/lib/catalog/kinds';
 import type { Catalog, KindId, Module } from '@/lib/catalog/schema';
 import {
   compareVersions,
@@ -20,7 +20,7 @@ import {
   satisfies,
 } from '@/lib/catalog/semver';
 import type { BuildResult, ConfigState, FieldError } from '@/lib/command/build';
-import { ROADMAP } from './roadmap';
+import { ROADMAP, type PlannedComponent } from './roadmap';
 
 /** How an option card is drawn. */
 export type OptionStatus = 'selected' | 'available' | 'incompatible' | 'soon';
@@ -59,6 +59,7 @@ export function kindGroups(
   catalog: Catalog,
   state: Selection,
   errors: ReadonlyMap<FieldError['field'], string>,
+  roadmap: Readonly<Record<KindId, readonly PlannedComponent[]>> = ROADMAP,
 ): KindGroupView[] {
   return KIND_IDS.map((kind) => {
     const meta = catalog.kinds.find((k) => k.id === kind)!;
@@ -75,7 +76,7 @@ export function kindGroups(
       };
     });
     const known = new Set(components.map((c) => c.name));
-    for (const planned of ROADMAP[kind]) {
+    for (const planned of roadmap[kind]) {
       if (known.has(planned.name)) continue;
       options.push({
         value: planned.name,
@@ -236,7 +237,8 @@ export function blockedMessage(catalog: Catalog, result: BuildResult): string {
   else if (first === 'module') what = 'the module path';
   else if (first === 'go') what = 'the Go version';
   else if (first.startsWith('pin:')) what = `the ${first.slice(4)} version under Advanced`;
-  else what = `the ${catalog.kinds.find((k) => k.id === first)?.title.toLowerCase()} choice`;
+  else
+    what = `the ${titleInSentence(catalog.kinds.find((k) => k.id === first)?.title ?? first)} choice`;
   return `No command yet. Fix ${what} to get a copyable command.`;
 }
 

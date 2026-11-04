@@ -21,12 +21,12 @@ page, skim [Slots and contracts](/docs/concepts/slots-and-contracts) and
 
 gobento builds a project from four components, one of each kind:
 
-| Kind           | Fills                                                 | First option |
-| -------------- | ----------------------------------------------------- | ------------ |
-| `architecture` | the entry point, the shared types, and the layout     | `mvc`        |
-| `framework`    | the HTTP handlers                                     | `nethttp`    |
-| `database`     | the database connection and schema                    | `sqlite`     |
-| `data`         | the data access that implements the shared interfaces | `sqlc`       |
+| Kind           | Fills                                                 | Example   |
+| -------------- | ----------------------------------------------------- | --------- |
+| `architecture` | the entry point, the shared types, and the layout     | `mvc`     |
+| `framework`    | the HTTP handlers                                     | `nethttp` |
+| `database`     | the database connection and schema                    | `sqlite`  |
+| `data`         | the data access that implements the shared interfaces | `sqlc`    |
 
 There is no template per combination. An architecture declares _slots_, each
 of the other components fills a slot, and _traits_ say which components fit
@@ -181,6 +181,12 @@ the functions each slot must provide. For `mvc`, see the
 The Go compiler checks the contract in every generated project, and gobento's
 integration test checks that the handlers package does not depend on the
 database or store packages.
+
+All framework components serve the same API. Each one ships the same
+`files/handlers/router_test.go.tmpl`, which tests the API only through
+`NewRouter` and `net/http/httptest`, so it works with any router. Copy it
+unchanged from an existing framework: a unit test fails if the copies differ.
+To change the API, change every framework and the shared test together.
 
 ## Templates
 
@@ -380,10 +386,13 @@ make test
 
 ### Golden test
 
-The golden test composes the reference selection and compares the result
-with `internal/compose/testdata/golden/`. If you changed the reference
-selection's output on purpose, regenerate the golden files and review the
-diff:
+The golden tests compose the reference selection and compare the whole
+project with `internal/compose/testdata/golden/`. They also compose, for every
+component, the first supported selection that contains it, and compare the
+files that component contributes with
+`internal/compose/testdata/golden-components/<kind>/<name>/`. A new component
+needs its golden files, and an intended output change needs them refreshed.
+Regenerate them and review the diff:
 
 ```sh
 go test ./internal/compose -run TestGolden -update

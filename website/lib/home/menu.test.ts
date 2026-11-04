@@ -39,7 +39,10 @@ describe('beltPlates', () => {
 
 describe('stackCells', () => {
   it('gives one compartment per kind with its options and roadmap', () => {
-    const cells = stackCells(catalogWith());
+    const cells = stackCells(catalogWith(), [
+      { kind: 'framework', name: 'echo' },
+      { kind: 'framework', name: 'fiber' },
+    ]);
     expect(cells.map((c) => c.title)).toEqual([
       'Architecture',
       'HTTP framework',
@@ -47,7 +50,7 @@ describe('stackCells', () => {
       'Data access',
     ]);
     expect(cells[1]!.options.map((o) => o.name)).toEqual(['net/http']);
-    expect(cells[1]!.roadmap).toEqual(['gin', 'chi']);
+    expect(cells[1]!.roadmap).toEqual(['echo', 'fiber']);
   });
 });
 

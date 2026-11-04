@@ -9,7 +9,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 const SECTION_HEADINGS = [
   "Today's menu, and what comes next.",
   'Three steps, one box.',
-  'One option per compartment today.',
+  'One choice per compartment.',
   'Compatibility is data, not guesswork.',
   'Built on all three, before you ever run it.',
   'Fill your box.',

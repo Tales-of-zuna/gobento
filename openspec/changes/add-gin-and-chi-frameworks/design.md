@@ -45,6 +45,12 @@ fiber), changes to the slot contract.
   `http.Server` already recovers handler panics per connection. Adding
   `gin.Recovery()` or `middleware.Recoverer` only to some frameworks would make
   their behavior differ. Users add middleware in their own project.
+- **Routing edge cases match `net/http`:** `ServeMux` answers `HEAD` for
+  `GET` patterns and returns `404` for `/items/` and `/ITEMS`. gin and chi
+  register `HEAD` next to every `GET`, and gin turns off
+  `RedirectTrailingSlash` and `RedirectFixedPath` (both on by default, which
+  would answer `301`/`307`). The shared test covers these cases
+  (`TestRouting`).
 - **gin mode:** gin starts in debug mode and logs route registrations unless
   `GIN_MODE=release` is set. gobento does not call the process-global
   `gin.SetMode` from a library package; the gin notes document `GIN_MODE`.
@@ -96,7 +102,36 @@ No code change: with three supported frameworks, the existing rule makes
 `--framework` required in non-interactive use. CI's `sqlc-fresh` job and all
 docs examples pass `--framework nethttp` explicitly.
 
+### D6. Website follows the catalog; tests use a frozen fixture
+
+The configurator already handles a kind with several options as the spec
+requires: nothing is preselected, and the kind shows a choice prompt instead
+of a command. Changes:
+
+- The prompt reads `Choose one of: chi, gin, nethttp.`; it is shown next to
+  its group, and the old wording lower-cased the kind title (`a http
+  framework`).
+- gin and chi leave both hand-written roadmap lists (configurator cards and
+  home page plates). A new test fails whenever a roadmap entry names a
+  component the real catalog ships, so later components cannot be forgotten.
+- The home page's "Pick your stack" heading no longer claims one option per
+  kind.
+- Unit tests built their catalogs from the live `catalog.json`, so every new
+  component broke unrelated tests. They now use a frozen
+  `lib/test/fixture-catalog.json` (the one-option-per-kind catalog the tests
+  were written against); `kindGroups` takes the roadmap as a parameter, like
+  `stackCells` and `beltPlates` already do. The real catalog stays covered by
+  the build-time schema check, the roadmap test, and `TestWebsiteCommands`.
+- End-to-end tests open the configurator with `?framework=nethttp`, except
+  the ones about defaults and shared-link fallback, which check the choice
+  prompt.
+
 ## Risks / Trade-offs
+
+- **Bodies of router-generated errors differ** (`404`/`405` are plain text
+  and framework-specific; gin's JSON has no trailing newline and its
+  Content-Type has `; charset=utf-8`) → the contract covers status codes, the
+  JSON media type, and decoded JSON bodies, which is what clients rely on.
 
 - **gin's dependency tree is large** (validator, quic-go via its HTTP/3
   support, etc.) → generation time and go.sum size grow for gin projects;

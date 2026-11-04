@@ -67,8 +67,9 @@ The [installation guide](https://tales-of-zuna.github.io/gobento/docs/getting-st
 covers every platform, including Windows. To build from a clone instead, run
 `make build` or `go install ./cmd/gobento`.
 
-Generate a project. Every flag is optional: a component kind with a single
-option is chosen automatically, and versions come from gobento's
+Generate a project. A component kind with a single option is chosen
+automatically, so you only name the kinds with several options (today the
+HTTP framework: `nethttp`, `chi`, or `gin`). Versions come from gobento's
 compatibility rules.
 
 ```sh
@@ -82,13 +83,13 @@ More examples:
 
 ```sh
 # See the files gobento would create, without writing anything
-gobento new shop --dry-run
+gobento new shop --framework chi --dry-run
 
 # Choose the Go version and a library version within the supported ranges
-gobento new shop --go 1.26 --pin modernc.org/sqlite=v1.61.0
+gobento new shop --framework gin --go 1.26 --pin modernc.org/sqlite=v1.61.0
 
 # Fill the current directory, which must be empty
-mkdir shop && cd shop && gobento new shop --dir .
+mkdir shop && cd shop && gobento new shop --framework nethttp --dir .
 
 # List every flag
 gobento new --help
@@ -108,8 +109,9 @@ The generated project's README describes its API, including its error
 responses (`400` for invalid JSON, `413` for bodies over 1 MiB), and how its
 schema and sqlc code are maintained.
 
-The first supported stack generates a project like this, with a health
-endpoint and one example resource that builds and passes its own tests:
+The reference stack (`mvc`, `nethttp`, `sqlite`, `sqlc`) generates a project
+like this, with a health endpoint and one example resource that builds and
+passes its own tests:
 
 ```text
 shop/
@@ -149,7 +151,7 @@ flowchart LR
 
 - [x] First slice: MVC, `net/http`, SQLite, and sqlc (v0.1.0)
 - [ ] Interactive prompts
-- [ ] More frameworks: gin, chi
+- [x] More frameworks: gin, chi
 - [ ] PostgreSQL
 - [ ] GORM
 - [ ] Frontends: React, Vue, and Svelte via Vite; htmx + templ

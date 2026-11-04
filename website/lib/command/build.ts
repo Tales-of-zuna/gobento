@@ -79,10 +79,9 @@ export function buildCommand(catalog: Catalog, state: ConfigState): BuildResult 
   for (const kind of KIND_IDS) {
     const options = optionsOf(catalog, kind);
     if (options.length > 1 && state.components[kind] === undefined) {
-      const title = catalog.kinds.find((k) => k.id === kind)?.title ?? kind;
       errors.push({
         field: kind,
-        message: `Choose a ${title.toLowerCase()}: ${options.map((o) => o.name).join(', ')}.`,
+        message: `Choose one of: ${options.map((o) => o.name).join(', ')}.`,
       });
     }
   }

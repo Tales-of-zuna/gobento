@@ -17,7 +17,7 @@ you pick: an architecture, an HTTP framework, a database, and a data-access
 library.
 
 ```sh
-gobento new shop --module example.com/shop
+gobento new shop --module example.com/shop --framework chi
 ```
 
 The generated project builds, passes `go vet` and `gofmt`, and passes its own
@@ -49,20 +49,19 @@ gobento is inspired by [go-blueprint](https://github.com/melkeydev/go-blueprint)
 which showed how much a good project generator helps Go developers get
 started.
 
-## The first slice
+## What you can choose today
 
-The first supported stack is:
+| Kind           | Components                                                  |
+| -------------- | ----------------------------------------------------------- |
+| Architecture   | `mvc` (Model-View-Controller)                               |
+| HTTP framework | `nethttp` (the standard library's `net/http`), `chi`, `gin` |
+| Database       | `sqlite` (pure Go, no cgo)                                  |
+| Data access    | `sqlc`                                                      |
 
-| Kind           | Component                                     |
-| -------------- | --------------------------------------------- |
-| Architecture   | `mvc` (Model-View-Controller)                 |
-| HTTP framework | `nethttp` (the standard library's `net/http`) |
-| Database       | `sqlite` (pure Go, no cgo)                    |
-| Data access    | `sqlc`                                        |
-
-It generates a project with a health endpoint and one example resource,
-`/items`, stored in SQLite. More
-frameworks, databases, and architectures are on the roadmap; the
+Every selection generates a project with a health endpoint and one example
+resource, `/items`, stored in SQLite. All frameworks serve exactly the same
+API. More databases, data-access libraries, and architectures are on the
+roadmap; the
 [Components](/docs/components) reference always lists exactly what the
 catalog supports.
 

@@ -73,7 +73,7 @@ describe('decodeState', () => {
       name: 'component',
       query: 'framework=express',
       notice:
-        'The link names http framework "express", which is not available; the default is used.',
+        'The link names HTTP framework "express", which is not available; the default is used.',
       check: (s) => expect(s.components.framework).toBe('nethttp'),
     },
     {

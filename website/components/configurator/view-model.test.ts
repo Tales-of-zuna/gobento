@@ -32,13 +32,21 @@ describe('goVersions', () => {
 
 describe('kindGroups', () => {
   it('preselects single options and adds roadmap cards', () => {
-    const groups = kindGroups(catalog, defaults, new Map());
+    const groups = kindGroups(catalog, defaults, new Map(), {
+      architecture: [],
+      framework: [
+        { name: 'echo', title: 'Echo' },
+        { name: 'fiber', title: 'Fiber' },
+      ],
+      database: [],
+      data: [],
+    });
     const framework = groups.find((g) => g.kind === 'framework')!;
     expect(framework.description).toBe('One option today, preselected.');
     expect(framework.options.map((o) => [o.value, o.status])).toEqual([
       ['nethttp', 'selected'],
-      ['gin', 'soon'],
-      ['chi', 'soon'],
+      ['echo', 'soon'],
+      ['fiber', 'soon'],
     ]);
   });
 

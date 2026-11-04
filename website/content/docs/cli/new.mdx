@@ -25,7 +25,7 @@ is optional.
 | -------------- | ---------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `--module`     | string                       | `<name>`       | Go module path of the generated project, for example `example.com/shop`. It must be a valid Go import path, as checked by `module.CheckImportPath` from `golang.org/x/mod`. Paths without a dot, such as `shop`, are accepted. |
 | `--arch`       | string                       | auto           | Architecture component, for example `mvc`.                                                                                                                                                                                     |
-| `--framework`  | string                       | auto           | HTTP framework component, for example `nethttp`.                                                                                                                                                                               |
+| `--framework`  | string                       | auto           | HTTP framework component: `chi`, `gin`, or `nethttp`. Required, because there are several.                                                                                                                                     |
 | `--db`         | string                       | auto           | Database component, for example `sqlite`.                                                                                                                                                                                      |
 | `--data`       | string                       | auto           | Data-access component, for example `sqlc`.                                                                                                                                                                                     |
 | `--go`         | string                       | rules default  | Go version for the `go` directive, for example `1.26`. Must be inside the supported Go range.                                                                                                                                  |
@@ -50,10 +50,10 @@ module version for `go install` and builds from a clone (a pseudo-version betwee
 
 These are the examples from `gobento new --help`.
 
-Create `./shop` with the default components and versions:
+Create `./shop` with the chi router and the default components and versions:
 
 ```sh
-gobento new shop
+gobento new shop --framework chi
 ```
 
 Choose every component and the module path explicitly:
@@ -65,20 +65,20 @@ gobento new shop --module example.com/shop --arch mvc --framework nethttp --db s
 Choose versions within the supported ranges (here, the range floors):
 
 ```sh
-gobento new shop --go 1.26 --pin modernc.org/sqlite=v1.61.0
+gobento new shop --framework nethttp --go 1.26 --pin modernc.org/sqlite=v1.61.0
 ```
 
 Fill the current, empty directory:
 
 ```sh
 mkdir shop && cd shop
-gobento new shop --dir .
+gobento new shop --framework nethttp --dir .
 ```
 
 Show the files that would be created, without writing anything:
 
 ```sh
-gobento new shop --dry-run
+gobento new shop --framework gin --dry-run
 ```
 
 ## What happens
@@ -98,7 +98,7 @@ gobento new shop --dry-run
 Nothing is written before steps 1 and 2 pass. A successful run ends like this:
 
 ```text
-$ gobento new shop --module example.com/shop
+$ gobento new shop --module example.com/shop --framework nethttp
 Created example.com/shop in shop.
 
 Next steps:
@@ -132,7 +132,7 @@ memory. It lists every file that would be created, including `go.mod` and
 `go.sum`, then exits.
 
 ```text
-$ gobento new shop --module example.com/shop --dry-run
+$ gobento new shop --module example.com/shop --framework nethttp --dry-run
 Dry run: nothing was written.
 gobento would create example.com/shop (mvc/nethttp/sqlite/sqlc, Go 1.27) in shop with these files:
   .gitignore
@@ -200,14 +200,14 @@ gobento: cannot create "My App":
   - --pin "nonsense": want module=version, for example modernc.org/sqlite=v1.61.0
   - invalid project name "My App": start with a lowercase letter and use only lowercase letters, digits, - and _
   - invalid module path "Not A Path": malformed import path "Not A Path": invalid char ' '; use a path such as example.com/app
-  - --framework: unknown framework "express"; supported: nethttp
+  - --framework: unknown framework "express"; supported: chi, gin, nethttp
   - version outside the supported range: go 1.20; supported range is ">=1.26 <1.28"
 ```
 
 A name reserved on Windows, which without `--module` is also the module path:
 
 ```text
-$ gobento new con
+$ gobento new con --framework nethttp
 gobento: cannot create "con":
   - invalid project name "con": the name is reserved on Windows and cannot be used for files or directories; choose another name
   - invalid module path "con": malformed import path "con": "con" disallowed as path element component on Windows; use a path such as example.com/app
@@ -216,7 +216,7 @@ gobento: cannot create "con":
 A module version outside its range:
 
 ```text
-$ gobento new shop --pin modernc.org/sqlite=v2.0.0
+$ gobento new shop --framework nethttp --pin modernc.org/sqlite=v2.0.0
 gobento: cannot create "shop":
   - version outside the supported range: modernc.org/sqlite v2.0.0; supported range is ">=v1.61.0 <v2.0.0"
 ```
@@ -224,7 +224,7 @@ gobento: cannot create "shop":
 A tool version:
 
 ```text
-$ gobento new shop --pin github.com/sqlc-dev/sqlc=v1.30.0
+$ gobento new shop --framework nethttp --pin github.com/sqlc-dev/sqlc=v1.30.0
 gobento: cannot create "shop":
   - tool version is fixed: cannot pin github.com/sqlc-dev/sqlc, tool versions are fixed per gobento release (this release uses v1.31.1)
 ```
@@ -232,7 +232,7 @@ gobento: cannot create "shop":
 A module no selected component uses:
 
 ```text
-$ gobento new shop --pin example.com/x=v1.0.0
+$ gobento new shop --framework nethttp --pin example.com/x=v1.0.0
 gobento: cannot create "shop":
   - module not used by the selection: cannot pin example.com/x, no selected component uses it
 ```
