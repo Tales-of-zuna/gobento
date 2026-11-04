@@ -100,6 +100,8 @@ func (r *Rules) Resolve(req Request) (Resolved, error) {
 		m, known := r.Module(path)
 		i, used := chosen[path]
 		switch {
+		case known && !used && m.usedBy(req.Components, nil):
+			errs = append(errs, fmt.Errorf("%w: cannot pin %s, it is only used with %s", ErrNotSelected, path, m.traitCondition()))
 		case !known || !used:
 			errs = append(errs, fmt.Errorf("%w: cannot pin %s, no selected component uses it", ErrNotSelected, path))
 		case m.Role == RoleTool:

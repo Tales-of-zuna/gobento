@@ -226,7 +226,7 @@ func TestNewErrors(t *testing.T) {
 			// Spec: Pin for a module whose trait condition is not met.
 			name: "pin of a dialect driver the selection does not use",
 			args: []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "gorm", "--pin", "gorm.io/driver/postgres=v1.6.3"},
-			want: []string{"cannot pin gorm.io/driver/postgres, no selected component uses it"},
+			want: []string{"cannot pin gorm.io/driver/postgres, it is only used with sql-dialect postgresql"},
 		},
 		{
 			name: "tool pin",

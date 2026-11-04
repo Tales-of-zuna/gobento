@@ -124,7 +124,9 @@ func TestNewDoesNotAsk(t *testing.T) {
 		{name: "invalid flag", interactive: true, args: []string{"new", "shop", "--framework", "express"}, want: `--framework: unknown framework "express"; supported: chi, gin, nethttp`},
 		{name: "invalid name", interactive: true, args: []string{"new", "My App"}, want: `invalid project name "My App"`},
 		{name: "invalid pin", interactive: true, args: []string{"new", "shop", "--pin", "nonsense"}, want: `--pin "nonsense": want module=version`},
+		// Spec: Invalid flag value without a name.
 		{name: "invalid flag without a name", interactive: true, args: []string{"new", "--framework", "express"}, want: "expected exactly one project name"},
+		{name: "invalid flag without a name reports the flag", interactive: true, args: []string{"new", "--framework", "express"}, want: `--framework: unknown framework "express"; supported: chi, gin, nethttp`},
 		{name: "two names", interactive: true, args: []string{"new", "a", "b"}, want: "expected exactly one project name, for example: gobento new shop (got 2 arguments)"},
 	}
 	for _, tt := range tests {

@@ -106,7 +106,3 @@ connection opened by `internal/database`. The tables are defined only in
 call `AutoMigrate`, so the schema file stays the single source of truth. When
 you add a column, add it to the schema and to the struct in
 `internal/store/store.go`.
-
-The store test in `internal/store` writes to the database named by
-`DATABASE_URL` and is skipped when that variable is unset; point it at a test
-database, not production.

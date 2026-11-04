@@ -292,8 +292,9 @@ func TestResolveTraitConditions(t *testing.T) {
 			Traits:     map[string]string{"sql-dialect": "sqlite"},
 			Pins:       map[string]string{"example.com/pgdriver": "v1.0.0"},
 		})
-		if !errors.Is(err, ErrNotSelected) || !strings.Contains(err.Error(), "example.com/pgdriver") {
-			t.Errorf("Resolve() error = %v, want ErrNotSelected naming example.com/pgdriver", err)
+		want := "cannot pin example.com/pgdriver, it is only used with sql-dialect postgresql"
+		if !errors.Is(err, ErrNotSelected) || !strings.Contains(err.Error(), want) {
+			t.Errorf("Resolve() error = %v, want ErrNotSelected containing %q", err, want)
 		}
 	})
 

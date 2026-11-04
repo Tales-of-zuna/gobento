@@ -332,7 +332,7 @@ the selection does not meet, such as GORM's PostgreSQL driver in a SQLite projec
 ```text
 $ gobento new shop --arch mvc --framework nethttp --db sqlite --data gorm --pin gorm.io/driver/postgres=v1.6.3
 gobento: cannot create "shop":
-  - module not used by the selection: cannot pin gorm.io/driver/postgres, no selected component uses it
+  - module not used by the selection: cannot pin gorm.io/driver/postgres, it is only used with sql-dialect postgresql
 ```
 
 A violated [constraint](/docs/concepts/version-rules#constraint-errors) is

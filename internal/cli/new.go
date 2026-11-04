@@ -97,10 +97,10 @@ access to the Go module proxy. --dry-run needs neither.`,
 
 	fl := cmd.Flags()
 	fl.StringVar(&f.module, "module", "", "Go module path, for example example.com/shop (default: the project name)")
-	fl.StringVar(&f.arch, "arch", "", "architecture, for example mvc or vertical-slice (default: the only supported one)")
-	fl.StringVar(&f.framework, "framework", "", "HTTP framework, for example chi, gin, or nethttp (default: the only supported one)")
-	fl.StringVar(&f.db, "db", "", "database, for example sqlite or postgres (default: the only supported one)")
-	fl.StringVar(&f.data, "data", "", "data-access library, for example sqlc or gorm (default: the only supported one)")
+	fl.StringVar(&f.arch, "arch", "", "architecture, for example mvc or vertical-slice (asked for in a terminal; required otherwise when several are supported)")
+	fl.StringVar(&f.framework, "framework", "", "HTTP framework, for example chi, gin, or nethttp (asked for in a terminal; required otherwise when several are supported)")
+	fl.StringVar(&f.db, "db", "", "database, for example sqlite or postgres (asked for in a terminal; required otherwise when several are supported)")
+	fl.StringVar(&f.data, "data", "", "data-access library, for example sqlc or gorm (asked for in a terminal; required otherwise when several are supported)")
 	fl.StringVar(&f.goVersion, "go", "", "Go version for go.mod, for example 1.26 (default: from the compatibility rules)")
 	fl.StringArrayVar(&f.pins, "pin", nil, "library version as module=version, for example modernc.org/sqlite=v1.61.0 (repeatable)")
 	fl.StringVar(&f.dir, "dir", "", "target directory, for example . for the current one (default: ./<name>)")
@@ -160,6 +160,16 @@ func (a *app) runNew(cmd *cobra.Command, args []string, f newFlags) error {
 		}
 	}
 	if !in.hasName {
+		if asking {
+			// Invalid flags kept gobento from asking: report them together
+			// with the missing name, checked with a placeholder name.
+			_, err := generate.Prepare(cat, generate.Spec{
+				Name: "app", Module: in.module, Components: in.components, Go: f.goVersion, Pins: pins,
+			})
+			if err != nil || len(pinErrs) > 0 {
+				return problemsError("<name>", append(append([]error{nameArgError(0)}, pinErrs...), err))
+			}
+		}
 		return nameArgError(0)
 	}
 

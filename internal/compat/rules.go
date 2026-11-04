@@ -7,6 +7,7 @@ import (
 	"maps"
 	"slices"
 	"sort"
+	"strings"
 
 	"go.yaml.in/yaml/v3"
 	"golang.org/x/mod/module"
@@ -104,6 +105,16 @@ func (m Module) usedBy(components []string, traits map[string]string) bool {
 		}
 	}
 	return true
+}
+
+// traitCondition describes the module's trait conditions, for example
+// "sql-dialect postgresql" or "sql-dialect sqlite or postgresql".
+func (m Module) traitCondition() string {
+	var parts []string
+	for _, trait := range slices.Sorted(maps.Keys(m.Traits)) {
+		parts = append(parts, trait+" "+strings.Join(m.Traits[trait], " or "))
+	}
+	return strings.Join(parts, " and ")
 }
 
 // rulesFile mirrors the YAML layout of the rules file.
