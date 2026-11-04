@@ -262,6 +262,13 @@ const COMPONENT_FILES: Readonly<Record<string, readonly string[]>> = {
     'internal/store/',
     'internal/database/',
   ],
+  'architecture/ddd': [
+    'internal/domain/',
+    'internal/app/',
+    'internal/adapters/httpapi/',
+    'internal/adapters/persistence/',
+    'internal/adapters/database/',
+  ],
   'architecture/vertical-slice': [
     'internal/items/',
     'internal/items/itemshttp/',

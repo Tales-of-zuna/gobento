@@ -1,0 +1,40 @@
+// Package {{.Slots.app.Package}} is the application layer: it runs the item
+// use cases on the domain, package {{.Slots.models.Package}}, the only package
+// of the project it imports. The HTTP adapter reaches it through the domain's
+// ItemStore port.
+package {{.Slots.app.Package}}
+
+import (
+	"context"
+	"fmt"
+
+	"{{.Slots.models.Import}}"
+)
+
+// ItemService runs the item use cases. It implements
+// {{.Slots.models.Package}}.ItemStore, the port the HTTP adapter uses, and stores
+// items through another {{.Slots.models.Package}}.ItemStore, such as the
+// persistence adapter.
+type ItemService struct {
+	store {{.Slots.models.Package}}.ItemStore
+}
+
+var _ {{.Slots.models.Package}}.ItemStore = (*ItemService)(nil)
+
+// NewItemService returns an ItemService that stores items in store.
+func NewItemService(store {{.Slots.models.Package}}.ItemStore) *ItemService {
+	return &ItemService{store: store}
+}
+
+// List returns every item, oldest first.
+func (s *ItemService) List(ctx context.Context) ([]{{.Slots.models.Package}}.Item, error) {
+	return s.store.List(ctx)
+}
+
+// Create checks the domain rules for name and stores a new item with it.
+func (s *ItemService) Create(ctx context.Context, name string) ({{.Slots.models.Package}}.Item, error) {
+	if err := {{.Slots.models.Package}}.ValidateName(name); err != nil {
+		return {{.Slots.models.Package}}.Item{}, fmt.Errorf("create item: %w", err)
+	}
+	return s.store.Create(ctx, name)
+}

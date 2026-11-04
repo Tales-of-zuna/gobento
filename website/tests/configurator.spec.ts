@@ -36,7 +36,7 @@ test.describe('configurator', () => {
     // Several options in every kind: none is preselected, and the CLI needs a
     // flag for each.
     for (const [kind, prompt] of [
-      ['Architecture', 'Choose one of: mvc, vertical-slice.'],
+      ['Architecture', 'Choose one of: ddd, mvc, vertical-slice.'],
       ['HTTP framework', 'Choose one of: chi, gin, nethttp.'],
       ['Database', 'Choose one of: postgres, sqlite.'],
       ['Data access', 'Choose one of: gorm, sqlc.'],

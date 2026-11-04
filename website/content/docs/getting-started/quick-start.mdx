@@ -45,9 +45,11 @@ It prints `Dry run: nothing was written.`, the module, the selection
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
 ```
 
-`--arch` chooses the architecture: `mvc` organizes the code by layer, and
+`--arch` chooses the architecture: `mvc` organizes the code by layer,
 `vertical-slice` by feature (see
-[With the vertical-slice architecture](#with-the-vertical-slice-architecture)).
+[With the vertical-slice architecture](#with-the-vertical-slice-architecture)),
+and `ddd` in domain-driven layers (see
+[With the ddd architecture](#with-the-ddd-architecture)).
 `--framework` picks the HTTP framework: `nethttp` (the standard library),
 `chi`, or `gin`. `--db` picks the database: `sqlite` or `postgres` (see
 [Use PostgreSQL](#use-postgresql)). `--data` picks the data access: `sqlc` or
@@ -247,6 +249,30 @@ gobento new shop --module example.com/shop --arch vertical-slice --framework net
 
 The generated README explains the layout and how to add a second feature,
 such as `internal/orders`, beside `internal/items`.
+
+## With the ddd architecture
+
+`--arch ddd` arranges the same components in domain-driven,
+ports-and-adapters layers, and adds an application service between the HTTP
+handlers and the store:
+
+```sh
+gobento new shop --module example.com/shop --arch ddd --framework nethttp --db sqlite --data sqlc
+```
+
+| Path                             | Filled by    | Contents                                                                                       |
+| -------------------------------- | ------------ | ---------------------------------------------------------------------------------------------- |
+| `cmd/shop/main.go`               | architecture | The entry point; it gives the handlers the application service instead of the store            |
+| `internal/domain/`               | architecture | The `Item` entity, the rule for item names, the `ItemStore` port (`domain.go`), and a test     |
+| `internal/app/`                  | architecture | `ItemService`, which checks the domain rule and stores items through `ItemStore`, and its test |
+| `internal/adapters/httpapi/`     | framework    | The handlers, `NewRouter` with `/health`, and their tests                                      |
+| `internal/adapters/persistence/` | data access  | `queries.sql`, the `New` adapter, its test, and the `sqlcgen` subpackage                       |
+| `internal/adapters/database/`    | database     | `Open` and `schema.sql`                                                                        |
+
+Dependencies point inward: the adapters and `internal/app` import
+`internal/domain`, which imports no other package of the project, and only
+`cmd/shop` connects the adapters to the service. The generated README explains
+the layers and how to add a second aggregate, such as `Order`, next to `Item`.
 
 ## Use PostgreSQL
 

@@ -68,7 +68,8 @@ covers every platform, including Windows. To build from a clone instead, run
 `make build` or `go install ./cmd/gobento`.
 
 Generate a project. Choose the architecture with `--arch` (`mvc` organizes the
-code by layer, `vertical-slice` by feature), the HTTP framework with
+code by layer, `vertical-slice` by feature, `ddd` in domain-driven layers with
+an application service), the HTTP framework with
 `--framework` (`nethttp`, `chi`, or `gin`), the database with `--db`
 (`sqlite` or `postgres`), and the data access with `--data` (`sqlc` or
 `gorm`). A component kind with a single option is chosen automatically, and
@@ -89,6 +90,9 @@ More examples:
 ```sh
 # Organize the code by feature instead of by layer
 gobento new shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc
+
+# Use domain-driven design: a domain, an application service, and adapters
+gobento new shop --arch ddd --framework gin --db postgres --data gorm
 
 # Use GORM instead of sqlc for data access
 gobento new shop --arch mvc --framework nethttp --db sqlite --data gorm
@@ -167,6 +171,25 @@ shop/
 └── ...                    # go.mod, go.sum, README.md, .gitignore
 ```
 
+With `--arch ddd`, the domain is at the center, an application service runs
+the use cases on it, and the components become adapters around them. Only
+`main.go` connects the layers, and the generated README explains how to add
+the next aggregate.
+
+```text
+shop/
+├── cmd/shop/main.go       # config from env, wiring of every layer, graceful shutdown
+├── internal/
+│   ├── domain/            # Item entity, rule for item names, ItemStore port, tests
+│   ├── app/               # ItemService: the item use cases, tests
+│   └── adapters/
+│       ├── httpapi/       # router, health and items handlers, tests
+│       ├── persistence/   # sqlc queries, adapter, tests; generated code in sqlcgen/
+│       └── database/      # opens SQLite, applies the embedded schema
+├── sqlc.yaml
+└── ...                    # go.mod, go.sum, README.md, .gitignore
+```
+
 With `--data gorm`, `internal/store/` holds a [GORM](https://gorm.io/) store
 and its test instead, there is no `sqlc.yaml`, and the tables still come only
 from the database's embedded schema (no `AutoMigrate`). Both stacks build
@@ -201,7 +224,7 @@ flowchart LR
 - [ ] Frontends: React, Vue, and Svelte via Vite; htmx + templ
 - [ ] Tailwind CSS
 - [x] More architectures: vertical slice
-- [ ] More architectures: DDD
+- [x] More architectures: DDD
 - [x] Releases with prebuilt binaries via GoReleaser (v0.1.0)
 
 Have an idea? Open a

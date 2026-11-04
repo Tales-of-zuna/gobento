@@ -173,6 +173,29 @@ describe('trayCells and fileTree', () => {
       'platform/database/',
     ]);
   });
+
+  it('shows the domain, application, and adapter packages for ddd', () => {
+    // The frozen fixture predates ddd, so add it the way catalog.json lists it.
+    const withDDD = catalogWith((data) => {
+      data.components.unshift({
+        id: 'architecture/ddd',
+        kind: 'architecture',
+        name: 'ddd',
+        title: 'Domain-driven design',
+        description: 'A domain package, an application service, and adapters.',
+        provides: {},
+        requires: {},
+      });
+    });
+    const ddd = withArch('ddd');
+    expect(fileTree(withDDD, ddd, true).flatMap((l) => (l.depth === 2 ? [l.label] : []))).toEqual([
+      'adapters/database/',
+      'adapters/httpapi/',
+      'adapters/persistence/',
+      'app/',
+      'domain/',
+    ]);
+  });
 });
 
 describe('blockedMessage', () => {

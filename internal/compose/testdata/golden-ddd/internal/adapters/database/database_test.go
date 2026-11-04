@@ -1,0 +1,52 @@
+package database
+
+import (
+	"context"
+	"path/filepath"
+	"testing"
+)
+
+func TestOpenAppliesSchema(t *testing.T) {
+	ctx := context.Background()
+	db, err := Open(ctx, filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	// Windows cannot remove open files, so close before TempDir cleanup.
+	t.Cleanup(func() { _ = db.Close() })
+
+	if _, err := db.ExecContext(ctx, "INSERT INTO items (name) VALUES ('x')"); err != nil {
+		t.Fatalf("insert into items: %v", err)
+	}
+	var n int
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM items").Scan(&n); err != nil {
+		t.Fatalf("count items: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("items = %d, want 1", n)
+	}
+}
+
+func TestOpenTwiceKeepsData(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "test.db")
+	for i := range 2 {
+		db, err := Open(ctx, path)
+		if err != nil {
+			t.Fatalf("Open() #%d error = %v", i+1, err)
+		}
+		if i == 0 {
+			if _, err := db.ExecContext(ctx, "INSERT INTO items (name) VALUES ('x')"); err != nil {
+				t.Fatal(err)
+			}
+		} else {
+			var n int
+			if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM items").Scan(&n); err != nil || n != 1 {
+				t.Errorf("after reopening: items = %d, err = %v, want 1", n, err)
+			}
+		}
+		if err := db.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
