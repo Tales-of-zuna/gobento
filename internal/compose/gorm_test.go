@@ -25,6 +25,8 @@ func composeDefaults(t *testing.T, cat *catalog.Catalog, sel catalog.Selection) 
 		Project:   Project{Name: "shop", Module: "example.com/shop", GoVersion: "1.27"},
 		Selection: sel,
 		Versions:  res.Versions(),
+		Base:      cat.Base(),
+		Tooling:   res.Tooling,
 	})
 	if err != nil {
 		t.Fatalf("Compose(%s) error = %v", sel, err)

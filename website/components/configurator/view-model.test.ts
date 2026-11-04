@@ -158,8 +158,36 @@ describe('trayCells and fileTree', () => {
     expect(fileTree(catalog, { ...defaults, name: 'My App' }, false)[0]!.label).toBe('<name>/');
   });
 
-  const internal = (state: typeof defaults) =>
-    fileTree(catalog, state, true).flatMap((l) => (l.depth === 2 ? [l.label] : []));
+  /** The labels inside internal/ of the tree. */
+  const internal = (state: typeof defaults, from = catalog) => {
+    const tree = fileTree(from, state, true);
+    const start = tree.findIndex((l) => l.label === 'internal/');
+    const end = tree.findIndex((l, i) => i > start && l.depth < 2);
+    return tree.slice(start + 1, end).map((l) => l.label);
+  };
+
+  it('lists the tooling every project gets', () => {
+    const tree = fileTree(catalog, { ...mvc, name: 'shop' }, true).map((l) => [l.depth, l.label]);
+    expect(tree).toEqual([
+      [0, 'shop/'],
+      [1, '.github/'],
+      [2, 'dependabot.yml'],
+      [2, 'workflows/ci.yml'],
+      [1, 'cmd/shop/main.go'],
+      [1, 'internal/'],
+      [2, 'controllers/'],
+      [2, 'database/'],
+      [2, 'models/'],
+      [2, 'store/'],
+      [1, '.dockerignore'],
+      [1, '.golangci.yml'],
+      [1, 'Dockerfile'],
+      [1, 'Makefile'],
+      [1, 'sqlc.yaml'],
+      [1, 'go.mod'],
+      [1, 'README.md'],
+    ]);
+  });
 
   it('shows the layered packages for mvc', () => {
     expect(internal(mvc)).toEqual(['controllers/', 'database/', 'models/', 'store/']);
@@ -188,7 +216,7 @@ describe('trayCells and fileTree', () => {
       });
     });
     const ddd = withArch('ddd');
-    expect(fileTree(withDDD, ddd, true).flatMap((l) => (l.depth === 2 ? [l.label] : []))).toEqual([
+    expect(internal(ddd, withDDD)).toEqual([
       'adapters/database/',
       'adapters/httpapi/',
       'adapters/persistence/',

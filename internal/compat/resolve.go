@@ -45,6 +45,8 @@ type Resolved struct {
 	Go string
 	// Modules lists every module the selection uses, sorted by path.
 	Modules []ModuleVersion
+	// Tooling holds the tooling versions for the chosen Go version.
+	Tooling ToolingVersions
 }
 
 // ModuleVersion is one module with its chosen version.
@@ -126,6 +128,7 @@ func (r *Rules) Resolve(req Request) (Resolved, error) {
 	if err := errors.Join(errs...); err != nil {
 		return Resolved{}, err
 	}
+	res.Tooling = r.Tooling.Resolve(res.Go)
 	return res, nil
 }
 

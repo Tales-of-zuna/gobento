@@ -36,6 +36,9 @@ type Rules struct {
 	Go GoRule
 	// Modules lists every module used by some component, sorted by path.
 	Modules []Module
+	// Tooling lists the versions of the project tooling that are not Go
+	// modules: container images, GitHub Actions, and tools.
+	Tooling Tooling
 }
 
 // GoRule describes the supported Go versions for generated projects.
@@ -124,6 +127,7 @@ type rulesFile struct {
 		Default string `yaml:"default"`
 	} `yaml:"go"`
 	Modules map[string]moduleFile `yaml:"modules"`
+	Tooling toolingFile           `yaml:"tooling"`
 }
 
 type moduleFile struct {
@@ -143,7 +147,8 @@ type constraintFile struct {
 // ParseRules parses and validates a rules file. It reports every problem it
 // finds, joined with errors.Join: unknown fields, malformed ranges or
 // versions, defaults outside their range, tool modules without an exact
-// range, and constraints that refer to unknown targets. References to
+// range, constraints that refer to unknown targets, and malformed tooling
+// entries. References to
 // components are checked separately with CheckComponents, because the
 // component catalog is loaded elsewhere.
 func ParseRules(data []byte) (*Rules, error) {
@@ -179,6 +184,10 @@ func ParseRules(data []byte) (*Rules, error) {
 		rules.Modules = append(rules.Modules, m)
 		errs = append(errs, merrs...)
 	}
+
+	tooling, terrs := parseTooling(file.Tooling)
+	rules.Tooling = tooling
+	errs = append(errs, terrs...)
 
 	if err := errors.Join(errs...); err != nil {
 		return nil, fmt.Errorf("invalid rules: %w", err)

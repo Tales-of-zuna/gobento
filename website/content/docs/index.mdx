@@ -21,7 +21,10 @@ gobento new shop --module example.com/shop --arch mvc --framework chi --db postg
 ```
 
 The generated project builds, passes `go vet` and `gofmt`, and passes its own
-tests without any edits from you.
+tests without any edits from you. It comes with its
+[tooling](/docs/concepts/project-tooling): a Makefile, a multi-stage
+Dockerfile for a static, non-root image, a GitHub Actions workflow, and
+golangci-lint and Dependabot configuration.
 
 ## Why it exists
 

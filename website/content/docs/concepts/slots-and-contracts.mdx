@@ -104,7 +104,11 @@ The nested directory still belongs only to its own slot: if the outer slot's
 owner has a template that would land inside it, composition fails.
 
 Components may also add files at the project root, such as `sqlc.yaml`. Those
-paths are checked for conflicts like any other file.
+paths are checked for conflicts like any other file. The tooling files at the
+root (`Makefile`, `Dockerfile`, the CI workflow, ...) belong to gobento's base
+layer; components add to them through
+[contribution points](/docs/concepts/project-tooling#how-components-extend-the-tooling)
+rather than writing them.
 
 ## Architecture-owned contracts
 
@@ -185,6 +189,8 @@ collects every problem and reports them together:
 | Two slots render to the same directory                                  | the architecture and both slots             |
 | A slot's template would land inside a slot nested in its directory      | the component, the file, and the inner slot |
 | Two components produce the same file                                    | both components and the path                |
+| A component produces a file of the base layer, such as `Makefile`       | the component, `base`, and the path         |
+| A base template names a contribution point `base.yaml` does not declare | the template and the point                  |
 | A root file lies inside a slot directory                                | the component, the path, and the slot       |
 | A component produces `go.mod` or `go.sum`, which gobento writes         | the component and the file                  |
 | A required trait is not met, or two components provide different values | the components and the trait                |

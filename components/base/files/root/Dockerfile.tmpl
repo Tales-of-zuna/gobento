@@ -1,0 +1,35 @@
+# Builds a small container image of {{.Project.Name}}: the build stage compiles a
+# static binary with cgo disabled, and the runtime stage holds only that
+# binary on a distroless image, without a shell or package manager, run as
+# the non-root user 65532.
+#
+#   docker build --tag {{.Project.Name}} .
+#   docker run --rm --publish 8080:8080 {{.Project.Name}}
+#
+# The cache mounts need BuildKit, the default builder of Docker 23 and later.
+
+FROM {{.Images.go}} AS build
+WORKDIR /src
+
+# Download the modules in a layer of their own, so that changing the code
+# does not download them again.
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+
+COPY . .
+{{- with contrib "docker-build"}}
+{{.}}
+{{- end}}
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/{{.Project.Name}} ./{{.Slots.entry.Dir}}
+
+FROM {{.Images.runtime}}
+COPY --from=build /out/{{.Project.Name}} /usr/local/bin/{{.Project.Name}}
+{{- with contrib "docker-runtime"}}
+{{.}}
+{{- end}}
+ENV PORT=8080
+EXPOSE 8080
+USER 65532:65532
+ENTRYPOINT ["/usr/local/bin/{{.Project.Name}}"]

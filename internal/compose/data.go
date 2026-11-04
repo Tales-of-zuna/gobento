@@ -16,6 +16,17 @@ type Data struct {
 	// Versions maps module paths to their chosen versions, for example
 	// {{index .Versions "modernc.org/sqlite"}}.
 	Versions map[string]string
+	// Images maps the image keys of the rules file's tooling section to
+	// full references (name:tag, then @digest when pinned), for example
+	// {{.Images.runtime}}.
+	Images map[string]string
+	// Actions maps GitHub Action references to complete values for uses:,
+	// the commit SHA followed by a version comment, for example
+	// {{index .Actions "actions/checkout"}}.
+	Actions map[string]string
+	// Tools maps tool names to their exact versions, for example
+	// {{index .Tools "golangci-lint"}}.
+	Tools map[string]string
 }
 
 // Project describes the generated project.

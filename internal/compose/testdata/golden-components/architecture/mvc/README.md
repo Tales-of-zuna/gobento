@@ -88,7 +88,9 @@ which it drops when it ends, so the tests never touch the application's tables:
 TEST_DATABASE_URL='postgres://postgres:postgres@localhost:5432/shop?sslmode=disable' go test ./...
 ```
 
-Run `go test -v ./...` to see which tests were skipped.
+Run `go test -v ./...` to see which tests were skipped. The CI workflow
+starts a PostgreSQL service and sets `TEST_DATABASE_URL`, so these tests run
+on every pull request.
 
 ### Schema
 
@@ -106,3 +108,57 @@ connection opened by `internal/database`. The tables are defined only in
 call `AutoMigrate`, so the schema file stays the single source of truth. When
 you add a column, add it to the schema and to the struct in
 `internal/store/store.go`.
+
+## Development
+
+`make` lists the tasks of the `Makefile`. Each one runs plain `go` or
+`docker` commands, so without make (for example on Windows) run the command
+next to it instead:
+
+| Task | With make | Without make |
+|---|---|---|
+| Build the binary into `bin/` | `make build` | `go build -o bin/shop ./cmd/shop` |
+| Run the server | `make run` | `go run ./cmd/shop` |
+| Run the tests | `make test` | `go test ./...` |
+| Run the tests with coverage | `make cover` | `go test -coverprofile=coverage.out ./...` |
+| Vet the code | `make vet` | `go vet ./...` |
+| Lint and check formatting | `make lint` | `go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0 run` |
+| Format the code | `make fmt` | `go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0 fmt` |
+| Tidy `go.mod` and `go.sum` | `make tidy` | `go mod tidy` |
+| Run vet, lint, and the tests | `make check` | the three commands above |
+| Build the container image | `make docker-build` | `docker build --tag shop .` |
+| Run the container image | `make docker-run` | `docker run --rm --publish 8080:8080 shop` |
+
+On Windows, `go build` needs `-o bin/shop.exe`; `make build` adds the
+`.exe` itself. The linter's configuration is in `.golangci.yml`.
+
+### Docker
+
+The `Dockerfile` builds a static binary with cgo disabled and copies it into
+a distroless image, which has no shell or package manager and runs the
+server as the non-root user 65532 on port 8080. Building needs BuildKit, the
+default builder of Docker 23 and later. The image reads `PORT` and
+`DATABASE_URL` like the binary; `make docker-run DATABASE_URL=...` passes a
+connection string to it.
+
+Inside the container, `localhost` is the container itself, so the default
+`DATABASE_URL` finds no server. Pass the server's address; a server on the
+Docker host, such as the one started above, is `host.docker.internal`, which
+`make docker-run` maps to the host:
+
+```sh
+make docker-run DATABASE_URL='postgres://postgres:postgres@host.docker.internal:5432/shop?sslmode=disable'
+```
+
+Without make, add `--add-host=host.docker.internal:host-gateway` and
+`--env DATABASE_URL=...` to `docker run`. A firewall on the host must let the
+container reach the server's port; a server in another container is easier to
+reach on a shared Docker network.
+
+### Continuous integration
+
+`.github/workflows/ci.yml` runs on every pull request and every push to
+`main`. It checks that `go.mod` and `go.sum` are tidy, builds, vets, lints,
+and runs the tests with the race detector, and it builds the container
+image. Its actions are pinned by commit SHA, and the runtime image by
+digest; `.github/dependabot.yml` keeps them, and the Go modules, up to date.

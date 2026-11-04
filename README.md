@@ -145,6 +145,14 @@ are maintained. With PostgreSQL, the database tests run when
 `TEST_DATABASE_URL` names a server and are skipped otherwise, so
 `go test ./...` passes anywhere.
 
+Every project also gets its developer tooling: a `Makefile` (`make` lists the
+tasks; the README gives the plain `go` command for each, for Windows), a
+multi-stage `Dockerfile` that builds a static binary into a distroless,
+non-root image, a GitHub Actions workflow that checks, lints, and tests every
+pull request (with a PostgreSQL service when you choose PostgreSQL), and
+Dependabot and golangci-lint configuration. Image versions and action SHAs
+come from gobento's rules file, like every other version.
+
 The reference stack (`mvc`, `nethttp`, `sqlite`, `sqlc`) generates a project
 like this, with a health endpoint and one example resource that builds and
 passes its own tests:
@@ -158,6 +166,13 @@ shop/
 │   ├── database/          # opens SQLite or PostgreSQL, applies the embedded schema
 │   │   └── dbtest/        # a fresh database for each test
 │   └── store/             # sqlc queries, adapter, tests; generated code in sqlcgen/
+├── .github/
+│   ├── workflows/ci.yml   # tidy check, build, vet, lint, tests, image build
+│   └── dependabot.yml     # updates for modules, actions, and base images
+├── Dockerfile             # static build, distroless non-root runtime image
+├── .dockerignore
+├── Makefile               # make build, test, lint, docker-build, ...
+├── .golangci.yml
 ├── sqlc.yaml
 ├── go.mod
 ├── go.sum
@@ -179,7 +194,7 @@ shop/
 │   └── platform/
 │       └── database/      # opens SQLite, applies the embedded schema
 ├── sqlc.yaml
-└── ...                    # go.mod, go.sum, README.md, .gitignore
+└── ...                    # go.mod, go.sum, README.md, .gitignore, tooling
 ```
 
 With `--arch ddd`, the domain is at the center, an application service runs
@@ -198,7 +213,7 @@ shop/
 │       ├── persistence/   # sqlc queries, adapter, tests; generated code in sqlcgen/
 │       └── database/      # opens SQLite, applies the embedded schema
 ├── sqlc.yaml
-└── ...                    # go.mod, go.sum, README.md, .gitignore
+└── ...                    # go.mod, go.sum, README.md, .gitignore, tooling
 ```
 
 With `--data gorm`, `internal/store/` holds a [GORM](https://gorm.io/) store
@@ -224,6 +239,10 @@ flowchart LR
   that nothing was raised behind your back.
 - **Leave nothing behind.** gobento only fills a new or empty directory, and on
   any failure or Ctrl-C it cleans up after itself.
+- **Compose, never copy.** Components fill an architecture's slots, and a base
+  layer adds the tooling to every selection; components contribute to it
+  (for example the PostgreSQL service in CI), so there are no per-combination
+  templates.
 
 ## Roadmap
 

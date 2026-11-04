@@ -49,7 +49,9 @@ func TestGolden(t *testing.T) {
 
 // TestGoldenComponents composes, for every shipped component, the first
 // supported selection that contains it, and compares the files that
-// component contributes with testdata/golden-components/<kind>/<name>. This
+// component produces, and its contributions to the base layer as
+// contrib/<point>, with testdata/golden-components/<kind>/<name>. The base
+// layer's own files are part of every full golden (TestGolden). This
 // reviews the output of every component without one golden project per
 // combination. Components other than architectures are composed with the
 // reference architecture (that of goldens[0]) when it supports them, so
@@ -75,12 +77,21 @@ func TestGoldenComponents(t *testing.T) {
 				if i < 0 {
 					t.Fatalf("%s is in no supported selection", c.ID())
 				}
+				plan := planFor(t, cat, supported[i])
 				var files []File
-				for _, f := range planFor(t, cat, supported[i]).Files {
+				for _, f := range plan.Files {
 					if f.Component == c.ID() {
 						files = append(files, f)
 					}
 				}
+				// Contributions to the base layer's points are reviewed as
+				// contrib/<point> pseudo-files next to the component's files.
+				for _, k := range plan.Contributions {
+					if k.Component == c.ID() {
+						files = append(files, File{Path: "contrib/" + k.Point, Content: []byte(k.Content + "\n")})
+					}
+				}
+				slices.SortFunc(files, func(a, b File) int { return strings.Compare(a.Path, b.Path) })
 				checkGolden(t, filepath.Join(goldenComponentsDir, filepath.FromSlash(c.ID())), files)
 			})
 		}
@@ -196,6 +207,8 @@ func planFor(t *testing.T, cat *catalog.Catalog, sel catalog.Selection) *Plan {
 		Project:   Project{Name: "shop", Module: "example.com/shop", GoVersion: goVersion},
 		Selection: sel,
 		Versions:  res.Versions(),
+		Base:      cat.Base(),
+		Tooling:   res.Tooling,
 	})
 	if err != nil {
 		t.Fatalf("Compose() error = %v", err)

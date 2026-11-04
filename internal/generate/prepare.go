@@ -205,6 +205,8 @@ func Prepare(cat *catalog.Catalog, spec Spec) (*Prepared, error) {
 		Project:   compose.Project{Name: p.Name, Module: p.Module, GoVersion: goDirective},
 		Selection: sel,
 		Versions:  res.Versions(),
+		Base:      cat.Base(),
+		Tooling:   res.Tooling,
 	})
 	if err != nil {
 		return nil, err

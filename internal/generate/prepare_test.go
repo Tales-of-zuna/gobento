@@ -294,3 +294,22 @@ func TestCheckModule(t *testing.T) {
 		}
 	}
 }
+
+// TestPrepareRejectsToolingPins covers the spec scenario "Pin for a tooling
+// entry": tooling versions are not modules and cannot be pinned.
+func TestPrepareRejectsToolingPins(t *testing.T) {
+	t.Parallel()
+
+	cat := shippedCatalog(t)
+	_, err := Prepare(cat, Spec{
+		Name: "shop",
+		Components: map[catalog.Kind]string{
+			catalog.KindArchitecture: "mvc", catalog.KindFramework: "nethttp",
+			catalog.KindDatabase: "sqlite", catalog.KindData: "sqlc",
+		},
+		Pins: map[string]string{"golangci-lint": "v2.15.0"},
+	})
+	if !errors.Is(err, compat.ErrNotSelected) {
+		t.Fatalf("Prepare() error = %v, want %v", err, compat.ErrNotSelected)
+	}
+}

@@ -1,0 +1,14 @@
+# Keep the build context small and free of local state; the image is built
+# from the sources only.
+.git
+.github
+bin/
+coverage.out
+Dockerfile
+.dockerignore
+.env
+/{{.Project.Name}}
+/{{.Project.Name}}.exe
+{{- with contrib "dockerignore"}}
+{{.}}
+{{- end}}

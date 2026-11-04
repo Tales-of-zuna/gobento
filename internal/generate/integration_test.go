@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -20,9 +21,11 @@ import (
 // command, and checks that each project builds (also with cgo disabled),
 // vets, passes its tests, is formatted, has exactly the chosen versions, and
 // keeps the handlers package independent of the database and store
-// packages and the contract package independent of every other package. It
-// needs network access to the module proxy and is skipped with
-// -short.
+// packages and the contract package independent of every other package.
+// With the default versions it also checks the generated tooling: actionlint
+// accepts the workflow, golangci-lint passes with the generated
+// configuration, and, where make is installed, the Makefile's targets work.
+// It needs network access to the module proxy and is skipped with -short.
 func TestIntegration(t *testing.T) {
 	skipIntegration(t)
 	cat := shippedCatalog(t)
@@ -30,9 +33,74 @@ func TestIntegration(t *testing.T) {
 	if len(supported) == 0 {
 		t.Fatal("no supported selections")
 	}
+	tools := installTools(t, cat)
 	for _, sel := range supported {
-		checkSelection(t, cat, sel)
+		checkSelection(t, cat, sel, tools)
 	}
+}
+
+// actionlintVersion is the actionlint version that checks generated
+// workflows; gobento's own CI uses the same one.
+const actionlintVersion = "v1.7.12"
+
+// lintTools are the linters for generated projects, installed once per test
+// run.
+type lintTools struct {
+	actionlint   string
+	golangciLint string
+	make         string // "" if make is not installed
+}
+
+// installTools installs actionlint and the golangci-lint version of the
+// rules file into a temporary directory, and looks up make.
+func installTools(t *testing.T, cat *catalog.Catalog) lintTools {
+	t.Helper()
+	version, ok := cat.Rules().Tooling.Tools["golangci-lint"]
+	if !ok {
+		t.Fatal("versions.yaml has no golangci-lint tool")
+	}
+	bin := t.TempDir()
+	env := []string{"GOBIN=" + bin}
+	runInEnv(t, bin, env, "go", "install", "github.com/rhysd/actionlint/cmd/actionlint@"+actionlintVersion)
+	runInEnv(t, bin, env, "go", "install", "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@"+version)
+	tools := lintTools{
+		actionlint:   filepath.Join(bin, "actionlint"+exeSuffix()),
+		golangciLint: filepath.Join(bin, "golangci-lint"+exeSuffix()),
+	}
+	if p, err := exec.LookPath("make"); err == nil {
+		tools.make = p
+	}
+	return tools
+}
+
+// exeSuffix returns the file name suffix of executables.
+func exeSuffix() string {
+	if runtime.GOOS == "windows" {
+		return ".exe"
+	}
+	return ""
+}
+
+// checkTooling covers the spec scenarios "Valid workflow", "Fresh project
+// lints clean", "Build with make", and "Default target".
+func checkTooling(t *testing.T, dir string, tools lintTools) {
+	t.Helper()
+	runIn(t, dir, tools.actionlint, filepath.Join(".github", "workflows", "ci.yml"))
+	if tools.make == "" {
+		// Without make, run what make lint runs.
+		runIn(t, dir, tools.golangciLint, "run")
+		return
+	}
+	if out := runIn(t, dir, tools.make); !strings.Contains(out, "docker-build") {
+		t.Errorf("make lists no docker-build target:\n%s", out)
+	}
+	runIn(t, dir, tools.make, "build")
+	if _, err := os.Stat(filepath.Join(dir, "bin", "shop"+exeSuffix())); err != nil {
+		t.Errorf("make build: %v", err)
+	}
+	// Forward slashes: make on Windows runs recipes with sh, which would
+	// drop the backslashes of a Windows path.
+	runIn(t, dir, tools.make, "lint", "GOLANGCI_LINT="+filepath.ToSlash(tools.golangciLint))
 }
 
 func skipIntegration(t *testing.T) {
@@ -47,7 +115,7 @@ func skipIntegration(t *testing.T) {
 
 // checkSelection generates sel with the defaults and with the floors and
 // checks each project.
-func checkSelection(t *testing.T, cat *catalog.Catalog, sel catalog.Selection) {
+func checkSelection(t *testing.T, cat *catalog.Catalog, sel catalog.Selection, tools lintTools) {
 	t.Helper()
 	for _, variant := range []string{"defaults", "floors"} {
 		t.Run(strings.ReplaceAll(sel.String(), "/", "-")+"/"+variant, func(t *testing.T) {
@@ -80,6 +148,9 @@ func checkSelection(t *testing.T, cat *catalog.Catalog, sel catalog.Selection) {
 			checkPins(t, dir, p.Versions)
 			checkHandlersContract(t, dir, p)
 			checkLayers(t, dir, p)
+			if variant == "defaults" {
+				checkTooling(t, dir, tools)
+			}
 		})
 	}
 }

@@ -224,7 +224,13 @@ memory. It lists every file that would be created, including `go.mod` and
 $ gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --dry-run
 Dry run: nothing was written.
 gobento would create example.com/shop (mvc/nethttp/sqlite/sqlc, Go 1.27) in shop with these files:
+  .dockerignore
+  .github/dependabot.yml
+  .github/workflows/ci.yml
   .gitignore
+  .golangci.yml
+  Dockerfile
+  Makefile
   README.md
   cmd/shop/main.go
   go.mod
@@ -253,6 +259,9 @@ under `internal/domain/`, `internal/adapters/httpapi/`,
 `internal/adapters/persistence/`, and `internal/adapters/database/`, plus the
 application service in `internal/app/items.go`, its test, and the domain's
 test.
+The [tooling files](/docs/concepts/project-tooling) at the top
+(`Makefile`, `Dockerfile`, `.dockerignore`, `.golangci.yml`, and `.github/`)
+are the same for every architecture.
 
 - It writes nothing and creates no directory.
 - It does not run the Go toolchain, so it needs neither Go nor access to the

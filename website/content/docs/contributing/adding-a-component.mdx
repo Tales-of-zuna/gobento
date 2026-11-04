@@ -30,7 +30,9 @@ gobento builds a project from four components, one of each kind:
 
 There is no template per combination. An architecture declares _slots_, each
 of the other components fills a slot, and _traits_ say which components fit
-together.
+together. gobento's _base layer_ adds the [project tooling](/docs/concepts/project-tooling)
+to every selection, and components extend it through
+[contribution points](#contributing-to-the-tooling).
 
 ## Directory layout
 
@@ -45,6 +47,9 @@ only:
       <Folder name="<name>" defaultOpen>
         <File name="component.yaml" />
         <File name="notes.md.tmpl" />
+        <Folder name="contrib" defaultOpen>
+          <File name="<point>.tmpl" />
+        </Folder>
         <Folder name="files" defaultOpen>
           <Folder name="<slot>" defaultOpen>
             <File name="<file>.tmpl" />
@@ -66,6 +71,12 @@ only:
 | `files/<slot>/<file>.tmpl` | Rendered into that slot's directory, for example `files/store/` for the store slot.                                  |
 | `files/root/<file>.tmpl`   | Rendered into the project root, for example `sqlc.yaml`. Root paths are checked for conflicts with other components. |
 | `notes.md.tmpl`            | Optional notes appended to the generated README.                                                                     |
+| `contrib/<point>.tmpl`     | Optional [contributions](#contributing-to-the-tooling) to the base layer's tooling files, one per point.             |
+
+The base layer lives next to the kinds, in `components/base/`: `base.yaml`
+(its title and contribution points), `notes.md.tmpl` (the README's
+Development section), and `files/root/` (the tooling files). It has no other
+files and no slots.
 
 For example, `components/framework/nethttp/files/handlers/router.go.tmpl`
 becomes `internal/controllers/router.go`, because `mvc` puts the `handlers`
@@ -208,16 +219,25 @@ To change the API, change every framework and the shared test together.
 Templates use Go's [`text/template`](https://pkg.go.dev/text/template). Every
 template, including slot directories and notes, receives the same data:
 
-| Field                   | Example                                    | Meaning                                      |
-| ----------------------- | ------------------------------------------ | -------------------------------------------- |
-| `.Project.Name`         | `shop`                                     | The project name                             |
-| `.Project.Module`       | `example.com/shop`                         | The module path                              |
-| `.Project.GoVersion`    | `1.27.0`                                   | The `go` directive of the generated `go.mod` |
-| `.Slots.<name>.Dir`     | `internal/controllers`                     | The slot's directory                         |
-| `.Slots.<name>.Package` | `controllers`                              | The slot's package name                      |
-| `.Slots.<name>.Import`  | `example.com/shop/internal/controllers`    | The slot's import path                       |
-| `.Traits`               | `{{index .Traits "sql-dialect"}}`          | The traits of the selection                  |
-| `.Versions`             | `{{index .Versions "modernc.org/sqlite"}}` | The chosen version of each module            |
+| Field                   | Example                                    | Meaning                                           |
+| ----------------------- | ------------------------------------------ | ------------------------------------------------- |
+| `.Project.Name`         | `shop`                                     | The project name                                  |
+| `.Project.Module`       | `example.com/shop`                         | The module path                                   |
+| `.Project.GoVersion`    | `1.27.0`                                   | The `go` directive of the generated `go.mod`      |
+| `.Slots.<name>.Dir`     | `internal/controllers`                     | The slot's directory                              |
+| `.Slots.<name>.Package` | `controllers`                              | The slot's package name                           |
+| `.Slots.<name>.Import`  | `example.com/shop/internal/controllers`    | The slot's import path                            |
+| `.Traits`               | `{{index .Traits "sql-dialect"}}`          | The traits of the selection                       |
+| `.Versions`             | `{{index .Versions "modernc.org/sqlite"}}` | The chosen version of each module                 |
+| `.Images`               | `{{.Images.postgres}}`                     | Container images, as `image:tag[@digest]`         |
+| `.Actions`              | `{{index .Actions "actions/checkout"}}`    | GitHub Actions, as `owner/repo@<sha> # <version>` |
+| `.Tools`                | `{{index .Tools "golangci-lint"}}`         | Tool versions                                     |
+
+`.Images`, `.Actions`, and `.Tools` come from the
+[tooling section](/docs/concepts/version-rules#tooling-versions) of the rules
+file. Every template may also use two functions: `indent N TEXT` puts `N`
+spaces before every non-empty line, and `prefix P TEXT` puts `P` there (for
+example `"\t"`).
 
 This data shape is the contributor API, and the golden test covers it. Use
 `index` for keys that contain `-`, `.`, or `/`. A missing key is an error, not
@@ -269,6 +289,48 @@ starts with a `## Database` section (the architecture's README links to it)
 that explains the default `DATABASE_URL`, the tests, and how the schema is
 applied, `sqlc` shows how to regenerate its code, and `gorm` explains that the
 schema file, not `AutoMigrate`, defines the tables.
+
+### Contributing to the tooling
+
+The base layer owns the tooling files (`Makefile`, `Dockerfile`,
+`.dockerignore`, `.github/workflows/ci.yml`, `.github/dependabot.yml`, and
+`.golangci.yml`); a component that produces one of them is rejected like any
+other path conflict. When your component needs something in them, write a
+contribution for one of the points that `components/base/base.yaml` declares:
+
+| Point            | Inserted                                                           | Format                                            |
+| ---------------- | ------------------------------------------------------------------ | ------------------------------------------------- |
+| `make`           | In the `Makefile`, after the variables                             | Make lines, for example `DOCKER_RUN_FLAGS += ...` |
+| `make-generate`  | As the recipe of `make generate` (the target exists only with one) | One command per line, without the tab             |
+| `ci-services`    | Under `services:` of the CI job                                    | YAML mapping entries                              |
+| `ci-env`         | Under `env:` of the CI job                                         | YAML mapping entries                              |
+| `ci-steps`       | In the CI job, after Go is set up, before the tidy check and build | YAML sequence entries (`- name: ...`)             |
+| `docker-build`   | In the Dockerfile's build stage, after the sources are copied      | Dockerfile instructions                           |
+| `docker-runtime` | In the runtime stage, before `USER` (no shell there, so no `RUN`)  | Dockerfile instructions                           |
+| `dockerignore`   | At the end of `.dockerignore`                                      | Patterns                                          |
+| `readme-docker`  | In the README's Docker section                                     | Markdown                                          |
+
+Write the contribution at column zero; the base templates indent it. It is
+rendered with the same data as every template, trimmed of leading and trailing
+newlines, and joined with the other components' contributions to that point in
+kind order. Like templates, it may depend on traits, never on which other
+component is selected. PostgreSQL, for example, adds its CI service:
+
+```yaml title="components/database/postgres/contrib/ci-services.tmpl"
+postgres:
+  image: { { .Images.postgres } }
+  env:
+    POSTGRES_PASSWORD: postgres
+  ports:
+    - 5432:5432
+```
+
+A contribution to a point that `base.yaml` does not declare fails when the
+catalog loads, listing the declared points. When no point fits (a new kind
+might need, say, a step in a job of its own), add one: an entry with a
+description in `base.yaml` and one `{{contrib "<point>"}}` in the base
+template where it belongs; only the base layer's templates may call
+`contrib`. Other components need no change.
 
 ### Composition errors
 
@@ -424,7 +486,9 @@ compare the whole project with `internal/compose/testdata/golden/` (`mvc`),
 `internal/compose/testdata/golden-ddd/` (`ddd`). They also compose, for every
 component, the first supported selection that contains it (with `mvc`, unless
 the component is an architecture), and compare the files that component contributes with
-`internal/compose/testdata/golden-components/<kind>/<name>/`. Another test
+`internal/compose/testdata/golden-components/<kind>/<name>/`; its
+contributions to the tooling are there too, as `contrib/<point>` files. The
+base layer's own files are part of every full golden. Another test
 checks that every framework's files are the same under every architecture
 apart from package names and import paths. A new component needs its golden
 files, and an intended output change needs them refreshed. Regenerate them
@@ -445,7 +509,12 @@ floors. For each project it runs `go build`, `go vet`, `go test`, `gofmt -l`,
 `go mod verify`, and `go build` again with `CGO_ENABLED=0` (generated projects
 must build without a C compiler), checks the `go.mod` pins, and checks with
 `go list -deps` that the handlers package does not import the database or
-store packages.
+store packages. With the default versions it also checks the tooling: it runs
+actionlint on `.github/workflows/ci.yml` and golangci-lint with the generated
+`.golangci.yml`, and, where `make` is installed, `make`, `make build`, and
+`make lint`. `TestIntegrationDocker` builds the images of one SQLite and one
+PostgreSQL project and runs the SQLite one; it is skipped without a Docker
+daemon that runs Linux containers.
 
 It needs network access and is skipped with `-short`. Run it with:
 
