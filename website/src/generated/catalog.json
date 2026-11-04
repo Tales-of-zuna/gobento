@@ -309,6 +309,51 @@
       "source": "https://registry.npmjs.org/htmx.org/-/htmx.org-2.0.11.tgz"
     }
   ],
+  "tooling": {
+    "images": [
+      {
+        "key": "go",
+        "image": "golang",
+        "tag": "{go}",
+        "digest": ""
+      },
+      {
+        "key": "postgres",
+        "image": "postgres",
+        "tag": "18-alpine",
+        "digest": ""
+      },
+      {
+        "key": "runtime",
+        "image": "gcr.io/distroless/static-debian13",
+        "tag": "nonroot",
+        "digest": "sha256:25ac8f0c3b2334a9eb05452266bd4697864a8c8ef0ef71e5e6480d7f92868329"
+      }
+    ],
+    "actions": [
+      {
+        "name": "actions/checkout",
+        "version": "v7.0.1",
+        "sha": "3d3c42e5aac5ba805825da76410c181273ba90b1"
+      },
+      {
+        "name": "actions/setup-go",
+        "version": "v7.0.0",
+        "sha": "b7ad1dad31e06c5925ef5d2fc7ad053ef454303e"
+      },
+      {
+        "name": "golangci/golangci-lint-action",
+        "version": "v9.3.0",
+        "sha": "ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a"
+      }
+    ],
+    "tools": [
+      {
+        "name": "golangci-lint",
+        "version": "v2.15.0"
+      }
+    ]
+  },
   "supported": [
     {
       "architecture": "ddd",

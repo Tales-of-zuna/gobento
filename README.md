@@ -126,8 +126,8 @@ gobento new --help
 ```
 
 See what your gobento binary supports, from the catalog built into it: the
-components of each kind, the supported selections, and the Go and module
-versions. Add `--json` for scripts.
+components of each kind, the supported selections, and the Go, module,
+vendored asset, and tooling versions. Add `--json` for scripts.
 
 ```sh
 gobento list                              # everything

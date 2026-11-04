@@ -116,9 +116,12 @@ sorted by path: its role (`library` modules can be chosen with
 `gobento new --pin`, `tool` modules are fixed), its range and default, the
 components that use it, and the trait values it is limited to (`-` for none).
 Constraints between versions follow the table, and then the files components
-vendor from an upstream release, such as htmx, whose versions are fixed per
-gobento release and cannot be pinned. For example (the values are today's
-rules):
+vendor from an upstream release, such as htmx, and the
+[project tooling](/docs/concepts/project-tooling) versions: the container
+images (`{go}` in a tag is the selected Go version) with their digest when
+pinned, the GitHub Actions with their commit SHA, and the tools. Assets and
+tooling are fixed per gobento release and cannot be pinned. For example (the
+values are today's rules):
 
 ```text
 $ gobento list versions
@@ -141,6 +144,17 @@ Vendored assets (fixed per gobento release):
 
 ASSET     VERSION  USED BY        SOURCE
 htmx.org  2.0.11   frontend/htmx  https://registry.npmjs.org/htmx.org/-/htmx.org-2.0.11.tgz
+
+Project tooling (fixed per gobento release; {go} is the selected Go version):
+
+TYPE    NAME                           VERSION                                    PINNED BY
+image   go                             golang:{go}                                -
+image   postgres                       postgres:18-alpine                         -
+image   runtime                        gcr.io/distroless/static-debian13:nonroot  sha256:25ac8f0c3b2334a9eb05452266bd4697864a8c8ef0ef71e5e6480d7f92868329
+action  actions/checkout               v7.0.1                                     3d3c42e5aac5ba805825da76410c181273ba90b1
+action  actions/setup-go               v7.0.0                                     b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+action  golangci/golangci-lint-action  v9.3.0                                     ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a
+tool    golangci-lint                  v2.15.0                                    -
 ```
 
 Read a constraint as: while the module's version is in the first range, the
@@ -153,19 +167,20 @@ With `--json`, every form prints one JSON document instead of text, for
 scripts and tools. `gobento list --json` prints the catalog document the
 website is built from, with these fields:
 
-| Field        | Contents                                                                                                                                                 |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `kinds`      | Each kind's `id`, `title`, `description`, and `optional` (whether a selection may leave it out), in canonical order.                                     |
-| `components` | Each component's `id` (`<kind>/<name>`), `kind`, `name`, `title`, `description`, `provides` (trait to value), and `requires` (trait to accepted values). |
-| `go`         | The Go `range` and `default`.                                                                                                                            |
-| `modules`    | Each module's `path`, `components`, `traits` (the trait values it is limited to), `role`, `range`, `default`, and `constraints`.                         |
-| `assets`     | Each vendored file's `name`, `components`, `version`, and `source`.                                                                                      |
-| `supported`  | Each supported selection, as an object from kind to component name, without an entry for an optional kind it leaves out (no `frontend` means none).      |
-| `rules`      | The patterns and messages for the project name and module path.                                                                                          |
+| Field        | Contents                                                                                                                                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `kinds`      | Each kind's `id`, `title`, `description`, and `optional` (whether a selection may leave it out), in canonical order.                                                                             |
+| `components` | Each component's `id` (`<kind>/<name>`), `kind`, `name`, `title`, `description`, `provides` (trait to value), and `requires` (trait to accepted values).                                         |
+| `go`         | The Go `range` and `default`.                                                                                                                                                                    |
+| `modules`    | Each module's `path`, `components`, `traits` (the trait values it is limited to), `role`, `range`, `default`, and `constraints`.                                                                 |
+| `assets`     | Each vendored file's `name`, `components`, `version`, and `source`.                                                                                                                              |
+| `tooling`    | The project tooling versions: `images` (`key`, `image`, `tag`, `digest`, `""` when unpinned), `actions` (`name`, `version`, `sha`), and `tools` (`name`, `version`), each sorted by key or name. |
+| `supported`  | Each supported selection, as an object from kind to component name, without an entry for an optional kind it leaves out (no `frontend` means none).                                              |
+| `rules`      | The patterns and messages for the project name and module path.                                                                                                                                  |
 
 Each subcommand prints an object with only the fields it lists, in the same
 format: `components` prints `kinds` and `components`, `selections` prints
-`supported`, and `versions` prints `go`, `modules`, and `assets`. Filters apply to the
+`supported`, and `versions` prints `go`, `modules`, `assets`, and `tooling`. Filters apply to the
 JSON as well. Lists are empty (`[]`) rather than `null`, and objects without
 entries are `{}`. Later releases may add fields; renaming or removing one is a breaking change
 and is announced in the changelog.

@@ -80,6 +80,26 @@ const assetSchema = z.object({
   source: text,
 });
 
+/**
+ * Versions of the project tooling that are not Go modules (container images,
+ * GitHub Actions, tools), fixed per gobento release and not pinnable.
+ */
+const toolingSchema = z.object({
+  images: z.array(
+    z.object({
+      /** The template key, as in `{{.Images.runtime}}`. */
+      key: text,
+      image: text,
+      /** May contain `{go}`, the selected Go version. */
+      tag: text,
+      /** Empty for an image that is not pinned by digest. */
+      digest: z.string(),
+    }),
+  ),
+  actions: z.array(z.object({ name: text, version: text, sha: text })),
+  tools: z.array(z.object({ name: text, version: text })),
+});
+
 const ruleSchema = z.object({
   /** Regular expression the value must match. */
   pattern: text,
@@ -107,6 +127,7 @@ const rawCatalogSchema = z.object({
   go: z.object({ range: text, default: text }),
   modules: z.array(moduleSchema),
   assets: z.array(assetSchema).default([]),
+  tooling: toolingSchema.default({ images: [], actions: [], tools: [] }),
   /**
    * The selections the CLI supports (compose.Supported): traits met, default
    * versions resolved, and composition without errors. CI builds every one

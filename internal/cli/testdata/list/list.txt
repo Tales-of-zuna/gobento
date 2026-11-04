@@ -126,3 +126,14 @@ Vendored assets (fixed per gobento release):
 
 ASSET     VERSION  USED BY        SOURCE
 htmx.org  2.0.11   frontend/htmx  https://registry.npmjs.org/htmx.org/-/htmx.org-2.0.11.tgz
+
+Project tooling (fixed per gobento release; {go} is the selected Go version):
+
+TYPE    NAME                           VERSION                                    PINNED BY
+image   go                             golang:{go}                                -
+image   postgres                       postgres:18-alpine                         -
+image   runtime                        gcr.io/distroless/static-debian13:nonroot  sha256:25ac8f0c3b2334a9eb05452266bd4697864a8c8ef0ef71e5e6480d7f92868329
+action  actions/checkout               v7.0.1                                     3d3c42e5aac5ba805825da76410c181273ba90b1
+action  actions/setup-go               v7.0.0                                     b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+action  golangci/golangci-lint-action  v9.3.0                                     ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a
+tool    golangci-lint                  v2.15.0                                    -

@@ -36,6 +36,31 @@ describe('catalog schema', () => {
     expect(result.data?.assets).toEqual([]);
   });
 
+  it('accepts the tooling versions and defaults them to none', () => {
+    const data = fixtureData();
+    expect(catalogSchema.safeParse(data).data?.tooling).toEqual({
+      images: [],
+      actions: [],
+      tools: [],
+    });
+    data.tooling = {
+      images: [{ key: 'go', image: 'golang', tag: '{go}', digest: '' }],
+      actions: [
+        {
+          name: 'actions/checkout',
+          version: 'v7.0.1',
+          sha: '3d3c42e5aac5ba805825da76410c181273ba90b1',
+        },
+      ],
+      tools: [{ name: 'golangci-lint', version: 'v2.15.0' }],
+    };
+    const result = catalogSchema.safeParse(data);
+    expect(result.error?.issues).toBeUndefined();
+    expect(result.data?.tooling.images[0]?.tag).toBe('{go}');
+    data.tooling.tools = [{ name: 'golangci-lint', version: '' }];
+    expect(catalogSchema.safeParse(data).success).toBe(false);
+  });
+
   const sqlite = (data: CatalogData) => data.modules.find((m) => m.path === 'modernc.org/sqlite')!;
   const sqlc = (data: CatalogData) => data.components.find((c) => c.id === 'data/sqlc')!;
 

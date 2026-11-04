@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/fs"
 	"maps"
+	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -23,6 +24,7 @@ type Document struct {
 	Go         GoRule              `json:"go"`
 	Modules    []Module            `json:"modules"`
 	Assets     []Asset             `json:"assets"`
+	Tooling    Tooling             `json:"tooling"`
 	Supported  []map[string]string `json:"supported"`
 	Rules      Rules               `json:"rules"`
 }
@@ -43,6 +45,38 @@ type Asset struct {
 	Components []string `json:"components"`
 	Version    string   `json:"version"`
 	Source     string   `json:"source"`
+}
+
+// Tooling lists the versions of the project tooling that are not Go modules,
+// fixed per gobento release: each list is sorted by key or name.
+type Tooling struct {
+	Images  []Image  `json:"images"`
+	Actions []Action `json:"actions"`
+	Tools   []Tool   `json:"tools"`
+}
+
+// Image is a container image of the generated Dockerfile or CI workflow.
+type Image struct {
+	// Key is the name templates use, as in {{.Images.runtime}}.
+	Key   string `json:"key"`
+	Image string `json:"image"`
+	// Tag may contain "{go}", the selected Go version.
+	Tag string `json:"tag"`
+	// Digest is "" for an image that is not pinned by digest.
+	Digest string `json:"digest"`
+}
+
+// Action is a GitHub Action of the generated workflow, pinned by commit.
+type Action struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	SHA     string `json:"sha"`
+}
+
+// Tool is a tool the generated Makefile and workflow run.
+type Tool struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
 }
 
 // Component is one component of the catalog.
@@ -138,6 +172,7 @@ func FromCatalog(cat *catalog.Catalog) (*Document, error) {
 		Components: []Component{},
 		Modules:    []Module{},
 		Assets:     []Asset{},
+		Tooling:    Tooling{Images: []Image{}, Actions: []Action{}, Tools: []Tool{}},
 		Supported:  []map[string]string{},
 	}
 
@@ -180,6 +215,18 @@ func FromCatalog(cat *catalog.Catalog) (*Document, error) {
 
 	for _, a := range rules.Assets {
 		out.Assets = append(out.Assets, Asset{Name: a.Name, Components: a.Components, Version: a.Version, Source: a.Source})
+	}
+
+	for _, key := range slices.Sorted(maps.Keys(rules.Tooling.Images)) {
+		img := rules.Tooling.Images[key]
+		out.Tooling.Images = append(out.Tooling.Images, Image{Key: key, Image: img.Name, Tag: img.Tag, Digest: img.Digest})
+	}
+	for _, name := range slices.Sorted(maps.Keys(rules.Tooling.Actions)) {
+		a := rules.Tooling.Actions[name]
+		out.Tooling.Actions = append(out.Tooling.Actions, Action{Name: name, Version: a.Version, SHA: a.SHA})
+	}
+	for _, name := range slices.Sorted(maps.Keys(rules.Tooling.Tools)) {
+		out.Tooling.Tools = append(out.Tooling.Tools, Tool{Name: name, Version: rules.Tooling.Tools[name]})
 	}
 
 	for _, sel := range compose.Supported(cat) {

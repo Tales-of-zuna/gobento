@@ -234,3 +234,42 @@ func TestEncodeRoundTrip(t *testing.T) {
 		t.Error("the decoded document differs from the encoded one")
 	}
 }
+
+// TestLoadExportsTooling checks that the tooling versions of the rules file
+// are exported, sorted, with the {go} placeholder kept and an empty digest
+// for images without one.
+func TestLoadExportsTooling(t *testing.T) {
+	t.Parallel()
+
+	o, err := Load(components.FS())
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	rules := o.Tooling
+	if len(rules.Images) == 0 || len(rules.Actions) == 0 || len(rules.Tools) == 0 {
+		t.Fatalf("Tooling = %+v, want images, actions, and tools", rules)
+	}
+	for i := 1; i < len(rules.Images); i++ {
+		if rules.Images[i-1].Key >= rules.Images[i].Key {
+			t.Errorf("images are not sorted by key: %s before %s", rules.Images[i-1].Key, rules.Images[i].Key)
+		}
+	}
+	images := map[string]Image{}
+	for _, img := range rules.Images {
+		images[img.Key] = img
+	}
+	if got := images["go"]; got.Image != "golang" || got.Tag != "{go}" || got.Digest != "" {
+		t.Errorf("go image = %+v, want golang:{go} without a digest", got)
+	}
+	if got := images["runtime"]; !regexp.MustCompile(`^sha256:[0-9a-f]{64}$`).MatchString(got.Digest) {
+		t.Errorf("runtime image digest = %q, want a sha256 digest", got.Digest)
+	}
+	for _, a := range rules.Actions {
+		if !regexp.MustCompile(`^[0-9a-f]{40}$`).MatchString(a.SHA) || a.Version == "" {
+			t.Errorf("action %+v: want a version and a 40-character SHA", a)
+		}
+	}
+	if rules.Tools[0].Name != "golangci-lint" || rules.Tools[0].Version == "" {
+		t.Errorf("tools = %+v, want golangci-lint with a version", rules.Tools)
+	}
+}

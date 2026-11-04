@@ -7,6 +7,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -325,6 +326,58 @@ func TestListVersionsShipped(t *testing.T) {
 	}
 }
 
+// TestListVersionsTooling covers the spec scenarios "Tooling versions" and
+// "Scripts read the tooling".
+func TestListVersionsTooling(t *testing.T) {
+	t.Parallel()
+
+	d := shippedDocument(t)
+	out, _, err := runList(t, d, "list", "versions")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := map[string]string{}
+	for _, line := range strings.Split(out, "\n") {
+		if f := strings.Fields(line); len(f) >= 2 && (f[0] == "image" || f[0] == "action" || f[0] == "tool") {
+			rows[f[0]+" "+f[1]] = line
+		}
+	}
+	for _, img := range d.Tooling.Images {
+		pin := img.Digest
+		if pin == "" {
+			pin = "-"
+		}
+		if row := rows["image "+img.Key]; !strings.Contains(row, img.Image+":"+img.Tag) || !strings.HasSuffix(row, pin) {
+			t.Errorf("row of image %s = %q, want %s:%s pinned by %s", img.Key, row, img.Image, img.Tag, pin)
+		}
+	}
+	if row := rows["image go"]; !strings.Contains(row, ":{go}") {
+		t.Errorf("row of the Go build image = %q, want the tag {go}", row)
+	}
+	for _, a := range d.Tooling.Actions {
+		if row := rows["action "+a.Name]; !strings.Contains(row, a.Version) || !strings.HasSuffix(row, a.SHA) {
+			t.Errorf("row of action %s = %q, want %s and %s", a.Name, row, a.Version, a.SHA)
+		}
+	}
+	if row := rows["tool golangci-lint"]; row == "" {
+		t.Error("golangci-lint is not listed")
+	}
+
+	out, _, err = runList(t, d, "list", "versions", "--json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		Tooling catalogjson.Tooling `json:"tooling"`
+	}
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got.Tooling, d.Tooling) {
+		t.Errorf("tooling = %+v, want %+v", got.Tooling, d.Tooling)
+	}
+}
+
 // TestListOverview checks that `gobento list` contains every section
 // (spec: Overview).
 func TestListOverview(t *testing.T) {
@@ -385,7 +438,7 @@ func TestListJSON(t *testing.T) {
 	fields := map[string][]string{
 		"components": {"components", "kinds"},
 		"selections": {"supported"},
-		"versions":   {"assets", "go", "modules"},
+		"versions":   {"assets", "go", "modules", "tooling"},
 	}
 	for sub, want := range fields {
 		out, _, err := runList(t, shippedDocument(t), "list", sub, "--json")

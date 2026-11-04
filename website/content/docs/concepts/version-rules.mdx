@@ -219,10 +219,11 @@ tooling:
 gobento rejects a malformed name, tag, digest, version, or SHA when it loads
 the file. Like tool modules, tooling versions are fixed per gobento release
 and cannot be changed with `--pin`; the generated Dependabot configuration
-keeps them current in your project. When you bump one, check the SHA with
-`gh api repos/<owner/repo>/commits/<version>` and a digest with
-`docker buildx imagetools inspect <image>:<tag>`, and update the "Last
-checked" date in the file.
+keeps them current in your project, and
+[`gobento list versions`](/docs/cli/list#versions) lists them. When you bump
+one, check the SHA with `gh api repos/<owner/repo>/commits/<version>` and a
+digest with `docker buildx imagetools inspect <image>:<tag>`, and update the
+"Last checked" date in the file.
 
 ## Constraint errors
 

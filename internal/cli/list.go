@@ -33,12 +33,13 @@ type selectionsJSON struct {
 	Supported []map[string]string `json:"supported"`
 }
 
-// versionsJSON is the JSON of `gobento list versions`: the go, modules, and
-// assets fields of the catalog document.
+// versionsJSON is the JSON of `gobento list versions`: the go, modules,
+// assets, and tooling fields of the catalog document.
 type versionsJSON struct {
 	Go      catalogjson.GoRule   `json:"go"`
 	Modules []catalogjson.Module `json:"modules"`
 	Assets  []catalogjson.Asset  `json:"assets"`
+	Tooling catalogjson.Tooling  `json:"tooling"`
 }
 
 // newListCommand returns the `gobento list` command and its subcommands.
@@ -184,7 +185,7 @@ the module ranges with gobento new --go and --pin.`,
 				return err
 			}
 			if *asJSON {
-				return catalogjson.Encode(a.stdout, versionsJSON{Go: d.Go, Modules: d.Modules, Assets: d.Assets})
+				return catalogjson.Encode(a.stdout, versionsJSON{Go: d.Go, Modules: d.Modules, Assets: d.Assets, Tooling: d.Tooling})
 			}
 			return writeVersions(a.stdout, d)
 		},
@@ -481,15 +482,44 @@ func writeVersions(w io.Writer, d *catalogjson.Document) error {
 			return err
 		}
 	}
-	if len(d.Assets) == 0 {
+	if len(d.Assets) > 0 {
+		if _, err := fmt.Fprint(w, "\nVendored assets (fixed per gobento release):\n\n"); err != nil {
+			return err
+		}
+		rows = [][]string{{"ASSET", "VERSION", "USED BY", "SOURCE"}}
+		for _, a := range d.Assets {
+			rows = append(rows, []string{a.Name, a.Version, strings.Join(a.Components, ", "), a.Source})
+		}
+		if err := writeTable(w, rows); err != nil {
+			return err
+		}
+	}
+	return writeTooling(w, d.Tooling)
+}
+
+// writeTooling writes a table of the tooling versions: images, actions, and
+// tools, in that order. An image's version is its reference, with {go} for
+// the selected Go version; PINNED BY is its digest or an action's commit.
+func writeTooling(w io.Writer, t catalogjson.Tooling) error {
+	if len(t.Images)+len(t.Actions)+len(t.Tools) == 0 {
 		return nil
 	}
-	if _, err := fmt.Fprint(w, "\nVendored assets (fixed per gobento release):\n\n"); err != nil {
+	if _, err := fmt.Fprint(w, "\nProject tooling (fixed per gobento release; {go} is the selected Go version):\n\n"); err != nil {
 		return err
 	}
-	rows = [][]string{{"ASSET", "VERSION", "USED BY", "SOURCE"}}
-	for _, a := range d.Assets {
-		rows = append(rows, []string{a.Name, a.Version, strings.Join(a.Components, ", "), a.Source})
+	rows := [][]string{{"TYPE", "NAME", "VERSION", "PINNED BY"}}
+	for _, img := range t.Images {
+		pin := img.Digest
+		if pin == "" {
+			pin = "-"
+		}
+		rows = append(rows, []string{"image", img.Key, img.Image + ":" + img.Tag, pin})
+	}
+	for _, a := range t.Actions {
+		rows = append(rows, []string{"action", a.Name, a.Version, a.SHA})
+	}
+	for _, tool := range t.Tools {
+		rows = append(rows, []string{"tool", tool.Name, tool.Version, "-"})
 	}
 	return writeTable(w, rows)
 }
