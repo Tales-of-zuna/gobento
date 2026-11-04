@@ -1,14 +1,14 @@
 ---
 title: Components
-description: The four kinds of components gobento composes into a project, and how a selection is made.
+description: The five kinds of components gobento composes into a project, one of them optional, and how a selection is made.
 ---
 
 A **component** is one piece of a generated project: an architecture, an HTTP
-framework, a database, or a data-access library. Components are data (a
+framework, a database, a data-access library, or a frontend. Components are data (a
 `component.yaml` manifest plus `.tmpl` template files), not Go code inside
 gobento.
 
-## The four kinds
+## The five kinds
 
 | Kind           | Flag          | What it contributes                                                                                                       | Options                 |
 | -------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
@@ -16,11 +16,15 @@ gobento.
 | HTTP framework | `--framework` | The router and HTTP handlers                                                                                              | `nethttp`, `chi`, `gin` |
 | Database       | `--db`        | Opening the database connection and applying the schema                                                                   | `sqlite`, `postgres`    |
 | Data access    | `--data`      | The store that implements the data contract on top of the database                                                        | `sqlc`, `gorm`          |
+| Frontend       | `--frontend`  | Optional. Web pages served at `/`, next to the API, which then moves under `/api`                                         | none, `htmx`            |
 
 ## A selection
 
 A **selection** is one component of each kind. It always contains exactly one
-architecture, one framework, one database, and one data-access component.
+architecture, one framework, one database, and one data-access component, and
+at most one frontend. The frontend is an **optional kind**: a selection
+without one is an API-only project, and `none` stands for "no frontend" (no
+component of an optional kind may be called `none`).
 
 You choose with the flags above. If you omit a flag:
 
@@ -31,23 +35,46 @@ You choose with the flags above. If you omit a flag:
 - otherwise (in scripts and CI, or with `--no-input`), gobento stops, names
   the flag, and lists the supported values.
 
-Today every kind has several options, so name all four in scripts:
+An omitted `--frontend` is different: it means no frontend, so the flag is
+never required. In a terminal, gobento still asks, with "None (API only)"
+first.
+
+Today every required kind has several options, so name all four in scripts,
+and add `--frontend` when you want one:
 
 ```sh
 gobento new shop --arch vertical-slice --framework chi --db postgres --data gorm
+gobento new shop --arch vertical-slice --framework chi --db postgres --data gorm --frontend htmx
 ```
 
 ## Supported selections
 
 Not every selection can be built. A selection is **supported** exactly when:
 
-1. it has one component of each kind,
+1. it has one component of each required kind and at most one of each optional kind,
 2. every trait a component requires is provided (see [Traits](/docs/concepts/traits)), and
 3. it passes composition (see [Slots and contracts](/docs/concepts/slots-and-contracts)).
 
 The list of supported selections is derived from the component catalog alone.
-CI generates, builds, and tests every one of them on Linux, macOS, and
-Windows. The website's configurator reads the same list from the exported
+Leaving out the frontend is a separate selection, so every supported backend
+combination is supported both without a frontend and with each frontend that
+composes with it.
+
+CI generates, builds, and tests projects on Linux, macOS, and Windows, each
+with the default versions and with the lowest version of every range:
+
+- **every supported selection without a frontend**, so each backend
+  combination is proven;
+- of the selections with a frontend, a **pairwise covering set**: every two
+  components that can appear together with a frontend (for example, the
+  frontend and `gin`, or `vertical-slice` and `chi` with a frontend) are built
+  together at least once. A frontend meets the rest of the project only
+  through the architecture's contracts and the router it is mounted next to,
+  so pairs cover the interactions, while the full product would multiply the
+  matrix with every new frontend.
+
+`compose.Coverage` computes this set from the catalog, deterministically, and
+a unit test checks the pair property. The website's configurator reads the same list from the exported
 catalog, and a test runs the command it builds for each one through
 `gobento new --dry-run`.
 

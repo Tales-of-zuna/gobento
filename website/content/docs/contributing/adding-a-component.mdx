@@ -19,7 +19,8 @@ page, skim [Slots and contracts](/docs/concepts/slots-and-contracts) and
   [CONTRIBUTING.md](https://github.com/Tales-of-zuna/gobento/blob/main/CONTRIBUTING.md).
 </Callout>
 
-gobento builds a project from four components, one of each kind:
+gobento builds a project from four components, one of each required kind,
+and at most one frontend, which is optional:
 
 | Kind           | Fills                                                 | Example   |
 | -------------- | ----------------------------------------------------- | --------- |
@@ -27,6 +28,7 @@ gobento builds a project from four components, one of each kind:
 | `framework`    | the HTTP handlers                                     | `nethttp` |
 | `database`     | the database connection and schema                    | `sqlite`  |
 | `data`         | the data access that implements the shared interfaces | `sqlc`    |
+| `frontend`     | the web pages, served next to the API (optional)      | `htmx`    |
 
 There is no template per combination. An architecture declares _slots_, each
 of the other components fills a slot, and _traits_ say which components fit
@@ -98,14 +100,14 @@ catalog, so a mistake fails `make test`.
 `component.yaml` has exactly these keys. Unknown keys are rejected, so a typo
 fails loading instead of being ignored.
 
-| Key           | Kinds             | Meaning                                                                        |
-| ------------- | ----------------- | ------------------------------------------------------------------------------ |
-| `name`        | all               | Must equal the directory name and match `^[a-z][a-z0-9-]*$`.                   |
-| `title`       | all               | Required. A short display name, such as `SQLite`.                              |
-| `description` | all               | Optional. One sentence, shown in the [Components reference](/docs/components). |
-| `slots`       | architecture only | The slots the architecture declares (at least one).                            |
-| `provides`    | all               | Traits this component provides: trait → value.                                 |
-| `requires`    | all               | Traits this component needs: trait → list of accepted values.                  |
+| Key           | Kinds             | Meaning                                                                                           |
+| ------------- | ----------------- | ------------------------------------------------------------------------------------------------- |
+| `name`        | all               | Must equal the directory name and match `^[a-z][a-z0-9-]*$`. A frontend may not be called `none`. |
+| `title`       | all               | Required. A short display name, such as `SQLite`.                                                 |
+| `description` | all               | Optional. One sentence, shown in the [Components reference](/docs/components).                    |
+| `slots`       | architecture only | The slots the architecture declares (at least one).                                               |
+| `provides`    | all               | Traits this component provides: trait → value.                                                    |
+| `requires`    | all               | Traits this component needs: trait → list of accepted values.                                     |
 
 Each slot has these keys:
 
@@ -113,8 +115,8 @@ Each slot has these keys:
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `dir`       | Required. The slot's directory, relative to the project root. It is a template over `.Project`, for example `cmd/{{.Project.Name}}`.                                              |
 | `package`   | Optional. The Go package name. It defaults to the last element of the rendered `dir`; set it when that is not a valid package name, as the entry point does with `package: main`. |
-| `filled_by` | Required. The kind that fills the slot: `architecture`, `framework`, `database`, or `data`.                                                                                       |
-| `required`  | Optional, default `false`. The selection must fill the slot.                                                                                                                      |
+| `filled_by` | Required. The kind that fills the slot: `architecture`, `framework`, `database`, `data`, or `frontend`.                                                                           |
+| `required`  | Optional, default `false`. The selection must fill the slot. A slot of an optional kind, such as `web`, is not required.                                                          |
 
 Slot names match `^[a-z][a-z0-9_]*$`, because templates use them as field
 names (`.Slots.handlers`), and `root` is reserved.
@@ -134,6 +136,7 @@ slots:
   handlers: { dir: internal/controllers, filled_by: framework, required: true }
   database: { dir: internal/database, filled_by: database, required: true }
   store: { dir: internal/store, filled_by: data, required: true }
+  web: { dir: internal/views, filled_by: frontend }
 ```
 
 A component does not list the slots it fills. They follow from its layout: a
@@ -208,16 +211,19 @@ To change the API, change every framework and the shared test together.
 Templates use Go's [`text/template`](https://pkg.go.dev/text/template). Every
 template, including slot directories and notes, receives the same data:
 
-| Field                   | Example                                    | Meaning                                      |
-| ----------------------- | ------------------------------------------ | -------------------------------------------- |
-| `.Project.Name`         | `shop`                                     | The project name                             |
-| `.Project.Module`       | `example.com/shop`                         | The module path                              |
-| `.Project.GoVersion`    | `1.27.0`                                   | The `go` directive of the generated `go.mod` |
-| `.Slots.<name>.Dir`     | `internal/controllers`                     | The slot's directory                         |
-| `.Slots.<name>.Package` | `controllers`                              | The slot's package name                      |
-| `.Slots.<name>.Import`  | `example.com/shop/internal/controllers`    | The slot's import path                       |
-| `.Traits`               | `{{index .Traits "sql-dialect"}}`          | The traits of the selection                  |
-| `.Versions`             | `{{index .Versions "modernc.org/sqlite"}}` | The chosen version of each module            |
+| Field                   | Example                                    | Meaning                                                                                             |
+| ----------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| `.Project.Name`         | `shop`                                     | The project name                                                                                    |
+| `.Project.Module`       | `example.com/shop`                         | The module path                                                                                     |
+| `.Project.GoVersion`    | `1.27.0`                                   | The `go` directive of the generated `go.mod`                                                        |
+| `.Slots.<name>.Dir`     | `internal/controllers`                     | The slot's directory                                                                                |
+| `.Slots.<name>.Package` | `controllers`                              | The slot's package name                                                                             |
+| `.Slots.<name>.Import`  | `example.com/shop/internal/controllers`    | The slot's import path                                                                              |
+| `.Slots.<name>.Filled`  | `{{if .Slots.web.Filled}}`                 | Whether a selected component fills the slot                                                         |
+| `.APIPrefix`            | `/api`                                     | Where the API router is served: `""` without a frontend, `/api` with one                            |
+| `.Traits`               | `{{index .Traits "sql-dialect"}}`          | The traits of the selection                                                                         |
+| `.Versions`             | `{{index .Versions "modernc.org/sqlite"}}` | The chosen version of each module                                                                   |
+| `.Assets`               | `{{index .Assets "htmx.org"}}`             | The version of each [vendored asset](/docs/concepts/version-rules#vendored-assets) of the selection |
 
 This data shape is the contributor API, and the golden test covers it. Use
 `index` for keys that contain `-`, `.`, or `/`. A missing key is an error, not
@@ -241,8 +247,11 @@ go run github.com/sqlc-dev/sqlc/cmd/sqlc@{{index .Versions "github.com/sqlc-dev/
 
 ### Rules for templates
 
-- **No version numbers.** Versions come from `.Versions` and the rules file,
-  never from a template.
+- **No version numbers.** Versions come from `.Versions`, `.Assets`, and the
+  rules file, never from a template. A vendored file, such as htmx, contains
+  its own version, which is fine: it is shipped unmodified.
+- **Write API paths with `.APIPrefix`.** In notes and READMEs, write
+  `{{.APIPrefix}}/items`, so the paths are right with and without a frontend.
 - **Implement your slot's contract.** Provide exactly the functions and types
   the architecture expects for your slot (see the
   [contract table](/docs/concepts/slots-and-contracts#architecture-owned-contracts)).
@@ -323,6 +332,13 @@ are in the [Components reference](/docs/components).
   and then require `go` or another module to be inside a range, such as a
   minimum Go version.
 
+A file that your component ships unmodified from an upstream release, such as
+a JavaScript library, is not a module: record it under `assets` with its
+`version`, the release archive as `source`, the file's `path` in it, and its
+`sha256`. See [Vendored assets](/docs/concepts/version-rules#vendored-assets).
+Asset versions are fixed per gobento release, and the tests compare the
+checksum with your file and with the upstream one.
+
 gobento rejects the generation if `go mod tidy` would raise any chosen version
 or the `go` directive, and reports the missing constraint. See
 [Version rules](/docs/concepts/version-rules) for the full format.
@@ -333,7 +349,8 @@ or the `go` directive, and reports the missing constraint. See
 2. Run `make catalog` so the website shows the new values (`go test` fails
    until you do), then `make test` and
    `go test ./internal/generate -run TestIntegration` (it needs network
-   access). The integration test generates every supported selection with the
+   access). The integration test generates every supported selection without
+   a frontend, and a pairwise covering set of those with one, with the
    defaults and with the range floors.
 3. If a template's output changes, update the golden files with
    `go test ./internal/compose -run TestGolden -update` and review the diff.
@@ -388,8 +405,9 @@ Add the modules it uses to `versions.yaml`, with `components` naming it, and
 ### Regenerate the website catalog and test
 
 Run `make catalog`, then `make lint test` and the integration test. Every
-supported selection containing the new component is generated, built,
-vetted, and tested.
+supported selection without a frontend that contains the new component is
+generated, built, vetted, and tested; a new frontend is built with every
+architecture, framework, database, and data access, and every pair of them.
 
 </Step>
 </Steps>
@@ -419,7 +437,9 @@ make test
 
 The golden tests compose the reference selection of each architecture and
 compare the whole project with `internal/compose/testdata/golden/` (`mvc`)
-and `internal/compose/testdata/golden-vertical-slice/` (`vertical-slice`).
+and `internal/compose/testdata/golden-vertical-slice/` (`vertical-slice`),
+and the `mvc` one again with htmx in `internal/compose/testdata/golden-htmx/`,
+which shows how the architecture mounts a frontend.
 They also compose, for every component, the first supported selection that
 contains it, and compare the files that component contributes with
 `internal/compose/testdata/golden-components/<kind>/<name>/`. Another test
@@ -437,13 +457,19 @@ go test ./internal/compose -run TestGolden -update
 
 ### Integration test
 
-The integration test in `internal/generate` generates every supported
-selection twice, once with the default versions and once with the range
-floors. For each project it runs `go build`, `go vet`, `go test`, `gofmt -l`,
-`go mod verify`, and `go build` again with `CGO_ENABLED=0` (generated projects
-must build without a C compiler), checks the `go.mod` pins, and checks with
-`go list -deps` that the handlers package does not import the database or
-store packages.
+The integration test in `internal/generate` generates the selections that
+`compose.Coverage` returns twice, once with the default versions and once
+with the range floors: every supported selection without a frontend, and of
+those with a frontend, a set in which every pair of components that can
+appear together with a frontend appears together at least once. Backend
+combinations are thus all proven, and the frontend part grows with the
+largest pair product instead of multiplying the matrix. For each project it
+runs `go build`, `go vet`, `go test`, `gofmt -l`, `go mod verify`, and
+`go build` again with `CGO_ENABLED=0` (generated projects must build without
+a C compiler), checks the `go.mod` pins, and checks with `go list -deps` that
+the handlers package, and the web package when there is one, do not import
+the database or store packages, and that the web package imports no
+framework module.
 
 It needs network access and is skipped with `-short`. Run it with:
 
@@ -471,6 +497,79 @@ templates branch on `sql-dialect` (the placeholder), so regenerate in one
 project per database (`--db sqlite` and `--db postgres`) and keep those
 branches in sync. CI's `sqlc-fresh` job does the same for each database and
 fails if any file changes.
+
+### Generated code: templ
+
+The `htmx` frontend ships the Go code templ generates from `pages.templ`
+(`pages_templ.go`). After changing `pages.templ.tmpl`, generate a project with
+`--frontend htmx`, run `go generate ./...` in it (the `//go:generate` line in
+the web package runs the pinned templ), and copy `pages_templ.go` back to
+`components/frontend/htmx/files/web/pages_templ.go.tmpl`, replacing the
+package name, the models import and package, the project name in `<title>`,
+and `/api` with their template fields (`{{.Slots.web.Package}}`,
+`{{.Slots.models.Import}}`, `{{.Slots.models.Package}}`, `{{.Project.Name}}`,
+`{{.APIPrefix}}`). Keep template fields off lines with templ expressions, so
+the line and column numbers templ records stay right. Then update the golden
+files. CI's `templ-fresh` job regenerates the code in a reference project and
+fails if any file changes. When you bump templ in `versions.yaml`, regenerate
+in the same way.
+
+To update htmx, replace `files/web/static/htmx.min.js.tmpl` with
+`dist/htmx.min.js` of the new release, and change `version`, `source`, and
+`sha256` of the `htmx.org` asset. The file is rendered as a template, so it
+must not contain `{{`; the checksum test fails otherwise.
+
+## Supporting frontends in an architecture
+
+A frontend fills the `web` slot, so an architecture supports frontends by
+declaring that slot and wiring it. Without these steps, selections with a
+frontend are simply not supported with it. Both shipped architectures do the
+following; copy them:
+
+1. **Declare the slot.** Add an optional slot filled by the frontend kind,
+   for example `web: { dir: internal/web, filled_by: frontend }`. Put it
+   where pages and static files belong in your layout, outside any feature
+   directory if the pages are shared.
+2. **Build the handler in `newHandler`.** In the entry point, pass
+   `newHandler(store.New(db))` to the server, and define it with
+   `{{if .Slots.web.Filled}}`: with a frontend, an `http.ServeMux` that sends
+   `{{.APIPrefix}}/` to
+   `http.StripPrefix("{{.APIPrefix}}", handlers.NewRouter(itemStore))` and
+   `/` to `web.NewHandler(itemStore)`; without one, `NewRouter(itemStore)`.
+   Import the web package only inside the same condition.
+3. **Ship the routing test.** Add `files/entry/main_test.go.tmpl`, which calls
+   `newHandler` with an in-memory `ItemStore` and checks
+   `{{.APIPrefix}}/health` and `{{.APIPrefix}}/items`, plus `/` returning HTML
+   when the slot is filled. Copy it from `mvc`.
+4. **Document it.** In the README template, add the web directory to the
+   layout when the slot is filled, tell the reader to open
+   `http://localhost:8080/`, and write the `curl` paths as
+   `localhost:8080{{.APIPrefix}}/items`.
+5. **Keep the contract.** The web slot's contract is
+   `func NewHandler(items models.ItemStore) http.Handler`, with the same
+   `models` package as the handlers. If your architecture's contract package
+   differs, the frontend still only needs an `ItemStore` and an `Item` with
+   `ID`, `Name`, and `CreatedAt`.
+
+Then run `go test ./internal/compose -run TestGolden -update`; the
+frontend's golden test and `TestShippedFrontendMount` check the wiring.
+
+## Adding a frontend
+
+A frontend fills the `web` slot and provides
+`func NewHandler(items models.ItemStore) http.Handler`, serving `/` and every
+other path outside `{{.APIPrefix}}/`. Use only the standard library's
+`net/http` for routing, so it works with every framework, and reach the data
+only through `ItemStore`. Serve its static files from the binary with
+`//go:embed`, so the project works offline, and record any vendored file as an
+[asset](#versions). Ship `*_test.go.tmpl` tests against a fake `ItemStore`, as
+`htmx` does.
+
+Frontends built by a JavaScript toolchain (React, Vue, or Svelte via Vite)
+are planned: they will embed the built `dist/` directory with
+`//go:embed all:dist`, serve `index.html` for client-side routes, call the API
+under `{{.APIPrefix}}`, and configure Vite's dev server to proxy
+`{{.APIPrefix}}` to the Go server.
 
 ## Documentation
 

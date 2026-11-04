@@ -60,8 +60,9 @@ commands, so you can always run them directly.
 ### Integration tests and PostgreSQL
 
 `make test-all` includes `TestIntegration` in `internal/generate`, which
-generates every supported selection and runs `go test ./...` inside each
-project. The tests of a PostgreSQL project are skipped unless
+generates every supported selection without a frontend, plus a pairwise
+covering set of those with one (`compose.Coverage`), and runs `go test ./...`
+inside each project. The tests of a PostgreSQL project are skipped unless
 `TEST_DATABASE_URL` names a server; CI sets it on Linux, so the PostgreSQL code
 paths always run there. To run them locally, start a throwaway server with
 Docker and pass its URL:
