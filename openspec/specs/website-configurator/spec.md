@@ -26,6 +26,14 @@ kind.
 - **WHEN** a visitor opens the configurator
 - **THEN** the frontend choice offers "None (API only)", preselected, and every frontend in the catalog
 
+#### Scenario: CSS framework needs a frontend
+- **WHEN** no frontend is selected
+- **THEN** the CSS framework choice keeps "None (plain CSS)" selected and disables every CSS framework, explaining that it needs a frontend that provides `frontend-build`, and the command has no `--css` flag
+
+#### Scenario: CSS framework with a frontend
+- **WHEN** the visitor selects `htmx` and then Tailwind CSS
+- **THEN** the command contains `--frontend htmx --css tailwind`
+
 ### Requirement: Live command output
 The configurator SHALL show the `gobento new` command for the current choices,
 update it immediately on every change, and omit flags whose value equals what
