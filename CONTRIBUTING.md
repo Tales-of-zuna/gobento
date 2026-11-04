@@ -53,7 +53,7 @@ commands, so you can always run them directly.
 | `fmt` | Formats the code | `golangci-lint fmt` |
 | `tidy` | Cleans up `go.mod` and `go.sum` | `go mod tidy` |
 | `cover` | Prints test coverage per function | `go test -short -coverprofile=coverage.out ./...` then `go tool cover -func=coverage.out` |
-| `catalog` | Regenerates the website's `website/src/generated/catalog.json` from the component catalog, then (if `website/node_modules` exists) the website's CLI cross-check commands | `go run ./internal/tools/catalogexport -o website/src/generated/catalog.json`, then in `website/`: `pnpm exec vitest run lib/command/cli-commands.test.ts --update` |
+| `catalog` | Regenerates the website's `website/src/generated/catalog.json` from the component catalog (the document `internal/catalogjson` builds, which `gobento list --json` prints too), then (if `website/node_modules` exists) the website's CLI cross-check commands | `go run ./internal/tools/catalogexport -o website/src/generated/catalog.json`, then in `website/`: `pnpm exec vitest run lib/command/cli-commands.test.ts --update` |
 | `catalog-check` | Fails if `catalog.json` is stale or a command the website offers is rejected by `gobento new --dry-run` | `go test -run 'TestCommittedCatalogIsCurrent\|TestWebsiteCommands' ./internal/tools/catalogexport ./internal/cli` |
 | `clean` | Removes build and coverage output | Delete `bin/` and `coverage.out` |
 

@@ -1,0 +1,40 @@
+{
+  "supported": [
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp"
+    }
+  ]
+}

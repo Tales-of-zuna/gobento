@@ -99,8 +99,10 @@ The website in `website/` is published by `.github/workflows/pages.yml` to
 The first deployment creates the `github-pages` environment. Leave its
 deployment branch rule at the default (`main` only, from the protected
 branch), so only `main` can publish. The workflow runs on every push to `main`
-that touches `website/`, `components/`, or `internal/tools/catalogexport/`,
-and can be started by hand from **Actions → Pages → Run workflow**.
+that touches `website/`, `components/`, `internal/catalogjson/`, or
+`internal/tools/catalogexport/` (the code that writes the website's
+`catalog.json`), and can be started by hand from **Actions → Pages → Run
+workflow**.
 
 See [Configuring a publishing source](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site#publishing-with-a-custom-github-actions-workflow).
 
@@ -108,8 +110,9 @@ See [Configuring a publishing source](https://docs.github.com/en/pages/getting-s
 
 `.github/workflows/website.yml` runs on every pull request and every push to
 `main`. Its first job, `changes`, looks at the changed files; when none is in
-`website/`, `components/`, `internal/tools/catalogexport/`, or the workflow
-itself, the other jobs are skipped. A workflow-level path filter was not used
+`website/`, `components/`, `internal/catalogjson/`,
+`internal/tools/catalogexport/`, or the workflow itself, the other jobs are
+skipped. A workflow-level path filter was not used
 on purpose: a filtered workflow does not report at all on unrelated pull
 requests, so a required check from it would block them forever.
 

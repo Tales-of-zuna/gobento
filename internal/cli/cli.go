@@ -12,6 +12,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/Tales-of-zuna/gobento/components"
+	"github.com/Tales-of-zuna/gobento/internal/catalogjson"
 	"github.com/Tales-of-zuna/gobento/internal/generate"
 )
 
@@ -30,6 +31,9 @@ type app struct {
 	getenv func(string) string
 	// asker asks the questions. nil means huh on stdin and stdout.
 	asker asker
+	// doc replaces the catalog document that `gobento list` builds from
+	// catalog. nil means build it.
+	doc *catalogjson.Document
 }
 
 func defaultApp() *app {
@@ -108,14 +112,17 @@ func newRootCommand(version string, a *app) *cobra.Command {
 		Long: `gobento generates a new Go project from a selection of components:
 an architecture, an HTTP framework, a database, and a data-access library.
 Dependency versions come from gobento's compatibility rules, and every
-supported combination is built and tested in gobento's CI.`,
+supported combination is built and tested in gobento's CI.
+
+Run gobento list to see the supported components, selections, and versions,
+and gobento new --help to create a project.`,
 		Version:       version,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
 	root.SetOut(a.stdout)
 	root.SetErr(a.stderr)
-	root.AddCommand(newNewCommand(a))
+	root.AddCommand(newNewCommand(a), newListCommand(a))
 	return root
 }
 

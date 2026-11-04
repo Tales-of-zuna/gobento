@@ -63,7 +63,9 @@ whose flag is omitted. Flags skip their questions. Without a terminal, or with
 options needs its flag. Set ACCESSIBLE=1 for plain-text questions.
 
 Generation runs the go command (go get and go mod tidy), so it needs Go and
-access to the Go module proxy. --dry-run needs neither.`,
+access to the Go module proxy. --dry-run needs neither.
+
+` + listHint,
 		Example: `  # Create ./shop with mvc, the chi router, SQLite, sqlc, and the default versions
   gobento new shop --arch mvc --framework chi --db sqlite --data sqlc
 

@@ -1,0 +1,15 @@
+ARCHITECTURE    FRAMEWORK  DATABASE  DATA
+mvc             chi        postgres  gorm
+mvc             chi        sqlite    gorm
+mvc             gin        postgres  gorm
+mvc             gin        sqlite    gorm
+mvc             nethttp    postgres  gorm
+mvc             nethttp    sqlite    gorm
+vertical-slice  chi        postgres  gorm
+vertical-slice  chi        sqlite    gorm
+vertical-slice  gin        postgres  gorm
+vertical-slice  gin        sqlite    gorm
+vertical-slice  nethttp    postgres  gorm
+vertical-slice  nethttp    sqlite    gorm
+
+12 of 24 supported selections.

@@ -389,7 +389,8 @@ Add the modules it uses to `versions.yaml`, with `components` naming it, and
 
 Run `make catalog`, then `make lint test` and the integration test. Every
 supported selection containing the new component is generated, built,
-vetted, and tested.
+vetted, and tested. `go run ./cmd/gobento list` shows the new component and
+its selections without any change to the CLI.
 
 </Step>
 </Steps>

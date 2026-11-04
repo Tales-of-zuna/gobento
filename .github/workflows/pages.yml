@@ -10,6 +10,7 @@ on:
     paths:
       - website/**
       - components/**
+      - internal/catalogjson/**
       - internal/tools/catalogexport/**
       - .github/workflows/pages.yml
   workflow_dispatch:

@@ -1,0 +1,9 @@
+HTTP framework (--framework)
+Routes HTTP requests to handlers.
+
+  chi      chi
+           The lightweight, idiomatic chi router, compatible with net/http handlers and middleware.
+  gin      Gin
+           The Gin web framework, with its fast router and gin.Context handlers.
+  nethttp  net/http
+           The standard library HTTP server and its pattern-based ServeMux.
