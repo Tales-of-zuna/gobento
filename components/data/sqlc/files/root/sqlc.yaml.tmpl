@@ -2,7 +2,7 @@
 # Regenerate after changing the schema or the queries; see README.md.
 version: "2"
 sql:
-  - engine: sqlite
+  - engine: {{index .Traits "sql-dialect"}}
     schema: {{.Slots.database.Dir}}/{{index .Traits "sql-schema"}}
     queries: {{.Slots.store.Dir}}/queries.sql
     gen:

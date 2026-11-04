@@ -2,7 +2,7 @@
 # Regenerate after changing the schema or the queries; see README.md.
 version: "2"
 sql:
-  - engine: sqlite
+  - engine: postgresql
     schema: internal/database/schema.sql
     queries: internal/store/queries.sql
     gen:

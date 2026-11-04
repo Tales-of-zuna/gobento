@@ -8,7 +8,7 @@ import (
 )
 
 const createItem = `-- name: CreateItem :one
-INSERT INTO items (name) VALUES (?) RETURNING id, name, created_at
+INSERT INTO items (name) VALUES ($1) RETURNING id, name, created_at
 `
 
 func (q *Queries) CreateItem(ctx context.Context, name string) (Item, error) {

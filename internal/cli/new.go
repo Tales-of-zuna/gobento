@@ -64,26 +64,26 @@ options needs its flag. Set ACCESSIBLE=1 for plain-text questions.
 
 Generation runs the go command (go get and go mod tidy), so it needs Go and
 access to the Go module proxy. --dry-run needs neither.`,
-		Example: `  # Create ./shop with mvc, the chi router, and the default components and versions
-  gobento new shop --arch mvc --framework chi
+		Example: `  # Create ./shop with mvc, the chi router, SQLite, and the default versions
+  gobento new shop --arch mvc --framework chi --db sqlite
 
-  # Organize the code by feature instead of by layer
-  gobento new shop --arch vertical-slice --framework nethttp
+  # Organize the code by feature instead of by layer, with PostgreSQL
+  gobento new shop --arch vertical-slice --framework nethttp --db postgres
 
   # Choose every component and the module path explicitly
   gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
 
   # Choose versions within the supported ranges
-  gobento new shop --arch mvc --framework nethttp --go 1.26 --pin modernc.org/sqlite=v1.61.0
+  gobento new shop --arch mvc --framework nethttp --db sqlite --go 1.26 --pin modernc.org/sqlite=v1.61.0
 
   # Fill the current, empty directory
-  gobento new shop --arch mvc --framework nethttp --dir .
+  gobento new shop --arch mvc --framework nethttp --db sqlite --dir .
 
   # Show the files that would be created, without writing anything
-  gobento new shop --arch mvc --framework gin --dry-run
+  gobento new shop --arch mvc --framework gin --db sqlite --dry-run
 
   # Never ask a question, even in a terminal (as in scripts)
-  gobento new shop --arch mvc --framework nethttp --no-input`,
+  gobento new shop --arch mvc --framework nethttp --db sqlite --no-input`,
 		Args: func(_ *cobra.Command, args []string) error {
 			if len(args) > 1 {
 				return nameArgError(len(args))
@@ -99,7 +99,7 @@ access to the Go module proxy. --dry-run needs neither.`,
 	fl.StringVar(&f.module, "module", "", "Go module path, for example example.com/shop (default: the project name)")
 	fl.StringVar(&f.arch, "arch", "", "architecture, for example mvc or vertical-slice (default: the only supported one)")
 	fl.StringVar(&f.framework, "framework", "", "HTTP framework, for example chi, gin, or nethttp (default: the only supported one)")
-	fl.StringVar(&f.db, "db", "", "database, for example sqlite (default: the only supported one)")
+	fl.StringVar(&f.db, "db", "", "database, for example sqlite or postgres (default: the only supported one)")
 	fl.StringVar(&f.data, "data", "", "data-access library, for example sqlc (default: the only supported one)")
 	fl.StringVar(&f.goVersion, "go", "", "Go version for go.mod, for example 1.26 (default: from the compatibility rules)")
 	fl.StringArrayVar(&f.pins, "pin", nil, "library version as module=version, for example modernc.org/sqlite=v1.61.0 (repeatable)")

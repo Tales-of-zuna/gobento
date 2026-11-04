@@ -15,6 +15,6 @@ export interface PlannedComponent {
 export const ROADMAP: Readonly<Record<KindId, readonly PlannedComponent[]>> = {
   architecture: [],
   framework: [],
-  database: [{ name: 'postgres', title: 'PostgreSQL' }],
+  database: [],
   data: [{ name: 'gorm', title: 'GORM' }],
 };

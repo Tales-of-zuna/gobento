@@ -20,7 +20,7 @@ describe('CatalogReference', () => {
     const sqlite = screen.getByRole('article', { name: /SQLite/ });
     expect(sqlite).toHaveTextContent('sql-dialect: sqlite');
     const sqlc = screen.getByRole('article', { name: /sqlc/ });
-    expect(sqlc).toHaveTextContent('sql-dialect in [sqlite]');
+    expect(sqlc).toHaveTextContent('sql-dialect in [sqlite, postgresql]');
     const row = within(sqliteModules()).getByRole('row', { name: /modernc\.org\/sqlite/ });
     expect(row).toHaveTextContent('library');
     expect(row).toHaveTextContent('>=v1.61.0 <v2.0.0');

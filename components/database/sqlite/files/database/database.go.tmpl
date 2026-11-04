@@ -13,6 +13,10 @@ import (
 	_ "modernc.org/sqlite" // registers the "sqlite" driver
 )
 
+// DefaultURL is the database the application uses when DATABASE_URL is
+// unset: the file {{.Project.Name}}.db in the working directory.
+const DefaultURL = "{{.Project.Name}}.db"
+
 //go:embed schema.sql
 var schema string
 

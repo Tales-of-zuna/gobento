@@ -14,7 +14,8 @@ Install gobento first, with
 
 This guide generates a project called `shop` with MVC, `net/http`, SQLite, and
 sqlc. Swap `--framework nethttp` for `chi` or `gin` to use another router; the
-generated API is the same.
+generated API is the same. SQLite needs no database server;
+[Use PostgreSQL](#use-postgresql) shows what changes with `--db postgres`.
 
 ## Generate and run it
 
@@ -27,7 +28,7 @@ generated API is the same.
 writes nothing and does not run the Go toolchain.
 
 ```sh
-gobento new shop --module example.com/shop --arch mvc --framework nethttp --dry-run
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --dry-run
 ```
 
 It prints `Dry run: nothing was written.`, the module, the selection
@@ -40,17 +41,18 @@ It prints `Dry run: nothing was written.`, the module, the selection
 ### Generate it
 
 ```sh
-gobento new shop --module example.com/shop --arch mvc --framework nethttp
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite
 ```
 
 `--arch` chooses the architecture: `mvc` organizes the code by layer, and
 `vertical-slice` by feature (see
 [With the vertical-slice architecture](#with-the-vertical-slice-architecture)).
 `--framework` picks the HTTP framework: `nethttp` (the standard library),
-`chi`, or `gin`. The other kinds have one option each today, so gobento
-selects them for you. If you leave out `--arch` or `--framework` in a
-terminal, gobento asks you to choose; you can also run plain `gobento new` and
-answer the questions for the name, module path, and components. The same
+`chi`, or `gin`. `--db` picks the database: `sqlite` or `postgres` (see
+[Use PostgreSQL](#use-postgresql)). The other kinds have one option each
+today, so gobento selects them for you. If you leave out one of these flags in
+a terminal, gobento asks you to choose; you can also run plain `gobento new`
+and answer the questions for the name, module path, and components. The same
 command with every choice spelled out, which never asks anything, is:
 
 ```sh
@@ -166,6 +168,9 @@ This is the list `--dry-run` prints for `shop`, as a tree:
         <File name="router_test.go" />
       </Folder>
       <Folder name="database" defaultOpen>
+        <Folder name="dbtest" defaultOpen>
+          <File name="dbtest.go" />
+        </Folder>
         <File name="database.go" />
         <File name="database_test.go" />
         <File name="schema.sql" />
@@ -194,15 +199,15 @@ This is the list `--dry-run` prints for `shop`, as a tree:
 
 Each directory is one Go package, filled by one component:
 
-| Path                                          | Filled by     | Contents                                                                                                                                  |
-| --------------------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `cmd/shop/main.go`                            | architecture  | Config from the environment (`PORT`, default `8080`; `DATABASE_URL`, default `shop.db`), wiring, graceful shutdown on Ctrl-C or `SIGTERM` |
-| `internal/models/`                            | architecture  | The `Item` type and the `ItemStore` interface                                                                                             |
-| `internal/controllers/`                       | framework     | `NewRouter` with `GET /health`, `GET /items`, and `POST /items`, and tests with a fake `ItemStore`                                        |
-| `internal/database/`                          | database      | `Open`, and an embedded `schema.sql` applied at startup                                                                                   |
-| `internal/store/`                             | data access   | `queries.sql`, the `New` adapter, and a test against real SQLite; sqlc's generated code is in the `sqlcgen` subpackage                    |
-| `sqlc.yaml`                                   | data access   | sqlc configuration                                                                                                                        |
-| `README.md`, `.gitignore`, `go.mod`, `go.sum` | project files | `go.mod` is rendered by gobento, `go.sum` comes from the Go toolchain, and the README includes notes from each component                  |
+| Path                                          | Filled by     | Contents                                                                                                                                                              |
+| --------------------------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cmd/shop/main.go`                            | architecture  | Config from the environment (`PORT`, default `8080`; `DATABASE_URL`, default `database.DefaultURL`, here `shop.db`), wiring, graceful shutdown on Ctrl-C or `SIGTERM` |
+| `internal/models/`                            | architecture  | The `Item` type and the `ItemStore` interface                                                                                                                         |
+| `internal/controllers/`                       | framework     | `NewRouter` with `GET /health`, `GET /items`, and `POST /items`, and tests with a fake `ItemStore`                                                                    |
+| `internal/database/`                          | database      | `Open`, `DefaultURL`, an embedded `schema.sql` applied at startup, and `dbtest`, which gives each test an empty database                                              |
+| `internal/store/`                             | data access   | `queries.sql`, the `New` adapter, and a test against a real database; sqlc's generated code is in the `sqlcgen` subpackage                                            |
+| `sqlc.yaml`                                   | data access   | sqlc configuration                                                                                                                                                    |
+| `README.md`, `.gitignore`, `go.mod`, `go.sum` | project files | `go.mod` is rendered by gobento, `go.sum` comes from the Go toolchain, and the README includes notes from each component                                              |
 
 `go.mod` requires every direct dependency at an exact version: the defaults
 from the [version rules](/docs/concepts/version-rules), or the versions you
@@ -228,7 +233,7 @@ migration system.
 a layout organized by feature:
 
 ```sh
-gobento new shop --module example.com/shop --arch vertical-slice
+gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db sqlite
 ```
 
 | Path                          | Filled by    | Contents                                                                               |
@@ -241,6 +246,40 @@ gobento new shop --module example.com/shop --arch vertical-slice
 
 The generated README explains the layout and how to add a second feature,
 such as `internal/orders`, beside `internal/items`.
+
+## Use PostgreSQL
+
+Generate the same project on PostgreSQL with `--db postgres`:
+
+```sh
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db postgres
+```
+
+The files are the same, except that `internal/database` opens PostgreSQL
+through [pgx](https://github.com/jackc/pgx), a pure-Go driver, and
+`sqlc.yaml` uses sqlc's `postgresql` engine. What changes for you:
+
+- **Running the server.** `DATABASE_URL` defaults to
+  `postgres://postgres:postgres@localhost:5432/shop?sslmode=disable`, a local
+  development server. The generated README has a command that starts one with
+  Docker:
+
+  ```sh
+  docker run --rm -d --name shop-postgres -p 5432:5432 \
+    -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=shop postgres:18-alpine
+  go run ./cmd/shop
+  ```
+
+  For any other server, set `DATABASE_URL` to its URL.
+
+- **Running the tests.** `go test ./...` passes without a server: the
+  database and store tests are skipped. Set `TEST_DATABASE_URL` to run them
+  against a server. Each test works in a schema of its own, which it drops
+  when it ends:
+
+  ```sh
+  TEST_DATABASE_URL='postgres://postgres:postgres@localhost:5432/shop?sslmode=disable' go test ./...
+  ```
 
 ## Next steps
 

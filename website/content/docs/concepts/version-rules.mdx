@@ -22,6 +22,11 @@ modules:
     constraints:
       - when: '>=v1.61.0'
         require: { go: '>=1.26' }
+  github.com/jackc/pgx/v5:
+    components: [database/postgres]
+    role: library
+    range: '>=v5.12.0 <v6.0.0'
+    default: v5.12.0
   github.com/sqlc-dev/sqlc:
     components: [data/sqlc]
     role: tool # not in go.mod; fixed per gobento release
@@ -75,7 +80,7 @@ gobento resolves versions in this order:
 Every problem from steps 3 and 4 is collected and reported together.
 
 ```sh
-gobento new shop --arch mvc --framework nethttp --go 1.26 --pin modernc.org/sqlite=v1.61.0
+gobento new shop --arch mvc --framework nethttp --db sqlite --go 1.26 --pin modernc.org/sqlite=v1.61.0
 ```
 
 `--pin` is rejected when:
@@ -127,6 +132,17 @@ Loading fails, with an error naming the module, if the rules file:
 gobento's test suite checks the shipped rules file, and CI generates every
 supported selection twice: once with the defaults and once with the range
 floors. So every version a range claims to support is tested.
+
+## How a range floor is chosen
+
+A range floor is the oldest version gobento claims to support, and CI builds
+it. It must exclude every release with a known advisory in the
+[Go vulnerability database](https://vuln.go.dev), in the module itself or in
+the dependency versions that release requires. For example, pgx's floor is
+v5.12.0, although pgx's own advisories are fixed in v5.9.2: v5.9.2 to v5.11.0
+require a version of `golang.org/x/text` with an advisory in code pgx uses.
+The comment above each module in `versions.yaml` records why its floor is
+where it is.
 
 ## Exact pinning
 

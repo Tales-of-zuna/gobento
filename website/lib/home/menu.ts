@@ -22,7 +22,6 @@ export interface RoadmapItem {
 
 /** Components on the roadmap; they join once they pass the CI matrix. */
 export const ROADMAP: readonly RoadmapItem[] = [
-  { kind: 'database', name: 'PostgreSQL' },
   { kind: 'data', name: 'GORM' },
 ];
 

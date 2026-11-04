@@ -264,11 +264,88 @@ func TestShippedCatalogSupported(t *testing.T) {
 	for _, s := range Supported(shippedCatalog(t)) {
 		got = append(got, s.String())
 	}
-	want := []string{
-		"mvc/chi/sqlite/sqlc", "mvc/gin/sqlite/sqlc", "mvc/nethttp/sqlite/sqlc",
-		"vertical-slice/chi/sqlite/sqlc", "vertical-slice/gin/sqlite/sqlc", "vertical-slice/nethttp/sqlite/sqlc",
+	var want []string
+	for _, arch := range []string{"mvc", "vertical-slice"} {
+		for _, fw := range []string{"chi", "gin", "nethttp"} {
+			for _, db := range []string{"postgres", "sqlite"} {
+				want = append(want, arch+"/"+fw+"/"+db+"/sqlc")
+			}
+		}
 	}
 	if !slices.Equal(got, want) {
 		t.Errorf("Supported() = %v, want %v", got, want)
 	}
+}
+
+// TestShippedDatabasesShareEntryAndHandlers covers the spec scenario "Entry
+// point is the same for every database": the Go files of the architecture
+// and the framework do not depend on the database.
+func TestShippedDatabasesShareEntryAndHandlers(t *testing.T) {
+	t.Parallel()
+
+	sqlite, postgres := shippedPlan(t, "sqlite"), shippedPlan(t, "postgres")
+	compared := 0
+	for _, f := range sqlite.Files {
+		if !strings.HasSuffix(f.Path, ".go") || (f.Component != "architecture/mvc" && f.Component != "framework/nethttp") {
+			continue
+		}
+		g, ok := postgres.File(f.Path)
+		if !ok || !bytes.Equal(f.Content, g.Content) {
+			t.Errorf("%s differs between the sqlite and postgres selections", f.Path)
+		}
+		compared++
+	}
+	if compared == 0 {
+		t.Fatal("no architecture or framework Go files compared")
+	}
+}
+
+// TestShippedSQLcDialects covers the spec scenarios "sqlc on PostgreSQL" and
+// "sqlc on SQLite" as far as composition goes: the engine and the
+// placeholder follow the sql-dialect trait. The CI job sqlc-fresh checks the
+// generated code against sqlc itself.
+func TestShippedSQLcDialects(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		database, engine, placeholder, driver string
+	}{
+		{"sqlite", "engine: sqlite", "VALUES (?1)", `_ "modernc.org/sqlite"`},
+		{"postgres", "engine: postgresql", "VALUES ($1)", `_ "github.com/jackc/pgx/v5/stdlib"`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.database, func(t *testing.T) {
+			t.Parallel()
+
+			plan := shippedPlan(t, tt.database)
+			for path, want := range map[string]string{
+				"sqlc.yaml":                             tt.engine,
+				"internal/store/sqlcgen/queries.sql.go": tt.placeholder,
+				"internal/database/database.go":         tt.driver,
+				"internal/store/store_test.go":          `"example.com/shop/internal/database/dbtest"`,
+			} {
+				f, ok := plan.File(path)
+				if !ok {
+					t.Errorf("%s is not planned", path)
+					continue
+				}
+				if !strings.Contains(string(f.Content), want) {
+					t.Errorf("%s does not contain %q:\n%s", path, want, f.Content)
+				}
+			}
+			for _, path := range []string{"internal/database/dbtest/dbtest.go", "internal/database/schema.sql"} {
+				if _, ok := plan.File(path); !ok {
+					t.Errorf("%s is not planned", path)
+				}
+			}
+		})
+	}
+}
+
+// shippedPlan composes mvc/nethttp/<database>/sqlc from the shipped catalog
+// with default versions for the example project shop. With "sqlite", it is
+// the reference selection.
+func shippedPlan(t *testing.T, database string) *Plan {
+	t.Helper()
+	return referencePlan(t, [4]string{"mvc", "nethttp", database, "sqlc"})
 }

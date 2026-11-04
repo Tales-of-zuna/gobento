@@ -71,9 +71,13 @@ func TestShippedCatalogCandidates(t *testing.T) {
 	for _, s := range cat.Candidates() {
 		got = append(got, s.String())
 	}
-	want := []string{
-		"mvc/chi/sqlite/sqlc", "mvc/gin/sqlite/sqlc", "mvc/nethttp/sqlite/sqlc",
-		"vertical-slice/chi/sqlite/sqlc", "vertical-slice/gin/sqlite/sqlc", "vertical-slice/nethttp/sqlite/sqlc",
+	var want []string
+	for _, arch := range []string{"mvc", "vertical-slice"} {
+		for _, fw := range []string{"chi", "gin", "nethttp"} {
+			for _, db := range []string{"postgres", "sqlite"} {
+				want = append(want, arch+"/"+fw+"/"+db+"/sqlc")
+			}
+		}
 	}
 	if !slices.Equal(got, want) {
 		t.Errorf("Candidates() = %v, want %v", got, want)

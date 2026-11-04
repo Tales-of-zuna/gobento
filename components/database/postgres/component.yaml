@@ -1,0 +1,7 @@
+name: postgres
+title: PostgreSQL
+description: PostgreSQL through pgx, a pure-Go driver, used with database/sql.
+provides:
+  sql-dialect: postgresql
+  conn: database/sql
+  sql-schema: schema.sql

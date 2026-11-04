@@ -68,6 +68,19 @@
       "requires": {}
     },
     {
+      "id": "database/postgres",
+      "kind": "database",
+      "name": "postgres",
+      "title": "PostgreSQL",
+      "description": "PostgreSQL through pgx, a pure-Go driver, used with database/sql.",
+      "provides": {
+        "conn": "database/sql",
+        "sql-dialect": "postgresql",
+        "sql-schema": "schema.sql"
+      },
+      "requires": {}
+    },
+    {
       "id": "database/sqlite",
       "kind": "database",
       "name": "sqlite",
@@ -92,7 +105,8 @@
           "database/sql"
         ],
         "sql-dialect": [
-          "sqlite"
+          "sqlite",
+          "postgresql"
         ],
         "sql-schema": [
           "schema.sql"
@@ -123,6 +137,16 @@
       "role": "library",
       "range": ">=v5.3.0 <v6.0.0",
       "default": "v5.5.0",
+      "constraints": []
+    },
+    {
+      "path": "github.com/jackc/pgx/v5",
+      "components": [
+        "database/postgres"
+      ],
+      "role": "library",
+      "range": ">=v5.12.0 <v6.0.0",
+      "default": "v5.12.0",
       "constraints": []
     },
     {
@@ -158,14 +182,32 @@
     {
       "architecture": "mvc",
       "data": "sqlc",
-      "database": "sqlite",
+      "database": "postgres",
       "framework": "chi"
     },
     {
       "architecture": "mvc",
       "data": "sqlc",
       "database": "sqlite",
+      "framework": "chi"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
       "framework": "gin"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp"
     },
     {
       "architecture": "mvc",
@@ -176,14 +218,32 @@
     {
       "architecture": "vertical-slice",
       "data": "sqlc",
-      "database": "sqlite",
+      "database": "postgres",
       "framework": "chi"
     },
     {
       "architecture": "vertical-slice",
       "data": "sqlc",
       "database": "sqlite",
+      "framework": "chi"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "postgres",
       "framework": "gin"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp"
     },
     {
       "architecture": "vertical-slice",

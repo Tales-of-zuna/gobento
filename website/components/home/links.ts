@@ -7,4 +7,5 @@ export {
 } from '@/components/site/links';
 
 /** The quick-start command shown in the hero. */
-export const QUICK_START = 'gobento new shop --module example.com/shop --arch mvc';
+export const QUICK_START =
+  'gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres';

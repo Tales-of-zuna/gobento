@@ -1,0 +1,38 @@
+// Package {{.Slots.database.Package}} opens the PostgreSQL database and
+// applies its schema. It uses pgx, a pure-Go driver, through database/sql, so
+// the application builds without cgo.
+package {{.Slots.database.Package}}
+
+import (
+	"context"
+	"database/sql"
+	_ "embed" // for the schema
+	"errors"
+	"fmt"
+
+	_ "github.com/jackc/pgx/v5/stdlib" // registers the "pgx" driver
+)
+
+// DefaultURL is the database the application uses when DATABASE_URL is
+// unset: the database {{.Project.Name}} of a local development server, as
+// started by the command in README.md. Set DATABASE_URL everywhere else.
+const DefaultURL = "postgres://postgres:postgres@localhost:5432/{{.Project.Name}}?sslmode=disable"
+
+//go:embed schema.sql
+var schema string
+
+// Open opens the PostgreSQL database at url, a postgres:// URL or a
+// key=value connection string, and creates any missing tables. Errors do not
+// repeat url, which may contain a password.
+func Open(ctx context.Context, url string) (*sql.DB, error) {
+	db, err := sql.Open("pgx", url)
+	if err != nil {
+		return nil, fmt.Errorf("open database: %w", err)
+	}
+	// Without arguments, pgx sends the schema as one simple query, so it may
+	// hold several statements.
+	if _, err := db.ExecContext(ctx, schema); err != nil {
+		return nil, errors.Join(fmt.Errorf("apply schema: %w", err), db.Close())
+	}
+	return db, nil
+}

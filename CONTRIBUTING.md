@@ -57,6 +57,24 @@ commands, so you can always run them directly.
 | `catalog-check` | Fails if `catalog.json` is stale or a command the website offers is rejected by `gobento new --dry-run` | `go test -run 'TestCommittedCatalogIsCurrent\|TestWebsiteCommands' ./internal/tools/catalogexport ./internal/cli` |
 | `clean` | Removes build and coverage output | Delete `bin/` and `coverage.out` |
 
+### Integration tests and PostgreSQL
+
+`make test-all` includes `TestIntegration` in `internal/generate`, which
+generates every supported selection and runs `go test ./...` inside each
+project. The tests of a PostgreSQL project are skipped unless
+`TEST_DATABASE_URL` names a server; CI sets it on Linux, so the PostgreSQL code
+paths always run there. To run them locally, start a throwaway server with
+Docker and pass its URL:
+
+```sh
+docker run --rm -d --name gobento-postgres -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:18-alpine
+TEST_DATABASE_URL='postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable' \
+  go test -count=1 -run TestIntegration ./internal/generate/
+docker stop gobento-postgres
+```
+
+Each test creates a schema of its own on that server and drops it at the end.
+
 ### Notes for Windows
 
 - If you do not have `make`, run the plain commands from the table above in

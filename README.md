@@ -68,13 +68,14 @@ covers every platform, including Windows. To build from a clone instead, run
 `make build` or `go install ./cmd/gobento`.
 
 Generate a project. Choose the architecture with `--arch` (`mvc` organizes the
-code by layer, `vertical-slice` by feature) and the HTTP framework with
-`--framework` (`nethttp`, `chi`, or `gin`). A component kind with a single
-option is chosen automatically, and versions come from gobento's compatibility
-rules. In a terminal, gobento asks for anything it still needs: run
-`gobento new` to be asked for the name, module path, and each component kind
-with several options. Flags skip their questions; in scripts and CI, name
-every kind with several options.
+code by layer, `vertical-slice` by feature), the HTTP framework with
+`--framework` (`nethttp`, `chi`, or `gin`), and the database with `--db`
+(`sqlite` or `postgres`). A component kind with a single option is chosen
+automatically, and versions come from gobento's compatibility rules. In a
+terminal, gobento asks for anything it still needs: run `gobento new` to be
+asked for the name, module path, and each component kind with several
+options. Flags skip their questions; in scripts and CI, name every kind with
+several options.
 
 ```sh
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
@@ -87,19 +88,22 @@ More examples:
 
 ```sh
 # Organize the code by feature instead of by layer
-gobento new shop --arch vertical-slice
+gobento new shop --arch vertical-slice --framework nethttp --db sqlite
+
+# Use PostgreSQL; the project's README shows how to start a local server
+gobento new shop --arch mvc --framework chi --db postgres
 
 # See the files gobento would create, without writing anything
-gobento new shop --arch mvc --framework chi --dry-run
+gobento new shop --arch mvc --framework chi --db sqlite --dry-run
 
 # Choose the Go version and a library version within the supported ranges
-gobento new shop --arch mvc --framework gin --go 1.26 --pin modernc.org/sqlite=v1.61.0
+gobento new shop --arch mvc --framework gin --db sqlite --go 1.26 --pin modernc.org/sqlite=v1.61.0
 
 # Fill the current directory, which must be empty
-mkdir shop && cd shop && gobento new shop --arch mvc --framework nethttp --dir .
+mkdir shop && cd shop && gobento new shop --arch mvc --framework nethttp --db sqlite --dir .
 
 # Never ask a question (pipes and CI never get any either)
-gobento new shop --arch mvc --framework nethttp --no-input
+gobento new shop --arch mvc --framework nethttp --db sqlite --no-input
 
 # List every flag
 gobento new --help
@@ -117,8 +121,10 @@ digits, `-`, and `_`. Names that Windows reserves for devices, such as `con`,
 `nul`, `com1`, or `lpt1`, are rejected.
 
 The generated project's README describes its API, including its error
-responses (`400` for invalid JSON, `413` for bodies over 1 MiB), and how its
-schema and sqlc code are maintained.
+responses (`400` for invalid JSON, `413` for bodies over 1 MiB), its database
+and how to run the tests against it, and how its schema and sqlc code are
+maintained. With PostgreSQL, the database tests run when `TEST_DATABASE_URL`
+names a server and are skipped otherwise, so `go test ./...` passes anywhere.
 
 The reference stack (`mvc`, `nethttp`, `sqlite`, `sqlc`) generates a project
 like this, with a health endpoint and one example resource that builds and
@@ -130,7 +136,8 @@ shop/
 ├── internal/
 │   ├── models/            # domain types and store interface
 │   ├── controllers/       # router, health and items handlers, tests
-│   ├── database/          # opens SQLite, applies the embedded schema
+│   ├── database/          # opens SQLite or PostgreSQL, applies the embedded schema
+│   │   └── dbtest/        # a fresh database for each test
 │   └── store/             # sqlc queries, adapter, tests; generated code in sqlcgen/
 ├── sqlc.yaml
 ├── go.mod
@@ -180,7 +187,7 @@ flowchart LR
 - [x] First slice: MVC, `net/http`, SQLite, and sqlc (v0.1.0)
 - [x] Interactive prompts
 - [x] More frameworks: gin, chi
-- [ ] PostgreSQL
+- [x] PostgreSQL
 - [ ] GORM
 - [ ] Frontends: React, Vue, and Svelte via Vite; htmx + templ
 - [ ] Tailwind CSS

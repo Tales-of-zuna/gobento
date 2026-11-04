@@ -156,7 +156,7 @@ and `sqlc` accepts it with:
 
 ```yaml title="components/data/sqlc/component.yaml"
 requires:
-  sql-dialect: [sqlite]
+  sql-dialect: [sqlite, postgresql]
   conn: [database/sql]
   sql-schema: [schema.sql]
 ```
@@ -165,8 +165,10 @@ A selection is refused if a required trait is missing or has a value the
 component does not accept, or if two components provide different values for
 the same trait. Traits also carry the few facts one component needs about
 another's files: `sqlc.yaml` finds the schema at
-`{{.Slots.database.Dir}}/{{index .Traits "sql-schema"}}`. See
-[Traits](/docs/concepts/traits).
+`{{.Slots.database.Dir}}/{{index .Traits "sql-schema"}}`. A component that
+accepts several values of a trait may branch on the value, as sqlc does for
+its query placeholder with `{{if eq (index .Traits "sql-dialect") "postgresql"}}`,
+but never on another component's name. See [Traits](/docs/concepts/traits).
 
 ## Slots and contracts
 
@@ -174,7 +176,11 @@ Each slot is one directory, which means one Go package, and it has exactly one
 owner. Two components can therefore never write into the same package or the
 same file, and their identifiers cannot clash. The owner may put its own
 subpackages below the slot directory; sqlc's generated code lives in
-`internal/store/sqlcgen`, for example. Other slots never import them.
+`internal/store/sqlcgen`, for example. Other slots never import them, unless
+the contract names them: every database component provides a `dbtest`
+subpackage whose `Open(t)` gives a test an empty database (and skips it when
+the database needs a server that is not configured), so data-access
+components test against whichever database is selected.
 
 The architecture owns the entry point and the contract: the shared types and
 the functions each slot must provide. For `mvc`, see the
@@ -250,8 +256,10 @@ go run github.com/sqlc-dev/sqlc/cmd/sqlc@{{index .Versions "github.com/sqlc-dev/
 
 If users need to know something about your component, add `notes.md.tmpl`.
 Every component's rendered notes are appended to the root `README.md`, in kind
-order. `nethttp` documents the API and its error responses, `sqlite` explains
-how the schema is applied, and `sqlc` shows how to regenerate its code.
+order. `nethttp` documents the API and its error responses, each database
+starts with a `## Database` section (the architecture's README links to it)
+that explains the default `DATABASE_URL`, the tests, and how the schema is
+applied, and `sqlc` shows how to regenerate its code.
 
 ### Composition errors
 
@@ -424,7 +432,10 @@ It needs network access and is skipped with `-short`. Run it with:
 make test-all
 ```
 
-CI runs it on Linux, macOS, and Windows.
+CI runs it on Linux, macOS, and Windows. On Linux it also runs a PostgreSQL
+service and sets `TEST_DATABASE_URL`, so tests that use a database server run
+for real there instead of being skipped; see `CONTRIBUTING.md` to do the same
+locally.
 
 </Step>
 </Steps>
@@ -436,8 +447,11 @@ during generation. After changing `queries.sql` or the schema, regenerate it
 in a generated project with the pinned sqlc version (the command is in the
 generated README), copy the files in `internal/store/sqlcgen/` back to
 `components/data/sqlc/files/store/sqlcgen/` with the `.tmpl` suffix, and
-update the golden files. CI regenerates the code with the pinned sqlc inside a
-reference project and fails if any file changes.
+update the golden files. The output differs between dialects only where the
+templates branch on `sql-dialect` (the placeholder), so regenerate in one
+project per database (`--db sqlite` and `--db postgres`) and keep those
+branches in sync. CI's `sqlc-fresh` job does the same for each database and
+fails if any file changes.
 
 ## Documentation
 
