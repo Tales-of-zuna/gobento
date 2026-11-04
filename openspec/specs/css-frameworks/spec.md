@@ -89,15 +89,20 @@ what the pinned CLI compiles.
 - **THEN** no file changes
 
 ### Requirement: Tailwind CSS for Vite frontends
-With `--css tailwind` and a frontend whose `frontend-build` is `vite`, the
-Tailwind component SHALL contribute the Vite plugin import and call, the
-Tailwind stylesheet import, and the npm development dependencies of the
-pinned release to the frontend kind's points that the frontend includes, and
-SHALL add no Tailwind source, runner, or `make generate` step of its own.
+With `--css tailwind` and a `vite` frontend, the Tailwind component SHALL
+contribute the Vite plugin's import and call and the stylesheet import to
+the points `vite-config-imports`, `vite-plugins`, and `css-imports`, with no
+Tailwind source, runner, or `make generate` step. Its npm packages
+`tailwindcss` and `@tailwindcss/vite` SHALL be development dependencies in
+the rules file at the standalone CLI's version, added by the scaffold step.
 
 #### Scenario: Vite frontend with Tailwind
-- **WHEN** a project is composed with a Vite frontend that includes the points `vite-config-imports`, `vite-plugins`, `css-imports`, and `npm-dev-dependencies`, and `--css tailwind`
-- **THEN** the frontend's Vite configuration imports and calls `@tailwindcss/vite`, its main stylesheet starts with `@import "tailwindcss";`, its install step names `tailwindcss` and `@tailwindcss/vite` at the pinned version, and the project has no `tailwind.css`
+- **WHEN** a project is composed with `--frontend react`, `--frontend vue`, or `--frontend svelte` and `--css tailwind`
+- **THEN** `frontend/vite.config.ts` imports `@tailwindcss/vite` and calls it last in its plugins, the stylesheet the app imports starts with `@import "tailwindcss";` followed by the frontend's own rules, and the project has no `tailwind.css`, Tailwind runner, or Tailwind step in its Makefile, CI workflow, or Dockerfile
+
+#### Scenario: Tailwind's npm packages from the rules
+- **WHEN** a project with a Vite frontend and `--css tailwind` is prepared
+- **THEN** its scaffold step adds `@tailwindcss/vite` and `tailwindcss` at the version of the rules file's `tailwindcss` binary as development dependencies, and with `--frontend htmx` there is no scaffold step
 
 #### Scenario: Vite frontend without the points
 - **WHEN** a Vite frontend does not include the Vite points in its templates

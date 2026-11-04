@@ -1,13 +1,11 @@
 ## MODIFIED Requirements
 
 ### Requirement: Components contribute through declared points
-The base layer, and any component kind, MAY declare named contribution
-points, each point once. A component of any kind MAY contribute to a
-declared point with one template per point. The templates of the base layer
-and of every selected component MAY include the base layer's points; the
-templates of a component MAY also include the points of its own kind. Where
-a template names a point, it SHALL include the selected components'
-contributions to it, in kind order. A contribution SHALL depend only on
+The base layer and any component kind MAY declare named contribution points,
+each once. A component of any kind MAY contribute to a declared point with one
+template per point. Every template MAY include the base layer's points, and a
+component's templates also its own kind's; there the selected components'
+contributions SHALL appear in kind order. A contribution SHALL depend only on
 traits and the template data, never on which other component is selected.
 
 #### Scenario: Database contributes a CI service
@@ -27,13 +25,12 @@ traits and the template data, never on which other component is selected.
 - **THEN** the generated `.gitignore` contains the contribution
 
 ### Requirement: Undeclared contribution points are rejected
-A catalog in which a component contributes to a point that neither the base
-layer nor any kind declares SHALL be rejected, as SHALL a kind that declares
-a point of the base layer or of another kind. A template that names a point
-that neither the base layer nor its own kind declares, a non-empty
-contribution to a point of a kind without a selected component, and a
-non-empty contribution that no rendered template includes SHALL make
-composition fail.
+A catalog with a contribution to a point that neither the base layer nor any
+kind declares, or with a kind that redeclares a point of the base layer or of
+another kind, SHALL be rejected. Composition SHALL fail for a template naming
+a point that neither the base layer nor its own kind declares, and for a
+non-empty contribution to a point of an unselected kind or that no rendered
+template includes.
 
 #### Scenario: Unknown contribution point
 - **WHEN** a component in the catalog has a contribution template for a point that neither the base layer nor any kind declares

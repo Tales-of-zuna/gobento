@@ -235,11 +235,11 @@ conflict.
 - **THEN** gobento exits non-zero naming the file, the base layer, and the component, and writes nothing
 
 ### Requirement: Components contribute through declared points
-The base layer, and any component kind, MAY declare named contribution
-points. A component of any kind MAY contribute to a declared point with one
-template per point, and a template of the base layer or of a component of the
-declaring kind SHALL include the selected components' contributions to a
-point, in kind order, where it names it. A contribution SHALL depend only on
+The base layer and any component kind MAY declare named contribution points,
+each once. A component of any kind MAY contribute to a declared point with one
+template per point. Every template MAY include the base layer's points, and a
+component's templates also its own kind's; there the selected components'
+contributions SHALL appear in kind order. A contribution SHALL depend only on
 traits and the template data, never on which other component is selected.
 
 #### Scenario: Database contributes a CI service
@@ -254,13 +254,17 @@ traits and the template data, never on which other component is selected.
 - **WHEN** the frontend kind declares a point for the stylesheet, the selected frontend includes it, and the selected CSS framework contributes to it
 - **THEN** the frontend's stylesheet is the contribution, and without a contribution it is the frontend's own
 
+#### Scenario: Component template includes a base point
+- **WHEN** an architecture's `.gitignore` template includes the base layer's point `gitignore` and a selected component contributes to it
+- **THEN** the generated `.gitignore` contains the contribution
+
 ### Requirement: Undeclared contribution points are rejected
-A catalog in which a component contributes to a point that neither the base
-layer nor any kind declares SHALL be rejected, as SHALL a kind that declares
-a point of the base layer or of another kind. A template that names a point
-its base layer or kind does not declare, a non-empty contribution to a point
-of a kind without a selected component, and a non-empty contribution that no
-rendered template includes SHALL make composition fail.
+A catalog with a contribution to a point that neither the base layer nor any
+kind declares, or with a kind that redeclares a point of the base layer or of
+another kind, SHALL be rejected. Composition SHALL fail for a template naming
+a point that neither the base layer nor its own kind declares, and for a
+non-empty contribution to a point of an unselected kind or that no rendered
+template includes.
 
 #### Scenario: Unknown contribution point
 - **WHEN** a component in the catalog has a contribution template for a point that neither the base layer nor any kind declares
@@ -269,6 +273,10 @@ rendered template includes SHALL make composition fail.
 #### Scenario: Base template names an unknown point
 - **WHEN** a base layer template asks for the contributions to a point that `base.yaml` does not declare
 - **THEN** composition fails with an error naming the template and the point, and gobento writes nothing
+
+#### Scenario: Component template names a point of another kind
+- **WHEN** a database component's template asks for the contributions to a point that only the data kind declares
+- **THEN** composition fails with an error naming the template, the component, and the point
 
 #### Scenario: Point of an unselected kind
 - **WHEN** a selected component's contribution renders non-empty for a point of a kind of which no component is selected
@@ -289,13 +297,14 @@ selection's traits.
 
 ### Requirement: Components include contribution points
 Besides the base layer's templates, the templates of a selected component
-SHALL be able to include the contributions to a declared point, so one
-component can extend a file another component owns, such as a CSS component
-adding a Vite plugin to a frontend's Vite configuration. Contribution
-templates themselves SHALL NOT include points.
+SHALL be able to include the contributions to a point of the base layer or
+of the component's own kind, so one component can extend a file another
+component owns, such as a CSS component adding a Vite plugin to a
+frontend's Vite configuration through a point of the frontend kind.
+Contribution templates themselves SHALL NOT include points.
 
 #### Scenario: CSS contribution to a Vite frontend
-- **WHEN** a selected component contributes to the point `vite-plugins` and a Vite frontend is selected
+- **WHEN** a selected component contributes to the frontend kind's point `vite-plugins` and a Vite frontend is selected
 - **THEN** the contribution appears in the plugins of `frontend/vite.config.ts`, and without a Vite frontend it appears nowhere
 
 ### Requirement: Scaffolded components

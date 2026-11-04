@@ -16,17 +16,13 @@ require Node.js.
 - **THEN** the output also says that npm adds the development dependencies `@tailwindcss/vite` and `tailwindcss` at their versions to `frontend/package.json`
 
 ### Requirement: Scaffold step
-When the selection includes a component with a scaffolder, generation SHALL
-run it after writing gobento's files to the temporary directory and before
-moving the project into place, merge its files under the component's
-directory with gobento's files taking precedence, and record the npm
-dependency tree in a lock file without installing the dependencies. When
-npm refuses a remote tarball while writing the lock file (npm 12's
-`allow-remote`), generation SHALL repeat that command allowing remote
-tarballs and SHALL fail unless every package in the lock file resolves to
-the configured npm registry's host. A failure or interruption SHALL leave
-nothing behind, including files written by processes the scaffolder
-started.
+With a scaffolded component, generation SHALL run the scaffolder after
+writing gobento's files to the temporary directory, merge its files with
+gobento's taking precedence, and write the npm lock file without installing.
+If npm refuses a remote tarball then (`EALLOWREMOTE`), it SHALL retry
+allowing them and fail unless every lock file package is on the registry's
+host. A failure or interruption SHALL leave nothing behind, including files
+of processes the scaffolder started.
 
 #### Scenario: Scaffolder fails
 - **WHEN** the scaffolder or npm fails during generation (for example, without network access)

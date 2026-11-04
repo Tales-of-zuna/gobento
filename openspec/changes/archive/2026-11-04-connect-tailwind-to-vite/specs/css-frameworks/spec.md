@@ -1,14 +1,12 @@
 ## MODIFIED Requirements
 
 ### Requirement: Tailwind CSS for Vite frontends
-With `--css tailwind` and a frontend whose `frontend-build` is `vite`, the
-Tailwind component SHALL contribute the Vite plugin import and call and the
-Tailwind stylesheet import to the frontend kind's points
-`vite-config-imports`, `vite-plugins`, and `css-imports`, and SHALL add no
-Tailwind source, runner, or `make generate` step of its own. Its npm
-packages, `tailwindcss` and `@tailwindcss/vite`, SHALL be development
-dependencies in the rules file's npm section, at the version of the
-standalone Tailwind CLI, which the scaffold step adds to the frontend.
+With `--css tailwind` and a `vite` frontend, the Tailwind component SHALL
+contribute the Vite plugin's import and call and the stylesheet import to
+the points `vite-config-imports`, `vite-plugins`, and `css-imports`, with no
+Tailwind source, runner, or `make generate` step. Its npm packages
+`tailwindcss` and `@tailwindcss/vite` SHALL be development dependencies in
+the rules file at the standalone CLI's version, added by the scaffold step.
 
 #### Scenario: Vite frontend with Tailwind
 - **WHEN** a project is composed with `--frontend react`, `--frontend vue`, or `--frontend svelte` and `--css tailwind`
