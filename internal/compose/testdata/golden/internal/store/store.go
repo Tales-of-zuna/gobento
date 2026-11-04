@@ -26,11 +26,11 @@ func (s *itemStore) List(ctx context.Context) ([]models.Item, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list items: %w", err)
 	}
-	items := make([]models.Item, len(rows))
+	list := make([]models.Item, len(rows))
 	for i, row := range rows {
-		items[i] = toModel(row)
+		list[i] = toModel(row)
 	}
-	return items, nil
+	return list, nil
 }
 
 func (s *itemStore) Create(ctx context.Context, name string) (models.Item, error) {

@@ -17,8 +17,12 @@ path, or the project name when `--module` is omitted.
 - **AND** the command exits with status 0 and prints the next commands to run
 
 #### Scenario: Module path defaults to the project name
-- **WHEN** the user runs `gobento new shop` without `--module`
+- **WHEN** the user runs `gobento new shop --arch mvc` without `--module`
 - **THEN** the generated module is named `shop`
+
+#### Scenario: Architecture must be chosen
+- **WHEN** the user runs `gobento new shop` without `--arch` while `mvc` and `vertical-slice` are both supported architectures
+- **THEN** gobento exits non-zero naming `--arch` and listing `mvc` and `vertical-slice`, and writes nothing
 
 ### Requirement: Automatic selection of the only option
 When a selection flag is omitted and its component kind has exactly one
@@ -107,7 +111,7 @@ A project generated from any supported selection SHALL compile, pass `go vet`
 and `gofmt -l`, and pass its own `go test ./...` without edits by the user.
 
 #### Scenario: Build check after generation
-- **WHEN** a project is generated with the selection mvc/nethttp/sqlite/sqlc
+- **WHEN** a project is generated with the selection mvc/nethttp/sqlite/sqlc or vertical-slice/nethttp/sqlite/sqlc
 - **THEN** `go build ./...`, `go vet ./...` and `go test ./...` succeed inside it, and `gofmt -l .` lists no files
 
 #### Scenario: Example functionality is present

@@ -5,8 +5,12 @@ import { releaseStatus } from './helpers';
 
 const { released } = releaseStatus();
 
-/** Opens the configurator and waits until it has read the URL (after hydration). */
-async function open(page: Page, query = '') {
+/**
+ * Opens the configurator and waits until it has read the URL (after
+ * hydration). The architecture kind has several options, so tests start from
+ * mvc unless they pass their own query.
+ */
+async function open(page: Page, query = '?arch=mvc') {
   await page.goto(`configurator/${query}`);
   await expect(page.locator('[data-hydrated="true"]')).toBeAttached();
 }
@@ -18,14 +22,13 @@ test.describe('configurator', () => {
   test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
   test('Defaults: single options and default versions are preselected', async ({ page }) => {
-    await open(page);
+    await open(page, '');
     await expect(page.getByRole('heading', { level: 1, name: 'Pack your project' })).toBeVisible();
     // The pre-release notice follows the release manifest (spec "Pre-release notice").
     const notice = page.getByText('Early development · not released yet');
     if (released) await expect(notice).toHaveCount(0);
     else await expect(notice).toBeVisible();
     for (const [kind, option] of [
-      ['Architecture', 'Model-View-Controller'],
       ['HTTP framework', 'net/http'],
       ['Database', 'SQLite'],
       ['Data access', 'sqlc'],
@@ -34,7 +37,17 @@ test.describe('configurator', () => {
       await expect(group(page, kind!).getByRole('radio', { name: option })).toBeChecked();
     }
     await expect(group(page, 'HTTP framework').getByRole('radio', { name: 'gin' })).toBeDisabled();
-    await expect(command(page)).toHaveText('gobento new myapp');
+    // Several architectures: none is preselected, and the CLI needs --arch.
+    const architecture = group(page, 'Architecture');
+    await expect(architecture.getByRole('radio', { checked: true })).toHaveCount(0);
+    await expect(
+      architecture.getByText('Choose an architecture: mvc, vertical-slice.'),
+    ).toBeVisible();
+    await expect(
+      page.getByText('No command yet. Fix the architecture choice').locator('visible=true'),
+    ).toBeVisible();
+    await architecture.getByText('Model-View-Controller', { exact: true }).click();
+    await expect(command(page)).toHaveText('gobento new myapp --arch mvc');
     await page.getByRole('button', { name: /Advanced/ }).click();
     await expect(page.getByLabel('modernc.org/sqlite')).toHaveValue('v1.61.1');
     await expect(page.getByText('Tool versions are fixed per gobento release.')).toBeVisible();
@@ -44,12 +57,20 @@ test.describe('configurator', () => {
     await open(page);
     await page.getByLabel('Project name').fill('shop');
     await page.getByLabel('Module path').fill('example.com/shop');
-    await expect(command(page)).toHaveText('gobento new shop --module example.com/shop');
+    await expect(command(page)).toHaveText('gobento new shop --module example.com/shop --arch mvc');
     await group(page, 'Go version').getByText('Go 1.26').click();
-    await expect(command(page)).toHaveText('gobento new shop --module example.com/shop --go 1.26');
-    await expect(page.getByRole('list', { name: 'Generated files' })).toContainText(
-      'cmd/shop/main.go',
+    await expect(command(page)).toHaveText(
+      'gobento new shop --module example.com/shop --arch mvc --go 1.26',
     );
+    const files = page.getByRole('list', { name: 'Generated files' });
+    await expect(files).toContainText('cmd/shop/main.go');
+    await expect(files).toContainText('controllers/');
+    await group(page, 'Architecture').getByText('Vertical slice', { exact: true }).click();
+    await expect(command(page)).toHaveText(
+      'gobento new shop --module example.com/shop --arch vertical-slice --go 1.26',
+    );
+    await expect(files).toContainText('items/itemshttp/');
+    await expect(files).not.toContainText('controllers/');
   });
 
   test('Copy command puts the displayed command on the clipboard', async ({ page }) => {
@@ -98,7 +119,9 @@ test.describe('configurator', () => {
     await expect(sqlite).toHaveAccessibleDescription(/outside the supported range >=v1\.61\.0/);
     await sqlite.fill('v1.62.0');
     await expect(sqlite).toHaveAttribute('aria-invalid', 'false');
-    await expect(command(page)).toHaveText('gobento new myapp --pin modernc.org/sqlite=v1.62.0');
+    await expect(command(page)).toHaveText(
+      'gobento new myapp --arch mvc --pin modernc.org/sqlite=v1.62.0',
+    );
     await expect(group(page, 'Go version').getByRole('radio', { name: 'Go 1.26' })).toBeEnabled();
   });
 
@@ -125,14 +148,14 @@ test.describe('configurator', () => {
   });
 
   test('Unknown value in a shared link falls back with a notice', async ({ page }) => {
-    await open(page, '?name=blog&framework=fiber&go=1.19');
+    await open(page, '?name=blog&arch=mvc&framework=fiber&go=1.19');
     const notice = page.getByRole('status').filter({ hasText: 'shared link was reset' });
     await expect(notice).toContainText('framework "fiber"');
     await expect(notice).toContainText('Go 1.19');
     await expect(
       group(page, 'HTTP framework').getByRole('radio', { name: 'net/http' }),
     ).toBeChecked();
-    await expect(command(page)).toHaveText('gobento new blog');
+    await expect(command(page)).toHaveText('gobento new blog --arch mvc');
     await notice.getByRole('button', { name: 'Dismiss' }).click();
     await expect(notice).toHaveCount(0);
   });
@@ -158,7 +181,9 @@ test.describe('configurator', () => {
     await expect(go127).toBeFocused();
     await page.keyboard.press('ArrowLeft');
     await expect(group(page, 'Go version').getByRole('radio', { name: 'Go 1.26' })).toBeChecked();
-    await expect(command(page)).toHaveText('gobento new shop --module example.com/shop --go 1.26');
+    await expect(command(page)).toHaveText(
+      'gobento new shop --module example.com/shop --arch mvc --go 1.26',
+    );
 
     await page.keyboard.press('Tab');
     const advanced = page.getByRole('button', { name: /Advanced/ });
@@ -177,7 +202,7 @@ test.describe('configurator', () => {
     expect(outline).toBe('3px');
     await page.keyboard.press('Enter');
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-      'gobento new shop --module example.com/shop --go 1.26',
+      'gobento new shop --module example.com/shop --arch mvc --go 1.26',
     );
   });
 
@@ -205,7 +230,7 @@ test.describe('configurator', () => {
       const nameBox = await page.getByLabel('Project name').boundingBox();
       expect((await stage.boundingBox())!.y).toBeLessThan(nameBox!.y);
       const bar = command(page);
-      await expect(bar).toHaveText('gobento new myapp');
+      await expect(bar).toHaveText('gobento new myapp --arch mvc');
       const box = await bar.boundingBox();
       expect(box!.y + box!.height).toBeGreaterThan(844 - 100);
       await page.mouse.wheel(0, 1500);

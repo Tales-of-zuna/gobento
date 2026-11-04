@@ -32,6 +32,15 @@
       "requires": {}
     },
     {
+      "id": "architecture/vertical-slice",
+      "kind": "architecture",
+      "name": "vertical-slice",
+      "title": "Vertical slice",
+      "description": "One directory per feature, holding its types, HTTP handlers, and data access; shared infrastructure in internal/platform.",
+      "provides": {},
+      "requires": {}
+    },
+    {
       "id": "framework/nethttp",
       "kind": "framework",
       "name": "nethttp",
@@ -110,6 +119,12 @@
   "supported": [
     {
       "architecture": "mvc",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "vertical-slice",
       "data": "sqlc",
       "database": "sqlite",
       "framework": "nethttp"

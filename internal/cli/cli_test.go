@@ -76,16 +76,25 @@ func TestNew(t *testing.T) {
 		},
 		{
 			// Spec: Module path defaults to the project name, and
-			// Automatic selection of the only option.
+			// Single option is chosen automatically.
 			name:       "defaults",
-			args:       []string{"new", "shop"},
+			args:       []string{"new", "shop", "--arch", "mvc"},
 			wantTarget: "shop",
 			wantModule: "shop",
 			wantGo:     "1.27",
 		},
 		{
+			// Spec: Feature layout.
+			name:       "vertical slice",
+			args:       []string{"new", "shop", "--arch", "vertical-slice"},
+			wantTarget: "shop",
+			wantModule: "shop",
+			wantGo:     "1.27",
+			wantOut:    []string{"go run ./cmd/shop"},
+		},
+		{
 			name:       "versions and directory",
-			args:       []string{"new", "my-app", "--go", "1.26", "--pin", "modernc.org/sqlite=v1.61.0", "--dir", "out/app"},
+			args:       []string{"new", "my-app", "--arch", "mvc", "--go", "1.26", "--pin", "modernc.org/sqlite=v1.61.0", "--dir", "out/app"},
 			wantTarget: "out/app",
 			wantModule: "my-app",
 			wantGo:     "1.26",
@@ -125,7 +134,7 @@ func TestNewPinVersionIsUsed(t *testing.T) {
 	t.Parallel()
 
 	gen := &fakeGenerator{}
-	if _, _, err := run(t, components.FS(), gen, "new", "shop", "--pin", "modernc.org/sqlite=v1.61.0"); err != nil {
+	if _, _, err := run(t, components.FS(), gen, "new", "shop", "--arch", "mvc", "--pin", "modernc.org/sqlite=v1.61.0"); err != nil {
 		t.Fatal(err)
 	}
 	for _, m := range gen.calls[0].Modules {
@@ -164,8 +173,14 @@ func TestNewErrors(t *testing.T) {
 			want:    []string{"--framework: choose a framework; supported: chi, nethttp"},
 		},
 		{
+			// Spec: Architecture must be chosen.
+			name: "architecture must be chosen",
+			args: []string{"new", "shop"},
+			want: []string{"--arch: choose an architecture; supported: mvc, vertical-slice"},
+		},
+		{
 			name: "tool pin",
-			args: []string{"new", "shop", "--pin", "github.com/sqlc-dev/sqlc=v1.30.0"},
+			args: []string{"new", "shop", "--arch", "mvc", "--pin", "github.com/sqlc-dev/sqlc=v1.30.0"},
 			want: []string{"github.com/sqlc-dev/sqlc", "fixed per gobento release"},
 		},
 		{
@@ -205,7 +220,7 @@ func TestNewSeveralProblemsSnapshot(t *testing.T) {
 	t.Parallel()
 
 	_, _, err := run(t, components.FS(), &fakeGenerator{},
-		"new", "My App", "--module", "Not A Path", "--framework", "express", "--go", "1.20", "--pin", "nonsense")
+		"new", "My App", "--module", "Not A Path", "--arch", "mvc", "--framework", "express", "--go", "1.20", "--pin", "nonsense")
 	if err == nil {
 		t.Fatal("error = nil, want the problem report")
 	}
@@ -229,7 +244,7 @@ func TestNewGenerateFailure(t *testing.T) {
 	t.Parallel()
 
 	gen := &fakeGenerator{err: errors.New("go get: no network")}
-	_, _, err := run(t, components.FS(), gen, "new", "shop")
+	_, _, err := run(t, components.FS(), gen, "new", "shop", "--arch", "mvc")
 	if err == nil || !strings.Contains(err.Error(), "  - go get: no network") {
 		t.Errorf("error = %v, want the generation error in the report", err)
 	}
@@ -244,7 +259,7 @@ func TestNewDryRun(t *testing.T) {
 	t.Parallel()
 
 	gen := &fakeGenerator{}
-	out, _, err := run(t, components.FS(), gen, "new", "drytest", "--dry-run")
+	out, _, err := run(t, components.FS(), gen, "new", "drytest", "--arch", "mvc", "--dry-run")
 	if err != nil {
 		t.Fatalf("--dry-run error = %v", err)
 	}
@@ -325,7 +340,7 @@ func TestNewIntoCurrentDirectory(t *testing.T) {
 	t.Chdir(t.TempDir())
 
 	gen := &fakeGenerator{}
-	out, _, err := run(t, components.FS(), gen, "new", "shop", "--dir", ".")
+	out, _, err := run(t, components.FS(), gen, "new", "shop", "--arch", "mvc", "--dir", ".")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -397,7 +412,7 @@ func TestNewInterrupted(t *testing.T) {
 		stderr: &stderr,
 	}
 	cmd := newRootCommand("dev", a)
-	cmd.SetArgs([]string{"new", "shop"})
+	cmd.SetArgs([]string{"new", "shop", "--arch", "mvc"})
 	if got := a.exitStatus(ctx, cmd.ExecuteContext(ctx)); got != ExitInterrupted {
 		t.Errorf("exit status = %d, want %d", got, ExitInterrupted)
 	}

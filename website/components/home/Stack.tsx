@@ -19,10 +19,10 @@ export function Stack() {
               Pick your stack
             </p>
             <h2 id="stack-title" className={s.h2}>
-              One option per compartment today.
+              One choice per compartment.
             </h2>
             <p className={s.lead}>
-              Each kind has one proven choice today. Others join once they pass the same CI matrix.
+              Every option below is proven in CI. Others join once they pass the same matrix.
             </p>
           </div>
         </div>

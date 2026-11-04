@@ -67,7 +67,8 @@ The [installation guide](https://tales-of-zuna.github.io/gobento/docs/getting-st
 covers every platform, including Windows. To build from a clone instead, run
 `make build` or `go install ./cmd/gobento`.
 
-Generate a project. Every flag is optional: a component kind with a single
+Generate a project. Choose the architecture with `--arch`: `mvc` organizes the
+code by layer, `vertical-slice` by feature. Every other kind with a single
 option is chosen automatically, and versions come from gobento's
 compatibility rules.
 
@@ -81,14 +82,17 @@ go run ./cmd/shop
 More examples:
 
 ```sh
+# Organize the code by feature instead of by layer
+gobento new shop --arch vertical-slice
+
 # See the files gobento would create, without writing anything
-gobento new shop --dry-run
+gobento new shop --arch mvc --dry-run
 
 # Choose the Go version and a library version within the supported ranges
-gobento new shop --go 1.26 --pin modernc.org/sqlite=v1.61.0
+gobento new shop --arch mvc --go 1.26 --pin modernc.org/sqlite=v1.61.0
 
 # Fill the current directory, which must be empty
-mkdir shop && cd shop && gobento new shop --dir .
+mkdir shop && cd shop && gobento new shop --arch mvc --dir .
 
 # List every flag
 gobento new --help
@@ -108,8 +112,9 @@ The generated project's README describes its API, including its error
 responses (`400` for invalid JSON, `413` for bodies over 1 MiB), and how its
 schema and sqlc code are maintained.
 
-The first supported stack generates a project like this, with a health
-endpoint and one example resource that builds and passes its own tests:
+With `--arch mvc`, the first supported stack generates a project like this,
+with a health endpoint and one example resource that builds and passes its
+own tests:
 
 ```text
 shop/
@@ -124,6 +129,23 @@ shop/
 ├── go.sum
 ├── README.md
 └── .gitignore
+```
+
+With `--arch vertical-slice`, the same components are arranged by feature:
+everything about the example resource lives in one directory, and the
+generated README explains how to add the next feature beside it.
+
+```text
+shop/
+├── cmd/shop/main.go       # config from env, wiring, graceful shutdown
+├── internal/
+│   ├── items/             # the items feature: domain type and store interface
+│   │   ├── itemshttp/     # router, health and items handlers, tests
+│   │   └── itemsstore/    # sqlc queries, adapter, tests; generated code in sqlcgen/
+│   └── platform/
+│       └── database/      # opens SQLite, applies the embedded schema
+├── sqlc.yaml
+└── ...                    # go.mod, go.sum, README.md, .gitignore
 ```
 
 ## How it works
@@ -154,7 +176,8 @@ flowchart LR
 - [ ] GORM
 - [ ] Frontends: React, Vue, and Svelte via Vite; htmx + templ
 - [ ] Tailwind CSS
-- [ ] More architectures: vertical slice, DDD
+- [x] More architectures: vertical slice
+- [ ] More architectures: DDD
 - [x] Releases with prebuilt binaries via GoReleaser (v0.1.0)
 
 Have an idea? Open a

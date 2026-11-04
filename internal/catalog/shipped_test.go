@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/Tales-of-zuna/gobento/components"
@@ -57,7 +58,9 @@ func TestShippedCatalog(t *testing.T) {
 	}
 }
 
-func TestShippedCatalogFirstSlice(t *testing.T) {
+// TestShippedCatalogCandidates checks the shipped candidates: one per
+// architecture, each with the only framework, database, and data access.
+func TestShippedCatalogCandidates(t *testing.T) {
 	t.Parallel()
 
 	cat, err := catalog.Load(components.FS())
@@ -68,8 +71,9 @@ func TestShippedCatalogFirstSlice(t *testing.T) {
 	for _, s := range cat.Candidates() {
 		got = append(got, s.String())
 	}
-	if len(got) != 1 || got[0] != "mvc/nethttp/sqlite/sqlc" {
-		t.Errorf("Candidates() = %v, want [mvc/nethttp/sqlite/sqlc]", got)
+	want := []string{"mvc/nethttp/sqlite/sqlc", "vertical-slice/nethttp/sqlite/sqlc"}
+	if !slices.Equal(got, want) {
+		t.Errorf("Candidates() = %v, want %v", got, want)
 	}
 }
 

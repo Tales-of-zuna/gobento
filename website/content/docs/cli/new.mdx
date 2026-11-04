@@ -10,8 +10,9 @@ gobento new <name> [flags]
 ```
 
 `gobento new` generates a Go project called `<name>` from one architecture,
-one HTTP framework, one database, and one data-access component. Every flag
-is optional.
+one HTTP framework, one database, and one data-access component. A component
+flag is required only when its kind has several supported components, which
+today is `--arch`. Every other flag is optional.
 
 ## Arguments
 
@@ -24,7 +25,7 @@ is optional.
 | Flag           | Type                         | Default        | Description                                                                                                                                                                                                                    |
 | -------------- | ---------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `--module`     | string                       | `<name>`       | Go module path of the generated project, for example `example.com/shop`. It must be a valid Go import path, as checked by `module.CheckImportPath` from `golang.org/x/mod`. Paths without a dot, such as `shop`, are accepted. |
-| `--arch`       | string                       | auto           | Architecture component, for example `mvc`.                                                                                                                                                                                     |
+| `--arch`       | string                       | auto           | Architecture component: `mvc` (by layer) or `vertical-slice` (by feature). Required while both are supported.                                                                                                                  |
 | `--framework`  | string                       | auto           | HTTP framework component, for example `nethttp`.                                                                                                                                                                               |
 | `--db`         | string                       | auto           | Database component, for example `sqlite`.                                                                                                                                                                                      |
 | `--data`       | string                       | auto           | Data-access component, for example `sqlc`.                                                                                                                                                                                     |
@@ -36,7 +37,7 @@ is optional.
 
 **auto**: if the kind has exactly one supported component, it is selected. If
 it has several, gobento stops with a problem such as
-`--db: choose a database; supported: <names>`.
+`--arch: choose an architecture; supported: mvc, vertical-slice`.
 
 **rules default**: the default from the [version rules](/docs/concepts/version-rules).
 The current defaults and ranges are listed in the [Components reference](/docs/components).
@@ -50,10 +51,16 @@ module version for `go install` and builds from a clone (a pseudo-version betwee
 
 These are the examples from `gobento new --help`.
 
-Create `./shop` with the default components and versions:
+Create `./shop` with the mvc architecture and the default components and versions:
 
 ```sh
-gobento new shop
+gobento new shop --arch mvc
+```
+
+Organize the code by feature instead of by layer:
+
+```sh
+gobento new shop --arch vertical-slice
 ```
 
 Choose every component and the module path explicitly:
@@ -65,20 +72,20 @@ gobento new shop --module example.com/shop --arch mvc --framework nethttp --db s
 Choose versions within the supported ranges (here, the range floors):
 
 ```sh
-gobento new shop --go 1.26 --pin modernc.org/sqlite=v1.61.0
+gobento new shop --arch mvc --go 1.26 --pin modernc.org/sqlite=v1.61.0
 ```
 
 Fill the current, empty directory:
 
 ```sh
 mkdir shop && cd shop
-gobento new shop --dir .
+gobento new shop --arch mvc --dir .
 ```
 
 Show the files that would be created, without writing anything:
 
 ```sh
-gobento new shop --dry-run
+gobento new shop --arch mvc --dry-run
 ```
 
 ## What happens
@@ -98,7 +105,7 @@ gobento new shop --dry-run
 Nothing is written before steps 1 and 2 pass. A successful run ends like this:
 
 ```text
-$ gobento new shop --module example.com/shop
+$ gobento new shop --module example.com/shop --arch mvc
 Created example.com/shop in shop.
 
 Next steps:
@@ -132,7 +139,7 @@ memory. It lists every file that would be created, including `go.mod` and
 `go.sum`, then exits.
 
 ```text
-$ gobento new shop --module example.com/shop --dry-run
+$ gobento new shop --module example.com/shop --arch mvc --dry-run
 Dry run: nothing was written.
 gobento would create example.com/shop (mvc/nethttp/sqlite/sqlc, Go 1.27) in shop with these files:
   .gitignore
@@ -155,6 +162,10 @@ gobento would create example.com/shop (mvc/nethttp/sqlite/sqlc, Go 1.27) in shop
   internal/store/store_test.go
   sqlc.yaml
 ```
+
+With `--arch vertical-slice`, the same files are listed under
+`internal/items/`, `internal/items/itemshttp/`, `internal/items/itemsstore/`,
+and `internal/platform/database/` instead.
 
 - It writes nothing and creates no directory.
 - It does not run the Go toolchain, so it needs neither Go nor access to the
@@ -195,7 +206,7 @@ once; gobento's tests check that it matches the CLI exactly:
 {/* several-problems */}
 
 ```text
-$ gobento new "My App" --module "Not A Path" --framework express --go 1.20 --pin nonsense
+$ gobento new "My App" --module "Not A Path" --arch mvc --framework express --go 1.20 --pin nonsense
 gobento: cannot create "My App":
   - --pin "nonsense": want module=version, for example modernc.org/sqlite=v1.61.0
   - invalid project name "My App": start with a lowercase letter and use only lowercase letters, digits, - and _
@@ -207,7 +218,7 @@ gobento: cannot create "My App":
 A name reserved on Windows, which without `--module` is also the module path:
 
 ```text
-$ gobento new con
+$ gobento new con --arch mvc
 gobento: cannot create "con":
   - invalid project name "con": the name is reserved on Windows and cannot be used for files or directories; choose another name
   - invalid module path "con": malformed import path "con": "con" disallowed as path element component on Windows; use a path such as example.com/app
@@ -216,7 +227,7 @@ gobento: cannot create "con":
 A module version outside its range:
 
 ```text
-$ gobento new shop --pin modernc.org/sqlite=v2.0.0
+$ gobento new shop --arch mvc --pin modernc.org/sqlite=v2.0.0
 gobento: cannot create "shop":
   - version outside the supported range: modernc.org/sqlite v2.0.0; supported range is ">=v1.61.0 <v2.0.0"
 ```
@@ -224,7 +235,7 @@ gobento: cannot create "shop":
 A tool version:
 
 ```text
-$ gobento new shop --pin github.com/sqlc-dev/sqlc=v1.30.0
+$ gobento new shop --arch mvc --pin github.com/sqlc-dev/sqlc=v1.30.0
 gobento: cannot create "shop":
   - tool version is fixed: cannot pin github.com/sqlc-dev/sqlc, tool versions are fixed per gobento release (this release uses v1.31.1)
 ```
@@ -232,7 +243,7 @@ gobento: cannot create "shop":
 A module no selected component uses:
 
 ```text
-$ gobento new shop --pin example.com/x=v1.0.0
+$ gobento new shop --arch mvc --pin example.com/x=v1.0.0
 gobento: cannot create "shop":
   - module not used by the selection: cannot pin example.com/x, no selected component uses it
 ```

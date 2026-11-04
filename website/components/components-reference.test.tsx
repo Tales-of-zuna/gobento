@@ -12,7 +12,7 @@ describe('CatalogReference', () => {
     for (const heading of ['Architecture', 'HTTP framework', 'Database', 'Data access']) {
       expect(screen.getByRole('heading', { level: 2, name: heading })).toBeInTheDocument();
     }
-    for (const name of ['mvc', 'nethttp', 'sqlite', 'sqlc']) {
+    for (const name of ['mvc', 'vertical-slice', 'nethttp', 'sqlite', 'sqlc']) {
       expect(
         screen.getByRole('heading', { level: 3, name: new RegExp(`\\(${name}\\)`) }),
       ).toBeInTheDocument();

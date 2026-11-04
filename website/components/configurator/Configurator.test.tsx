@@ -19,15 +19,19 @@ beforeEach(() => {
 const command = () => screen.getAllByText((_, el) => el?.hasAttribute('data-command') ?? false)[0];
 
 describe('Configurator', () => {
-  it('shows the default command and updates it live', () => {
+  it('asks for an architecture, then shows the command and updates it live', () => {
     render(<Configurator catalog={catalogWith()} />);
-    expect(command()).toHaveTextContent(/^gobento new myapp$/);
+    expect(screen.getAllByText(/No command yet. Fix the architecture choice/)[0]).toBeVisible();
+    fireEvent.click(screen.getByRole('radio', { name: 'Model-View-Controller' }));
+    expect(command()).toHaveTextContent(/^gobento new myapp --arch mvc$/);
     fireEvent.change(screen.getByLabelText('Project name'), { target: { value: 'shop' } });
     fireEvent.change(screen.getByLabelText('Module path'), {
       target: { value: 'example.com/shop' },
     });
-    expect(command()).toHaveTextContent(/^gobento new shop --module example\.com\/shop$/);
-    expect(window.location.search).toBe('?name=shop&module=example.com%2Fshop');
+    expect(command()).toHaveTextContent(
+      /^gobento new shop --module example\.com\/shop --arch mvc$/,
+    );
+    expect(window.location.search).toBe('?name=shop&module=example.com%2Fshop&arch=mvc');
   });
 
   it('explains an invalid name next to the field and offers no command', () => {
@@ -41,9 +45,9 @@ describe('Configurator', () => {
   });
 
   it('restores a shared link and reports unknown values', () => {
-    window.history.replaceState(null, '', '/configurator/?name=blog&framework=fiber');
+    window.history.replaceState(null, '', '/configurator/?name=blog&arch=mvc&framework=fiber');
     render(<Configurator catalog={catalogWith()} />);
-    expect(command()).toHaveTextContent(/^gobento new blog$/);
+    expect(command()).toHaveTextContent(/^gobento new blog --arch mvc$/);
     const notice = screen.getByRole('status');
     expect(within(notice).getByText(/framework "fiber"/)).toBeInTheDocument();
     fireEvent.click(within(notice).getByRole('button', { name: 'Dismiss' }));
@@ -59,6 +63,7 @@ describe('Configurator', () => {
         requires: { target: 'go', range: '>=1.27' },
       });
     });
+    window.history.replaceState(null, '', '/configurator/?arch=mvc');
     render(<Configurator catalog={strict} />);
     fireEvent.click(screen.getByRole('button', { name: /Advanced/ }));
     await act(async () => {

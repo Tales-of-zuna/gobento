@@ -16,6 +16,11 @@ import {
 
 const catalog = catalogWith();
 const defaults = defaultState(catalog);
+const withArch = (architecture: string) => ({
+  ...defaults,
+  components: { ...defaults.components, architecture },
+});
+const mvc = withArch('mvc');
 
 describe('goVersions', () => {
   it('lists every minor in the range', () => {
@@ -108,7 +113,7 @@ describe('withPin', () => {
 
 describe('trayCells and fileTree', () => {
   it('fills a compartment per chosen kind', () => {
-    expect(trayCells(catalog, defaults).map((c) => c.value)).toEqual([
+    expect(trayCells(catalog, mvc).map((c) => c.value)).toEqual([
       'Model-View-Controller',
       'net/http',
       'SQLite',
@@ -123,6 +128,22 @@ describe('trayCells and fileTree', () => {
     expect(tree).toContain('sqlc.yaml');
     expect(fileTree(catalog, { ...defaults, name: 'My App' }, false)[0]!.label).toBe('<name>/');
   });
+
+  const internal = (state: typeof defaults) =>
+    fileTree(catalog, state, true).flatMap((l) => (l.depth === 2 ? [l.label] : []));
+
+  it('shows the layered packages for mvc', () => {
+    expect(internal(mvc)).toEqual(['controllers/', 'database/', 'models/', 'store/']);
+  });
+
+  it('shows the feature directory and platform for vertical-slice', () => {
+    expect(internal(withArch('vertical-slice'))).toEqual([
+      'items/',
+      'items/itemshttp/',
+      'items/itemsstore/',
+      'platform/database/',
+    ]);
+  });
 });
 
 describe('blockedMessage', () => {
@@ -130,14 +151,17 @@ describe('blockedMessage', () => {
     expect(blockedMessage(catalog, buildCommand(catalog, { ...defaults, name: 'My App' }))).toBe(
       'No command yet. Fix the project name to get a copyable command.',
     );
+    expect(blockedMessage(catalog, buildCommand(catalog, defaults))).toBe(
+      'No command yet. Fix the architecture choice to get a copyable command.',
+    );
     expect(
       blockedMessage(
         catalog,
-        buildCommand(catalog, { ...defaults, pins: { 'modernc.org/sqlite': 'x' } }),
+        buildCommand(catalog, { ...mvc, pins: { 'modernc.org/sqlite': 'x' } }),
       ),
     ).toBe(
       'No command yet. Fix the modernc.org/sqlite version under Advanced to get a copyable command.',
     );
-    expect(blockedMessage(catalog, buildCommand(catalog, defaults))).toBe('');
+    expect(blockedMessage(catalog, buildCommand(catalog, mvc))).toBe('');
   });
 });

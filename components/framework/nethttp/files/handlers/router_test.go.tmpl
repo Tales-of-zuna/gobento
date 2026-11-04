@@ -70,12 +70,12 @@ func TestItemsRoundTrip(t *testing.T) {
 	}
 
 	rec = serve(t, h, http.MethodGet, "/items", "")
-	var items []{{.Slots.models.Package}}.Item
-	if err := json.Unmarshal(rec.Body.Bytes(), &items); err != nil {
+	var got []{{.Slots.models.Package}}.Item
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode GET /items: %v", err)
 	}
-	if len(items) != 1 || items[0].Name != "first" {
-		t.Errorf("GET /items = %+v, want one item named first", items)
+	if len(got) != 1 || got[0].Name != "first" {
+		t.Errorf("GET /items = %+v, want one item named first", got)
 	}
 }
 

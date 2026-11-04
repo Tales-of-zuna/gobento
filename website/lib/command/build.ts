@@ -79,10 +79,11 @@ export function buildCommand(catalog: Catalog, state: ConfigState): BuildResult 
   for (const kind of KIND_IDS) {
     const options = optionsOf(catalog, kind);
     if (options.length > 1 && state.components[kind] === undefined) {
-      const title = catalog.kinds.find((k) => k.id === kind)?.title ?? kind;
+      const title = (catalog.kinds.find((k) => k.id === kind)?.title ?? kind).toLowerCase();
+      const article = /^[aeiou]/.test(title) ? 'an' : 'a';
       errors.push({
         field: kind,
-        message: `Choose a ${title.toLowerCase()}: ${options.map((o) => o.name).join(', ')}.`,
+        message: `Choose ${article} ${title}: ${options.map((o) => o.name).join(', ')}.`,
       });
     }
   }
