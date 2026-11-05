@@ -14,4 +14,4 @@
 ## 3. Verification
 
 - [x] 3.1 Run website unit tests, lint, typecheck, and prettier; run actionlint and `openspec validate --strict`
-- [ ] 3.2 Push to `next` and confirm every check on pull request #13 passes
+- [x] 3.2 Push to `next` and confirm every check on pull request #13 passes
