@@ -502,7 +502,7 @@ or the `go` directive, and reports the missing constraint. See
 1. Change `default` (and `range`, if needed) in `versions.yaml`.
 2. Run `make catalog` so the website shows the new values (`go test` fails
    until you do), then `make test` and
-   `go test ./internal/generate -run TestIntegration` (it needs network
+   `go test -timeout 60m ./internal/generate -run TestIntegration` (it needs network
    access). The integration test generates every supported selection without
    a frontend, and a pairwise covering set of those with one, with the
    defaults and with the range floors.

@@ -213,7 +213,7 @@ release:
    digest with `docker buildx imagetools inspect gcr.io/distroless/static-debian13:nonroot`.
 2. Update the entries and the "Last checked" date, then run
    `go test ./internal/compose -run TestGolden -update` and review the diff.
-3. Run `go test -count=1 -run TestIntegration ./internal/generate/`: it lints
+3. Run `go test -count=1 -timeout 60m -run TestIntegration ./internal/generate/`: it lints
    every generated project with the new golangci-lint version, runs actionlint
    on every workflow, and builds the images. Fix new findings in the templates
    in the same pull request.
@@ -240,7 +240,7 @@ them at least once per release:
    `npm audit` in a scratch project; and update the "Last checked" date.
 3. Regenerate the shipped stylesheet as described in
    [Adding a component](../website/content/docs/contributing/adding-a-component.mdx#generated-code-tailwind-css),
-   then run `go test -count=1 -run 'TestBinaryChecksums|TestIntegration' ./internal/generate/`,
+   then run `go test -count=1 -timeout 60m -run 'TestBinaryChecksums|TestIntegration' ./internal/generate/`,
    which compares every checksum with the release, rebuilds the stylesheet
    in every covered htmx project with Tailwind, and builds every covered Vite
    frontend with Tailwind (this needs Node.js and the npm registry).

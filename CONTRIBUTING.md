@@ -51,7 +51,7 @@ commands, so you can always run them directly.
 | `help` | Lists all targets (the default) | Read the [Makefile](Makefile) |
 | `build` | Builds the binary into `bin/` | `go build -o bin/gobento ./cmd/gobento` |
 | `test` | Runs fast unit tests with the race detector | `go test -short -race ./...` |
-| `test-all` | Runs every test, including slow ones | `go test -race ./...` |
+| `test-all` | Runs every test, including slow ones | `go test -race -timeout 60m ./...` |
 | `lint` | Runs the linters configured in [.golangci.yml](.golangci.yml) | `golangci-lint run` |
 | `fmt` | Formats the code | `golangci-lint fmt` |
 | `tidy` | Cleans up `go.mod` and `go.sum` | `go mod tidy` |
@@ -80,7 +80,7 @@ Docker and pass its URL:
 ```sh
 docker run --rm -d --name gobento-postgres -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:18-alpine
 TEST_DATABASE_URL='postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable' \
-  go test -count=1 -run TestIntegration ./internal/generate/
+  go test -count=1 -timeout 60m -run TestIntegration ./internal/generate/
 docker stop gobento-postgres
 ```
 

@@ -27,13 +27,15 @@ const display = localFont({
 const body = Figtree({ subsets: ['latin'], variable: '--font-body', display: 'swap' });
 
 /**
- * Code; ligatures are turned off in global.css. Not preloaded: code is never
- * the first thing on screen, and its 40 KB file would compete with the text.
+ * Code; ligatures are turned off in global.css. Not preloaded: its 40 KB file
+ * would compete with the text. `optional` instead of `swap`: a late swap
+ * reflows paragraphs full of inline code (a layout shift Lighthouse counts),
+ * so on a slow first load code stays in the fallback monospace font.
  */
 const mono = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-mono',
-  display: 'swap',
+  display: 'optional',
   preload: false,
 });
 

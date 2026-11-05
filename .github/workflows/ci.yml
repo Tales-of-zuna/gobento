@@ -136,7 +136,7 @@ jobs:
           docker exec postgres pg_isready --host 127.0.0.1
           echo "TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable" >> "$GITHUB_ENV"
       - name: Integration tests
-        run: go test -count=1 -run TestIntegration ./internal/generate/
+        run: go test -count=1 -timeout 60m -run TestIntegration ./internal/generate/
 
   sqlc-fresh:
     # The sqlc component ships generated code, which differs per SQL dialect.
