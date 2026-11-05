@@ -14,4 +14,4 @@
 ## 3. Verification
 
 - [x] 3.1 Build and compare quick-start before and after locally: document size, DOM size, Lighthouse performance (five runs)
-- [ ] 3.2 Push to `next` and confirm every check on pull request #13 passes
+- [x] 3.2 Push to `next` and confirm every check on pull request #13 passes
