@@ -99,8 +99,10 @@ The website in `website/` is published by `.github/workflows/pages.yml` to
 The first deployment creates the `github-pages` environment. Leave its
 deployment branch rule at the default (`main` only, from the protected
 branch), so only `main` can publish. The workflow runs on every push to `main`
-that touches `website/`, `components/`, or `internal/tools/catalogexport/`,
-and can be started by hand from **Actions → Pages → Run workflow**.
+that touches `website/`, `components/`, `internal/catalogjson/`, or
+`internal/tools/catalogexport/` (the code that writes the website's
+`catalog.json`), and can be started by hand from **Actions → Pages → Run
+workflow**.
 
 See [Configuring a publishing source](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site#publishing-with-a-custom-github-actions-workflow).
 
@@ -108,8 +110,9 @@ See [Configuring a publishing source](https://docs.github.com/en/pages/getting-s
 
 `.github/workflows/website.yml` runs on every pull request and every push to
 `main`. Its first job, `changes`, looks at the changed files; when none is in
-`website/`, `components/`, `internal/tools/catalogexport/`, or the workflow
-itself, the other jobs are skipped. A workflow-level path filter was not used
+`website/`, `components/`, `internal/catalogjson/`,
+`internal/tools/catalogexport/`, or the workflow itself, the other jobs are
+skipped. A workflow-level path filter was not used
 on purpose: a filtered workflow does not report at all on unrelated pull
 requests, so a required check from it would block them forever.
 
@@ -194,3 +197,50 @@ To bump it:
 3. Run `golangci-lint run` locally with the new version and fix any new
    findings, or adjust [.golangci.yml](../.golangci.yml), in the same pull
    request.
+
+### Tooling versions of generated projects
+
+Generated projects get their own images, action SHAs, and golangci-lint
+version from the `tooling` section of
+[components/versions.yaml](../components/versions.yaml), separately from
+gobento's own CI. Dependabot does not update that file, so check it when
+gobento's own actions or golangci-lint are bumped, and at least once per
+release:
+
+1. Look up the latest releases and their commit SHAs with
+   `gh api repos/<owner/repo>/releases/latest --jq .tag_name` and
+   `gh api repos/<owner/repo>/commits/<tag> --jq .sha`, and the runtime image
+   digest with `docker buildx imagetools inspect gcr.io/distroless/static-debian13:nonroot`.
+2. Update the entries and the "Last checked" date, then run
+   `go test ./internal/compose -run TestGolden -update` and review the diff.
+3. Run `go test -count=1 -timeout 60m -run TestIntegration ./internal/generate/`: it lints
+   every generated project with the new golangci-lint version, runs actionlint
+   on every workflow, and builds the images. Fix new findings in the templates
+   in the same pull request.
+
+### Downloaded binaries of generated projects
+
+The `binaries` section of
+[components/versions.yaml](../components/versions.yaml) (today the
+standalone Tailwind CSS CLI) is not updated by Dependabot either. Tailwind
+releases the CLI and the npm packages `tailwindcss` and `@tailwindcss/vite`
+together, and Vite frontends with Tailwind CSS install those packages from the
+`npm` section of the same file, so the three always move together
+(`TestTailwindReleasedTogether` in `internal/catalog` fails otherwise). Check
+them at least once per release:
+
+1. Look up the latest release with
+   `gh api repos/tailwindlabs/tailwindcss/releases/latest --jq .tag_name` and
+   its advisories with
+   `gh api '/advisories?ecosystem=npm&affects=tailwindcss'`.
+2. In `binaries.tailwindcss`, change `version`, `checksums`, and every
+   platform's `url` and `sha256`, taking the checksums from the release's
+   `sha256sums.txt`; set the `version` of the `npm` entries `tailwindcss` and
+   `@tailwindcss/vite` to the same release, checking them with
+   `npm audit` in a scratch project; and update the "Last checked" date.
+3. Regenerate the shipped stylesheet as described in
+   [Adding a component](../website/content/docs/contributing/adding-a-component.mdx#generated-code-tailwind-css),
+   then run `go test -count=1 -timeout 60m -run 'TestBinaryChecksums|TestIntegration' ./internal/generate/`,
+   which compares every checksum with the release, rebuilds the stylesheet
+   in every covered htmx project with Tailwind, and builds every covered Vite
+   frontend with Tailwind (this needs Node.js and the npm registry).

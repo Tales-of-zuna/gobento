@@ -1,0 +1,129 @@
+{{- if .Slots.web.Filled -}}
+// Command {{.Project.Name}} serves the {{.Project.Name}} web pages at / and
+// the HTTP API under {{.APIPrefix}}/.
+{{- else -}}
+// Command {{.Project.Name}} serves the {{.Project.Name}} HTTP API.
+{{- end}}
+//
+// Configuration comes from the environment:
+//
+//	PORT          port to listen on (default 8080)
+//	DATABASE_URL  database connection string (default {{.Slots.database.Package}}.DefaultURL)
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"{{.Slots.app.Import}}"
+	"{{.Slots.database.Import}}"
+	"{{.Slots.handlers.Import}}"
+	"{{.Slots.models.Import}}"
+	"{{.Slots.store.Import}}"
+{{- if .Slots.web.Filled}}
+	"{{.Slots.web.Import}}"
+{{- end}}
+)
+
+func main() {
+	if err := run(); err != nil {
+		slog.Error("server stopped", "error", err)
+		os.Exit(1)
+	}
+}
+
+// run wires the application together and serves HTTP until the process is
+// interrupted, then shuts down gracefully. It is the only place that knows
+{{- if .Slots.web.Filled}}
+// every layer: the HTTP and web adapters get the application service, which
+// stores items through the persistence adapter.
+{{- else}}
+// every layer: the HTTP adapter gets the application service, which stores
+// items through the persistence adapter.
+{{- end}}
+func run() error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	db, err := {{.Slots.database.Package}}.Open(ctx, getenv("DATABASE_URL", {{.Slots.database.Package}}.DefaultURL))
+	if err != nil {
+		return fmt.Errorf("open database: %w", err)
+	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			slog.Error("close database", "error", err)
+		}
+	}()
+
+	srv := &http.Server{
+		Addr:              ":" + getenv("PORT", "8080"),
+		Handler:           newHandler({{.Slots.app.Package}}.NewItemService({{.Slots.store.Package}}.New(db))),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
+	errc := make(chan error, 1)
+	go func() {
+		slog.Info("listening", "addr", srv.Addr)
+		errc <- srv.ListenAndServe()
+	}()
+
+	select {
+	case err := <-errc:
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
+		return err
+	case <-ctx.Done():
+	}
+
+	slog.Info("shutting down")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		return fmt.Errorf("shut down: %w", err)
+	}
+	// Wait for the server goroutine, which returns ErrServerClosed.
+	if err := <-errc; !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+	return nil
+}
+
+{{if .Slots.web.Filled -}}
+// newHandler returns the application's HTTP handler. It sends requests
+// under {{.APIPrefix}}/ to the API router, without the prefix, and every
+// other request to the web pages. Both adapters reach service, the
+// application service, only through the {{.Slots.models.Package}}.ItemStore port.
+func newHandler(service {{.Slots.models.Package}}.ItemStore) http.Handler {
+	mux := http.NewServeMux()
+	mux.Handle("{{.APIPrefix}}/", http.StripPrefix("{{.APIPrefix}}", {{.Slots.handlers.Package}}.NewRouter(service)))
+	mux.Handle("/", {{.Slots.web.Package}}.NewHandler(service))
+	return mux
+}
+{{- else -}}
+// newHandler returns the application's HTTP handler: the API router, which
+// reaches service, the application service, only through the
+// {{.Slots.models.Package}}.ItemStore port.
+func newHandler(service {{.Slots.models.Package}}.ItemStore) http.Handler {
+	return {{.Slots.handlers.Package}}.NewRouter(service)
+}
+{{- end}}
+
+// getenv returns the value of the environment variable key, or fallback if
+// it is unset or empty.
+func getenv(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}

@@ -3,7 +3,7 @@
 // Configuration comes from the environment:
 //
 //	PORT          port to listen on (default 8080)
-//	DATABASE_URL  database connection string (default shop.db)
+//	DATABASE_URL  database connection string (default database.DefaultURL)
 package main
 
 import (
@@ -19,6 +19,7 @@ import (
 
 	"example.com/shop/internal/controllers"
 	"example.com/shop/internal/database"
+	"example.com/shop/internal/models"
 	"example.com/shop/internal/store"
 )
 
@@ -35,7 +36,7 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	db, err := database.Open(ctx, getenv("DATABASE_URL", "shop.db"))
+	db, err := database.Open(ctx, getenv("DATABASE_URL", database.DefaultURL))
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
@@ -47,7 +48,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              ":" + getenv("PORT", "8080"),
-		Handler:           controllers.NewRouter(store.New(db)),
+		Handler:           newHandler(store.New(db)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,
@@ -80,6 +81,11 @@ func run() error {
 		return err
 	}
 	return nil
+}
+
+// newHandler returns the application's HTTP handler: the API router.
+func newHandler(itemStore models.ItemStore) http.Handler {
+	return controllers.NewRouter(itemStore)
 }
 
 // getenv returns the value of the environment variable key, or fallback if

@@ -30,6 +30,12 @@ module.exports = {
       assertions: {
         'categories:performance': ['error', { minScore: 0.9, aggregationMethod: 'median-run' }],
         'categories:accessibility': ['error', { minScore: 0.9, aggregationMethod: 'median-run' }],
+        // Named on its own so a late font swap or a moving element fails with
+        // its cause instead of only lowering the performance score.
+        'cumulative-layout-shift': [
+          'error',
+          { maxNumericValue: 0.1, aggregationMethod: 'median-run' },
+        ],
       },
     },
     upload: {

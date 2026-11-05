@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"flag"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/Tales-of-zuna/gobento/components"
@@ -14,24 +17,127 @@ import (
 	"github.com/Tales-of-zuna/gobento/internal/compat"
 )
 
-var update = flag.Bool("update", false, "rewrite testdata/golden from the current templates")
+var update = flag.Bool("update", false, "rewrite testdata/golden* from the current templates")
 
-// goldenDir holds the expected plan for the reference selection.
-const goldenDir = "testdata/golden"
+// goldens maps each full-project golden directory to the reference selection
+// it holds: one per architecture, with the same framework, database, and
+// data access, the first one again with a frontend, which shows how the
+// architecture mounts it, and once more with a CSS framework.
+var goldens = []struct {
+	dir      string
+	sel      [4]string // architecture, framework, database, data
+	frontend string    // "" for none
+	css      string    // "" for none
+}{
+	{dir: "testdata/golden", sel: [4]string{"mvc", "nethttp", "sqlite", "sqlc"}},
+	{dir: "testdata/golden-vertical-slice", sel: [4]string{"vertical-slice", "nethttp", "sqlite", "sqlc"}},
+	{dir: "testdata/golden-ddd", sel: [4]string{"ddd", "nethttp", "sqlite", "sqlc"}},
+	{dir: "testdata/golden-htmx", sel: [4]string{"mvc", "nethttp", "sqlite", "sqlc"}, frontend: "htmx"},
+	{dir: "testdata/golden-ddd-htmx", sel: [4]string{"ddd", "nethttp", "sqlite", "sqlc"}, frontend: "htmx"},
+	{dir: "testdata/golden-htmx-tailwind", sel: [4]string{"mvc", "nethttp", "sqlite", "sqlc"}, frontend: "htmx", css: "tailwind"},
+	{dir: "testdata/golden-react", sel: [4]string{"mvc", "nethttp", "sqlite", "sqlc"}, frontend: "react"},
+	{dir: "testdata/golden-react-tailwind", sel: [4]string{"mvc", "nethttp", "sqlite", "sqlc"}, frontend: "react", css: "tailwind"},
+}
 
-// TestGolden composes the reference selection mvc/nethttp/sqlite/sqlc from
-// the shipped catalog with default versions and compares every planned file
-// with testdata/golden. Run go test ./internal/compose -run TestGolden
+// goldenComponentsDir holds the files each component contributes, in
+// <kind>/<name>/ subdirectories.
+const goldenComponentsDir = "testdata/golden-components"
+
+// TestGolden composes the reference selection of each architecture from the
+// shipped catalog with default versions and compares every planned file with
+// its golden directory. Run go test ./internal/compose -run TestGolden
 // -update to accept intended changes, and review the diff.
 func TestGolden(t *testing.T) {
-	plan := referencePlan(t)
+	for _, g := range goldens {
+		t.Run(filepath.Base(g.dir), func(t *testing.T) {
+			checkGolden(t, g.dir, referencePlanWith(t, g.sel, g.frontend, g.css).Files)
+		})
+	}
+}
 
-	if *update {
-		if err := os.RemoveAll(goldenDir); err != nil {
+// TestGoldenComponents composes, for every shipped component, the first
+// supported selection that contains it, and compares the files that
+// component produces, and its contributions to the base layer as
+// contrib/<point>, with testdata/golden-components/<kind>/<name>. The base
+// layer's own files are part of every full golden (TestGolden). This
+// reviews the output of every component without one golden project per
+// combination. Components other than architectures are composed with the
+// reference architecture (that of goldens[0]) when it supports them, so
+// adding an architecture leaves their goldens as they are.
+func TestGoldenComponents(t *testing.T) {
+	cat := shippedCatalog(t)
+	supported := Supported(cat)
+	refArch := goldens[0].sel[0]
+	var ids []string
+	for _, kind := range catalog.Kinds() {
+		for _, c := range cat.Components(kind) {
+			ids = append(ids, c.ID())
+			t.Run(c.ID(), func(t *testing.T) {
+				contains := func(sel catalog.Selection) bool {
+					return slices.ContainsFunc(sel.Components(), func(s *catalog.Component) bool { return s.ID() == c.ID() })
+				}
+				i := slices.IndexFunc(supported, func(sel catalog.Selection) bool {
+					return contains(sel) && (kind == catalog.KindArchitecture || sel.Architecture.Name == refArch)
+				})
+				if i < 0 {
+					i = slices.IndexFunc(supported, contains)
+				}
+				if i < 0 {
+					t.Fatalf("%s is in no supported selection", c.ID())
+				}
+				plan := planFor(t, cat, supported[i])
+				var files []File
+				for _, f := range plan.Files {
+					if f.Component == c.ID() {
+						files = append(files, f)
+					}
+				}
+				// Contributions to the base layer's points are reviewed as
+				// contrib/<point> pseudo-files next to the component's files.
+				for _, k := range plan.Contributions {
+					if k.Component == c.ID() {
+						files = append(files, File{Path: "contrib/" + k.Point, Content: []byte(k.Content + "\n")})
+					}
+				}
+				slices.SortFunc(files, func(a, b File) int { return strings.Compare(a.Path, b.Path) })
+				checkGolden(t, filepath.Join(goldenComponentsDir, filepath.FromSlash(c.ID())), files)
+			})
+		}
+	}
+
+	// Every golden directory must belong to a shipped component, so the
+	// files of a removed or renamed component do not linger.
+	dirs, err := filepath.Glob(filepath.Join(goldenComponentsDir, "*", "*"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, dir := range dirs {
+		rel, err := filepath.Rel(goldenComponentsDir, dir)
+		if err != nil {
 			t.Fatal(err)
 		}
-		for _, f := range plan.Files {
-			p := filepath.Join(goldenDir, filepath.FromSlash(f.Path))
+		if id := filepath.ToSlash(rel); !slices.Contains(ids, id) {
+			if *update {
+				if err := os.RemoveAll(dir); err != nil {
+					t.Fatal(err)
+				}
+				continue
+			}
+			t.Errorf("%s has golden files but is not a shipped component; run with -update to remove them", id)
+		}
+	}
+}
+
+// checkGolden compares files with the golden directory dir, after rewriting
+// dir from files with -update.
+func checkGolden(t *testing.T, dir string, files []File) {
+	t.Helper()
+	if *update {
+		if err := os.RemoveAll(dir); err != nil {
+			t.Fatal(err)
+		}
+		for _, f := range files {
+			p := filepath.Join(dir, filepath.FromSlash(f.Path))
 			if err := os.MkdirAll(filepath.Dir(p), 0o750); err != nil {
 				t.Fatal(err)
 			}
@@ -42,11 +148,11 @@ func TestGolden(t *testing.T) {
 	}
 
 	var golden []string
-	err := filepath.WalkDir(goldenDir, func(p string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
 		}
-		rel, err := filepath.Rel(goldenDir, p)
+		rel, err := filepath.Rel(dir, p)
 		golden = append(golden, filepath.ToSlash(rel))
 		return err
 	})
@@ -54,34 +160,80 @@ func TestGolden(t *testing.T) {
 		t.Fatalf("read golden files: %v (run with -update to create them)", err)
 	}
 	slices.Sort(golden)
-	if got := plan.Paths(); !slices.Equal(got, golden) {
-		t.Fatalf("planned paths differ from %s:\nplan:   %v\ngolden: %v", goldenDir, got, golden)
+	var got []string
+	for _, f := range files {
+		got = append(got, f.Path)
 	}
-	for _, f := range plan.Files {
-		want, err := os.ReadFile(filepath.Join(goldenDir, filepath.FromSlash(f.Path)))
+	if !slices.Equal(got, golden) {
+		t.Fatalf("planned paths differ from %s:\nplan:   %v\ngolden: %v", dir, got, golden)
+	}
+	for _, f := range files {
+		want, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(f.Path))) //nolint:gosec // G304: path under testdata
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !bytes.Equal(f.Content, want) {
-			t.Errorf("%s differs from %s; run with -update if the change is intended", f.Path, goldenDir)
+			t.Errorf("%s differs from %s; run with -update if the change is intended", f.Path, dir)
 		}
 	}
 }
 
-// referencePlan composes the reference selection of the shipped catalog for
-// the example project shop.
-func referencePlan(t *testing.T) *Plan {
+// shippedCatalog loads the catalog compiled into gobento.
+func shippedCatalog(t *testing.T) *catalog.Catalog {
 	t.Helper()
 	cat, err := catalog.Load(components.FS())
 	if err != nil {
 		t.Fatalf("catalog.Load() error = %v", err)
 	}
-	sel := pick(t, cat, "mvc", "nethttp", "sqlite", "sqlc")
+	return cat
+}
+
+// referencePlan composes the named selection of the shipped catalog, without
+// a frontend, for the example project shop, with default versions.
+func referencePlan(t *testing.T, names [4]string) *Plan {
+	t.Helper()
+	return referencePlanWith(t, names)
+}
+
+// referencePlanWith is referencePlan with the named components of the
+// optional kinds, in kind order (frontend, then CSS framework); "" selects
+// none.
+func referencePlanWith(t *testing.T, names [4]string, optional ...string) *Plan {
+	t.Helper()
+	cat := shippedCatalog(t)
+	sel := pick(t, cat, names[0], names[1], names[2], names[3])
+	kinds := []catalog.Kind{catalog.KindFrontend, catalog.KindCSS}
+	for i, name := range optional {
+		if name == "" {
+			continue
+		}
+		c, ok := cat.Component(kinds[i], name)
+		if !ok {
+			t.Fatalf("%s %s is not shipped", kinds[i], name)
+		}
+		sel = sel.With(c)
+	}
+	return planFor(t, cat, sel)
+}
+
+// planFor composes sel with default versions for the example project shop.
+func planFor(t *testing.T, cat *catalog.Catalog, sel catalog.Selection) *Plan {
+	t.Helper()
+	plan, err := planForErr(t, cat, sel)
+	if err != nil {
+		t.Fatalf("Compose() error = %v", err)
+	}
+	return plan
+}
+
+// planForErr is planFor, returning the composition error.
+func planForErr(t *testing.T, cat *catalog.Catalog, sel catalog.Selection) (*Plan, error) {
+	t.Helper()
 	var ids []string
 	for _, c := range sel.Components() {
 		ids = append(ids, c.ID())
 	}
-	res, err := cat.Rules().Resolve(compat.Request{Components: ids})
+	res, err := cat.Rules().Resolve(compat.Request{Components: ids, Traits: sel.Traits()})
 	if err != nil {
 		t.Fatalf("Resolve() error = %v", err)
 	}
@@ -89,31 +241,192 @@ func referencePlan(t *testing.T) *Plan {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := Compose(Input{
+	return Compose(Input{
 		Project:   Project{Name: "shop", Module: "example.com/shop", GoVersion: goVersion},
 		Selection: sel,
 		Versions:  res.Versions(),
+		Assets:    res.AssetVersions(),
+		Binaries:  res.BinaryVersions(),
+		Base:      cat.Base(),
+		Tooling:   res.Tooling,
+		Node:      res.Node,
+		NPM:       res.NPMVersions(),
 	})
-	if err != nil {
-		t.Fatalf("Compose() error = %v", err)
-	}
-	return plan
 }
 
-// TestShippedCatalogSupported checks that the shipped catalog supports
-// exactly the first slice.
+// TestShippedFrameworksAreLayoutIndependent covers the spec scenarios
+// "Shipped components are reused unchanged" and "Shipped components are
+// reused unchanged in ddd": for every framework and every architecture other
+// than mvc, each file generated for that architecture equals the one
+// generated for mvc once the slot directories, package names, and import
+// paths of mvc are replaced by the architecture's.
+func TestShippedFrameworksAreLayoutIndependent(t *testing.T) {
+	t.Parallel()
+
+	cat := shippedCatalog(t)
+	for _, arch := range cat.Components(catalog.KindArchitecture) {
+		if arch.Name == "mvc" {
+			continue
+		}
+		for _, fw := range cat.Components(catalog.KindFramework) {
+			t.Run(arch.Name+"/"+fw.Name, func(t *testing.T) {
+				t.Parallel()
+				checkLayoutIndependent(t, arch.Name, fw)
+			})
+		}
+	}
+}
+
+// checkLayoutIndependent compares the files of framework fw under the
+// architecture arch with those under mvc, as described at
+// TestShippedFrameworksAreLayoutIndependent.
+func checkLayoutIndependent(t *testing.T, arch string, fw *catalog.Component) {
+	t.Helper()
+
+	mvc := referencePlan(t, [4]string{"mvc", fw.Name, "sqlite", "sqlc"})
+	other := referencePlan(t, [4]string{arch, fw.Name, "sqlite", "sqlc"})
+	// Swap import paths and directories verbatim, and package names
+	// only where Go code or a doc comment names the package.
+	var pairs []string
+	type rename struct {
+		re *regexp.Regexp
+		to string
+	}
+	var renames []rename
+	for _, name := range slices.Sorted(maps.Keys(mvc.Slots)) {
+		from, to := mvc.Slots[name], other.Slots[name]
+		pairs = append(pairs, from.Import, to.Import, from.Dir+"/", to.Dir+"/")
+		renames = append(renames,
+			rename{regexp.MustCompile(`\b` + from.Package + `\.`), to.Package + "."},
+			rename{regexp.MustCompile(`\b([Pp]ackage) ` + from.Package + `\b`), "$1 " + to.Package})
+	}
+	paths := strings.NewReplacer(pairs...)
+	swap := func(s string) string {
+		s = paths.Replace(s)
+		for _, r := range renames {
+			s = r.re.ReplaceAllString(s, r.to)
+		}
+		return s
+	}
+
+	var compared int
+	for _, f := range mvc.Files {
+		if f.Component != fw.ID() {
+			continue
+		}
+		want := swap(string(f.Content))
+		got, ok := other.File(paths.Replace(f.Path))
+		if !ok {
+			t.Errorf("%s plan has no counterpart of %s", arch, f.Path)
+			continue
+		}
+		compared++
+		if string(got.Content) != want {
+			t.Errorf("%s differs from mvc's %s beyond slot names", got.Path, f.Path)
+		}
+	}
+	if compared == 0 {
+		t.Fatal("no framework files compared")
+	}
+}
+
+// TestShippedCatalogSupported lists the selections the shipped catalog
+// supports.
 func TestShippedCatalogSupported(t *testing.T) {
 	t.Parallel()
 
-	cat, err := catalog.Load(components.FS())
-	if err != nil {
-		t.Fatal(err)
-	}
 	var got []string
-	for _, s := range Supported(cat) {
+	for _, s := range Supported(shippedCatalog(t)) {
 		got = append(got, s.String())
 	}
-	if !slices.Equal(got, []string{"mvc/nethttp/sqlite/sqlc"}) {
-		t.Errorf("Supported() = %v, want [mvc/nethttp/sqlite/sqlc]", got)
+	var want []string
+	for _, arch := range []string{"ddd", "mvc", "vertical-slice"} {
+		for _, fw := range []string{"chi", "gin", "nethttp"} {
+			for _, db := range []string{"postgres", "sqlite"} {
+				for _, data := range []string{"gorm", "sqlc"} {
+					sel := arch + "/" + fw + "/" + db + "/" + data
+					want = append(want, sel)
+					for _, ui := range []string{"htmx", "react", "svelte", "vue"} {
+						want = append(want, sel+"/"+ui, sel+"/"+ui+"/tailwind")
+					}
+				}
+			}
+		}
 	}
+	if !slices.Equal(got, want) {
+		t.Errorf("Supported() = %v, want %v", got, want)
+	}
+}
+
+// TestShippedDatabasesShareEntryAndHandlers covers the spec scenario "Entry
+// point is the same for every database": the Go files of the architecture
+// and the framework do not depend on the database.
+func TestShippedDatabasesShareEntryAndHandlers(t *testing.T) {
+	t.Parallel()
+
+	sqlite, postgres := shippedPlan(t, "sqlite"), shippedPlan(t, "postgres")
+	compared := 0
+	for _, f := range sqlite.Files {
+		if !strings.HasSuffix(f.Path, ".go") || (f.Component != "architecture/mvc" && f.Component != "framework/nethttp") {
+			continue
+		}
+		g, ok := postgres.File(f.Path)
+		if !ok || !bytes.Equal(f.Content, g.Content) {
+			t.Errorf("%s differs between the sqlite and postgres selections", f.Path)
+		}
+		compared++
+	}
+	if compared == 0 {
+		t.Fatal("no architecture or framework Go files compared")
+	}
+}
+
+// TestShippedSQLcDialects covers the spec scenarios "sqlc on PostgreSQL" and
+// "sqlc on SQLite" as far as composition goes: the engine and the
+// placeholder follow the sql-dialect trait. The CI job sqlc-fresh checks the
+// generated code against sqlc itself.
+func TestShippedSQLcDialects(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		database, engine, placeholder, driver string
+	}{
+		{"sqlite", "engine: sqlite", "VALUES (?1)", `_ "modernc.org/sqlite"`},
+		{"postgres", "engine: postgresql", "VALUES ($1)", `_ "github.com/jackc/pgx/v5/stdlib"`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.database, func(t *testing.T) {
+			t.Parallel()
+
+			plan := shippedPlan(t, tt.database)
+			for path, want := range map[string]string{
+				"sqlc.yaml":                             tt.engine,
+				"internal/store/sqlcgen/queries.sql.go": tt.placeholder,
+				"internal/database/database.go":         tt.driver,
+				"internal/store/store_test.go":          `"example.com/shop/internal/database/dbtest"`,
+			} {
+				f, ok := plan.File(path)
+				if !ok {
+					t.Errorf("%s is not planned", path)
+					continue
+				}
+				if !strings.Contains(string(f.Content), want) {
+					t.Errorf("%s does not contain %q:\n%s", path, want, f.Content)
+				}
+			}
+			for _, path := range []string{"internal/database/dbtest/dbtest.go", "internal/database/schema.sql"} {
+				if _, ok := plan.File(path); !ok {
+					t.Errorf("%s is not planned", path)
+				}
+			}
+		})
+	}
+}
+
+// shippedPlan composes mvc/nethttp/<database>/sqlc from the shipped catalog
+// with default versions for the example project shop. With "sqlite", it is
+// the reference selection.
+func shippedPlan(t *testing.T, database string) *Plan {
+	t.Helper()
+	return referencePlan(t, [4]string{"mvc", "nethttp", database, "sqlc"})
 }

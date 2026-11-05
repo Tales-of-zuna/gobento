@@ -5,13 +5,16 @@
  * add-generator-foundation): defaults, then overrides, then range checks,
  * then every matching constraint.
  */
-import type { Catalog, Component, KindId, Module } from './schema';
-import { KIND_IDS } from './kinds';
+import type { Asset, Binary, Catalog, Component, KindId, Module, NpmPackage } from './schema';
+import { isOptionalKind, KIND_IDS, titleInSentence } from './kinds';
 import { parseGoVersion, parseModuleVersion, satisfies } from './semver';
 
 /** Chosen components and versions. */
 export interface Selection {
-  /** Chosen component name per kind; a kind without a choice is undefined. */
+  /**
+   * Chosen component name per kind; a kind without a choice is undefined,
+   * which for an optional kind means none (for example no frontend).
+   */
   readonly components: Readonly<Partial<Record<KindId, string>>>;
   /** Chosen Go version, for example `1.27`. */
   readonly go: string;
@@ -42,10 +45,61 @@ export function selectedComponents(catalog: Catalog, selection: Selection): Comp
   });
 }
 
-/** Returns the modules used by the chosen components. */
+/**
+ * Returns the modules used by the chosen components: modules of a chosen
+ * component whose trait conditions, if any, the chosen components meet. A
+ * trait no chosen component provides fails its condition.
+ */
 export function selectedModules(catalog: Catalog, selection: Selection): Module[] {
+  return catalog.modules.filter(usedBy(catalog, selection));
+}
+
+/**
+ * Returns a filter for rules-file entries (modules, binaries, npm packages)
+ * that the chosen components use: an entry of a chosen component whose trait
+ * conditions, if any, the chosen components meet.
+ */
+function usedBy(
+  catalog: Catalog,
+  selection: Selection,
+): (entry: { components: string[]; traits: Record<string, string[]> }) => boolean {
+  const components = selectedComponents(catalog, selection);
+  const ids = new Set(components.map((c) => c.id));
+  const provided = new Map<string, string>();
+  for (const c of components) {
+    for (const [trait, value] of Object.entries(c.provides)) {
+      if (!provided.has(trait)) provided.set(trait, value);
+    }
+  }
+  return (entry) =>
+    entry.components.some((id) => ids.has(id)) &&
+    Object.entries(entry.traits).every(([trait, allowed]) => {
+      const value = provided.get(trait);
+      return value !== undefined && allowed.includes(value);
+    });
+}
+
+/** Returns the vendored assets of the chosen components, whose versions are fixed per release. */
+export function selectedAssets(catalog: Catalog, selection: Selection): Asset[] {
   const ids = new Set(selectedComponents(catalog, selection).map((c) => c.id));
-  return catalog.modules.filter((m) => m.components.some((id) => ids.has(id)));
+  return catalog.assets.filter((a) => a.components.some((id) => ids.has(id)));
+}
+
+/**
+ * Returns the platform binaries the chosen components download on demand
+ * (meeting their trait conditions, as for modules), whose versions are fixed
+ * per release.
+ */
+export function selectedBinaries(catalog: Catalog, selection: Selection): Binary[] {
+  return catalog.binaries.filter(usedBy(catalog, selection));
+}
+
+/**
+ * Returns the npm packages of the chosen components (meeting their trait
+ * conditions, as for modules), whose versions are fixed per release.
+ */
+export function selectedNpmPackages(catalog: Catalog, selection: Selection): NpmPackage[] {
+  return catalog.npm.filter(usedBy(catalog, selection));
 }
 
 /** Returns the version each selected module gets: its override, or else its default. */
@@ -55,20 +109,68 @@ export function resolvedVersions(catalog: Catalog, selection: Selection): Map<st
   );
 }
 
+/**
+ * The kinds whose components could provide `trait` with one of the `allowed`
+ * values, in kind order, with those components' titles.
+ */
+function possibleProviders(
+  catalog: Catalog,
+  trait: string,
+  allowed: readonly string[],
+): { kinds: KindId[]; titles: string[] } {
+  const candidates = catalog.components.filter(
+    (c) => trait in c.provides && allowed.includes(c.provides[trait]!),
+  );
+  return {
+    kinds: KIND_IDS.filter((kind) => candidates.some((c) => c.kind === kind)),
+    titles: candidates.map((c) => c.title),
+  };
+}
+
+/** Explains a requirement that no chosen component provides, naming who could. */
+function missingProviderMessage(
+  catalog: Catalog,
+  requirer: Component,
+  trait: string,
+  allowed: readonly string[],
+): string {
+  const wanted = allowed.join(' or ');
+  const { kinds, titles } = possibleProviders(catalog, trait, allowed);
+  if (kinds.length === 0) {
+    return `${requirer.title} requires a component that provides ${trait} ${wanted}.`;
+  }
+  const what = kinds
+    .map((kind) => titleInSentence(catalog.kinds.find((k) => k.id === kind)?.title ?? kind))
+    .join(' or ');
+  return `${requirer.title} requires a ${what} that provides ${trait} ${wanted}, such as ${orList(titles)}.`;
+}
+
+/** Joins items as prose: "a", "a or b", or "a, b, or c". */
+function orList(items: readonly string[]): string {
+  if (items.length <= 2) return items.join(' or ');
+  return `${items.slice(0, -1).join(', ')}, or ${items.at(-1)}`;
+}
+
 function traitProblems(catalog: Catalog, selection: Selection): Problem[] {
   const components = selectedComponents(catalog, selection);
-  const complete = KIND_IDS.every((kind) => selection.components[kind] !== undefined);
+  // Required kinds not chosen yet may still add a provider. An optional kind
+  // left unchosen means none (no frontend, for example), so it adds nothing.
+  const open = KIND_IDS.filter(
+    (kind) => !isOptionalKind(catalog, kind) && selection.components[kind] === undefined,
+  );
   const problems: Problem[] = [];
   for (const requirer of components) {
     for (const [trait, allowed] of Object.entries(requirer.requires)) {
       const providers = components.filter((c) => c !== requirer && trait in c.provides);
       const wanted = allowed.join(' or ');
       if (providers.length === 0) {
-        // Until every kind is chosen, a provider may still be added.
-        if (complete) {
+        const pending = catalog.components.some(
+          (c) => open.includes(c.kind) && trait in c.provides,
+        );
+        if (!pending) {
           problems.push({
             field: requirer.kind,
-            message: `${requirer.title} requires a component that provides ${trait} ${wanted}.`,
+            message: missingProviderMessage(catalog, requirer, trait, allowed),
             involves: [requirer.id],
           });
         }

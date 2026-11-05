@@ -1,0 +1,92 @@
+/* Styles of the example page (App). Plain CSS; edit or replace freely. */
+
+:root {
+  color-scheme: light dark;
+  --bg: #fbf8f3;
+  --fg: #1f1d1a;
+  --muted: #6b655c;
+  --line: #e4ddd2;
+  --accent: #c2410c;
+  --accent-fg: #ffffff;
+  --problem: #b91c1c;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1916;
+    --fg: #f3efe8;
+    --muted: #a79f93;
+    --line: #3a352f;
+    --accent: #fb923c;
+    --accent-fg: #1b1916;
+    --problem: #f87171;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+main {
+  max-width: 36rem;
+  margin: 0 auto;
+  padding: 3rem 1rem;
+}
+
+h1 {
+  margin: 0 0 1.5rem;
+  font-size: 2rem;
+}
+
+form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+input {
+  flex: 1;
+  min-width: 10rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.375rem;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+button {
+  padding: 0.5rem 1rem;
+  border: 0;
+  border-radius: 0.375rem;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+[role='alert'] {
+  margin: 0 0 1rem;
+  color: var(--problem);
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+li {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.empty {
+  color: var(--muted);
+}

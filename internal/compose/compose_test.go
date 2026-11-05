@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/Tales-of-zuna/gobento/internal/catalog"
 )
 
 func TestComposePlan(t *testing.T) {
@@ -232,6 +234,16 @@ requires:
 			wantMsg: []string{"root file internal/controllers/extra.go from data/query lies inside slot handlers"},
 		},
 		{
+			// Spec: File inside a nested slot.
+			name: "file inside a nested slot",
+			files: map[string]string{
+				"architecture/layered/component.yaml":                       nestedArch,
+				"architecture/layered/files/models/itemshttp/extra.go.tmpl": "package itemshttp\n",
+			},
+			wantIs:  []error{ErrSlotOwner},
+			wantMsg: []string{"architecture/layered", "internal/items/itemshttp/extra.go", "inside slot handlers (internal/items/itemshttp)"},
+		},
+		{
 			name:    "incomplete selection",
 			sel:     [4]string{"layered", "web", "lite", ""},
 			wantIs:  []error{ErrSelection, ErrUnfilledSlot},
@@ -428,11 +440,125 @@ func TestComposePlanSlots(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Compose() error = %v", err)
 	}
-	want := SlotData{Dir: "internal/http/handlers", Package: "handlers", Import: "example.com/shop/internal/http/handlers"}
+	want := SlotData{Dir: "internal/http/handlers", Package: "handlers", Import: "example.com/shop/internal/http/handlers", Filled: true}
 	if got := plan.Slots["handlers"]; got != want {
 		t.Errorf("Slots[handlers] = %+v, want %+v", got, want)
 	}
-	if got := plan.Slots["entry"]; got.Dir != "cmd/shop" || got.Package != "main" {
+	if got := plan.Slots["entry"]; got.Dir != "cmd/shop" || got.Package != "main" || !got.Filled {
 		t.Errorf("Slots[entry] = %+v", got)
+	}
+}
+
+// webFixture is baseFixture with an optional web slot in the layered
+// architecture, an entry point that mounts it when it is filled, and a
+// frontend component that fills it.
+func webFixture() map[string]string {
+	files := baseFixture()
+	files["architecture/layered/component.yaml"] += "  web:      { dir: internal/views,           filled_by: frontend }\n"
+	files["architecture/layered/files/entry/main.go.tmpl"] = `package main
+
+// API at "{{.APIPrefix}}/"{{if .Slots.web.Filled}}, pages from {{.Slots.web.Import}}{{end}}.
+func main() {}
+`
+	files["frontend/pages/component.yaml"] = "name: pages\ntitle: Pages\n"
+	files["frontend/pages/files/web/views.go.tmpl"] = "package {{.Slots.web.Package}}\n\n// API at {{.APIPrefix}}.\nconst API = \"{{.APIPrefix}}\"\n"
+	return files
+}
+
+// TestComposeOptionalSlot covers the spec scenarios "Entry point adapts to a
+// filled slot" and "Optional slot left empty".
+func TestComposeOptionalSlot(t *testing.T) {
+	t.Parallel()
+
+	cat := loadCatalog(t, webFixture())
+	sel := pick(t, cat, "layered", "web", "lite", "query")
+
+	plan, err := Compose(input(sel))
+	if err != nil {
+		t.Fatalf("Compose() without a frontend error = %v", err)
+	}
+	if plan.Slots["web"].Filled {
+		t.Error("Slots[web].Filled = true without a frontend")
+	}
+	main, _ := plan.File("cmd/shop/main.go")
+	if got, want := string(main.Content), `// API at "/".`; !strings.Contains(got, want) {
+		t.Errorf("main.go without a frontend = %q, want it to contain %q", got, want)
+	}
+	for _, p := range plan.Paths() {
+		if strings.HasPrefix(p, "internal/views/") {
+			t.Errorf("%s planned without a frontend", p)
+		}
+	}
+
+	ui, _ := cat.Component(catalog.KindFrontend, "pages")
+	plan, err = Compose(input(sel.With(ui)))
+	if err != nil {
+		t.Fatalf("Compose() with a frontend error = %v", err)
+	}
+	if !plan.Slots["web"].Filled {
+		t.Error("Slots[web].Filled = false with a frontend")
+	}
+	main, _ = plan.File("cmd/shop/main.go")
+	if got, want := string(main.Content), `// API at "/api/", pages from example.com/shop/internal/views.`; !strings.Contains(got, want) {
+		t.Errorf("main.go with a frontend = %q, want it to contain %q", got, want)
+	}
+	if f, ok := plan.File("internal/views/views.go"); !ok || !strings.Contains(string(f.Content), `const API = "/api"`) {
+		t.Errorf("internal/views/views.go = %q, %v; want the API prefix", f.Content, ok)
+	}
+}
+
+// TestComposeFrontendNeedsWebSlot covers the spec scenario "Architecture
+// without a web slot".
+func TestComposeFrontendNeedsWebSlot(t *testing.T) {
+	t.Parallel()
+
+	cat := loadCatalog(t, webFixture())
+	ui, _ := cat.Component(catalog.KindFrontend, "pages")
+	_, err := Compose(input(pick(t, cat, "hexagonal", "web", "lite", "query").With(ui)))
+	if !errors.Is(err, ErrUnknownSlot) {
+		t.Fatalf("Compose() error = %v, want ErrUnknownSlot", err)
+	}
+	if !strings.Contains(err.Error(), "frontend/pages has templates for slot web") {
+		t.Errorf("Compose() error = %q, want the frontend and the slot named", err)
+	}
+
+	var got []string
+	for _, sel := range Supported(cat) {
+		got = append(got, sel.String())
+	}
+	if want := "hexagonal/web/lite/orm,hexagonal/web/lite/query,layered/web/lite/orm,layered/web/lite/orm/pages,layered/web/lite/query,layered/web/lite/query/pages"; strings.Join(got, ",") != want {
+		t.Errorf("Supported() = %v, want %s", got, want)
+	}
+}
+
+// nestedArch is the layered fixture architecture with the handlers and
+// store slots nested inside the models directory, as in a vertical slice.
+const nestedArch = `name: layered
+title: Layered
+slots:
+  entry:    { dir: "cmd/{{.Project.Name}}", package: main, filled_by: architecture }
+  models:   { dir: internal/items,            filled_by: architecture }
+  handlers: { dir: internal/items/itemshttp,  filled_by: framework, required: true }
+  database: { dir: internal/platform/db,      filled_by: database,  required: true }
+  store:    { dir: internal/items/itemsstore, filled_by: data,      required: true }
+`
+
+// TestComposeNestedSlots checks that slot directories may be nested as
+// long as each component writes only into its own slot.
+func TestComposeNestedSlots(t *testing.T) {
+	t.Parallel()
+
+	cat := loadCatalog(t, withFiles(map[string]string{"architecture/layered/component.yaml": nestedArch}))
+	plan, err := Compose(input(pick(t, cat, "layered", "web", "lite", "query")))
+	if err != nil {
+		t.Fatalf("Compose() error = %v", err)
+	}
+	for _, p := range []string{"internal/items/models.go", "internal/items/itemshttp/router.go", "internal/items/itemsstore/store.go"} {
+		if _, ok := plan.File(p); !ok {
+			t.Errorf("plan has no %s: %v", p, plan.Paths())
+		}
+	}
+	if got := plan.Slots["handlers"].Package; got != "itemshttp" {
+		t.Errorf("handlers package = %q, want itemshttp", got)
 	}
 }

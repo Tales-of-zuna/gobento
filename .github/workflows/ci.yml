@@ -87,14 +87,25 @@ jobs:
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
 
   integration:
-    # Generates every supported selection with default and floor versions
-    # and builds, vets, and tests each project (internal/generate).
-    name: integration (${{ matrix.os }})
+    # Generates the selections compose.Coverage returns (every supported
+    # selection without a frontend, and a pairwise covering set of those with
+    # one) with default and floor versions, and builds, vets, and tests each
+    # project (internal/generate). The React, Vue, and Svelte frontends are
+    # scaffolded with npm and built with Vite, so the job sets up Node.js:
+    # the node default of components/versions.yaml, and on macOS the floor of
+    # its node range.
+    name: integration (${{ matrix.os }}, node ${{ matrix.node }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            node: "26"
+          - os: macos-latest
+            node: "22.12.0"
+          - os: windows-latest
+            node: "26"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -104,14 +115,39 @@ jobs:
           # The newest Go in the go range of components/versions.yaml.
           go-version: "1.27"
           cache: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Start PostgreSQL for the generated projects' tests
+        # Only Linux runners have Docker. Elsewhere TEST_DATABASE_URL stays
+        # unset, and the tests that need a server skip.
+        if: runner.os == 'Linux'
+        run: |
+          docker run --detach --name postgres --publish 5432:5432 \
+            --env POSTGRES_PASSWORD=postgres \
+            --health-cmd 'pg_isready --host 127.0.0.1' --health-interval 1s --health-retries 60 \
+            postgres:18-alpine
+          for _ in $(seq 60); do
+            [ "$(docker inspect --format '{{.State.Health.Status}}' postgres)" = healthy ] && break
+            sleep 1
+          done
+          # Over TCP: the server the image runs while initializing listens
+          # only on a Unix socket.
+          docker exec postgres pg_isready --host 127.0.0.1
+          echo "TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable" >> "$GITHUB_ENV"
       - name: Integration tests
-        run: go test -count=1 -run TestIntegration ./internal/generate/
+        run: go test -count=1 -timeout 60m -run TestIntegration ./internal/generate/
 
   sqlc-fresh:
-    # The sqlc component ships generated code. Regenerate it with the pinned
-    # sqlc inside a generated project and fail if anything changes.
-    name: sqlc output is current
+    # The sqlc component ships generated code, which differs per SQL dialect.
+    # Regenerate it with the pinned sqlc inside a generated project for each
+    # database and fail if anything changes.
+    name: sqlc output is current (${{ matrix.db }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        db: [sqlite, postgres]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -120,7 +156,9 @@ jobs:
         with:
           go-version: "1.27" # newest Go in versions.yaml: the reference project defaults to it
       - name: Generate the reference project
-        run: go run ./cmd/gobento new shop --module example.com/shop --dir "$RUNNER_TEMP/shop"
+        env:
+          DB: ${{ matrix.db }}
+        run: go run ./cmd/gobento new shop --module example.com/shop --arch mvc --framework nethttp --db "$DB" --data sqlc --dir "$RUNNER_TEMP/shop"
       - name: Regenerate with the pinned sqlc and compare
         working-directory: ${{ runner.temp }}/shop
         run: |
@@ -134,5 +172,47 @@ jobs:
           if [ -n "$(git status --porcelain)" ]; then
             git diff
             echo "::error::the shipped sqlc output is stale; regenerate it as described in website/content/docs/contributing/adding-a-component.mdx"
+            exit 1
+          fi
+
+  templ-fresh:
+    # The htmx frontend ships the Go code templ generates from pages.templ,
+    # and css/tailwind the stylesheet the standalone Tailwind CLI compiles.
+    # Regenerate both with the pinned versions in a reference project, with
+    # and without Tailwind CSS (the pages are the same in both), and fail if
+    # anything changes.
+    name: generated frontend code is current (css ${{ matrix.css }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        css: [none, tailwind]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27" # newest Go in versions.yaml: the reference project defaults to it
+      - name: Generate the reference project
+        env:
+          CSS: ${{ matrix.css }}
+        run: go run ./cmd/gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx --css "$CSS" --dir "$RUNNER_TEMP/shop"
+      - name: Regenerate with the pinned templ and Tailwind CSS and compare
+        working-directory: ${{ runner.temp }}/shop
+        run: |
+          git init --quiet
+          git add --all
+          git -c user.name=ci -c user.email=ci@example.invalid commit --quiet --message generated
+          # The //go:generate line in the web package runs the pinned templ.
+          go generate ./...
+          # The runner downloads and verifies the pinned Tailwind CLI.
+          if [ -f tailwind.css ]; then
+            go run ./internal/tools/tailwindcss --input tailwind.css --output internal/views/static/styles.css --minify
+          fi
+          if [ -n "$(git status --porcelain)" ]; then
+            git diff --stat
+            git diff -- '*.go' '*.templ'
+            echo "::error::the shipped templ or Tailwind output is stale; regenerate it as described in website/content/docs/contributing/adding-a-component.mdx"
             exit 1
           fi

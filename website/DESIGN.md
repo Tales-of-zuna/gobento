@@ -65,7 +65,7 @@ and green uses Frappé crust. Frappé accents pass as-is.
 | Recessed          | `--well`                                                                       | command blocks, code snippets, tray frames (Latte text color in light, Frappé mantle in dark)                    |
 | Code              | `--code-bg`                                                                    | syntax-highlighted code blocks: Latte base / Frappé mantle, the surfaces Shiki's catppuccin themes are tuned for |
 | Shape             | `--r-sm/md/lg/xl`, `--stroke`, `--toy-1/2/3`                                   | radii, outline width, offset shadows                                                                             |
-| Kind identity     | `--kind-architecture/framework/database/data`                                  | the same color per component kind everywhere                                                                     |
+| Kind identity     | `--kind-architecture/framework/database/data/frontend/css`                     | the same color per component kind everywhere                                                                     |
 | Patterns          | `--pat-seigaiha`, `--pat-ichimatsu`, `--pat-mizutama`, `--scallop`             | band backgrounds and scalloped edges                                                                             |
 
 Type: **Zen Maru Gothic** (display), **Figtree** (text), **JetBrains Mono**
@@ -85,7 +85,9 @@ Font loading (`app/layout.tsx`), all with `font-display: swap`:
   preloaded: code is never the first thing on screen.
 
 Component-kind colors: Architecture is sora, HTTP framework is shu, Database
-is tamago, and Data access is matcha.
+is tamago, Data access is matcha, Frontend (optional) is hisui, jade teal
+(`--hisui`, `--hisui-ink`, `--hisui-soft`), and CSS framework (optional) is
+fuji, wisteria (`--fuji`, `--fuji-ink`, `--fuji-soft`).
 
 ## Mascot
 
@@ -97,6 +99,9 @@ lid behind it as a backrest and four food compartments beside it, in sora blue.
   shading and outlines.
 - Rendered stills are the fallback for reduced motion, missing WebGL, and the
   loading state.
+- On software-rendered WebGL (SwiftShader, llvmpipe, and similar) the scene
+  holds its static pose and draws only when it changes: there, every animated
+  frame blocks the page's input until it is drawn.
 - A head-only render is used at small sizes: the favicon and avatar.
 - Its four compartments are the configurator's packing animation (`packed`).
 

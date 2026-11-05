@@ -7,7 +7,36 @@
 # per gobento release. CI generates every supported selection with the
 # defaults and with the range floors, so both ends of each range are tested.
 #
-# Last checked against the Go module proxy: 2026-11-03.
+# A module may add traits: {<trait>: [<values>]}. It is then used only when
+# one of its components is selected and the selection provides one of the
+# listed values for every listed trait, for example a driver needed only for
+# one SQL dialect. Otherwise it is not added to go.mod and cannot be pinned.
+# Binaries and npm packages take the same traits condition, for example
+# Tailwind's CLI for frontends built by Go and its npm packages for Vite.
+#
+# Assets are files that components vendor unmodified from an upstream
+# release, such as a JavaScript library the generated project serves from
+# its binary. Like tools, they are fixed per gobento release and cannot be
+# pinned. source is the release archive and path the file inside it; sha256
+# is the file's checksum, which gobento's tests compare with the file the
+# component ships and, with network access, with the file in source.
+#
+# Node.js and npm packages are for frontends that an official scaffolder
+# creates at generation time. node.range is the Node.js versions that
+# generation accepts (node --version); node.default is the release line of
+# the generated tooling (actions/setup-node and the node image, whose tag
+# uses {node}). Every npm package has one exact version, fixed per gobento
+# release like tools and assets: a scaffolder (role scaffolder, named
+# create-*) runs as `npm create <name without create->@<version>`, and
+# dependency or dev-dependency packages are added to every scaffolded
+# frontend of a selection that uses them. The scaffolded project's own
+# dependencies are chosen by the scaffolder and recorded in its
+# package-lock.json.
+#
+# Last checked against the Go module proxy, the npm registry, and
+# https://vuln.go.dev: 2026-11-04. Range floors exclude every release with a
+# known advisory, in the module itself or in the dependency versions it
+# requires.
 
 go:
   range: ">=1.26 <1.28"
@@ -25,8 +54,222 @@ modules:
       - when: ">=v1.61.0"
         require: { go: ">=1.26" }
 
+  github.com/gin-gonic/gin:
+    components: [framework/gin]
+    role: library
+    # Every Go vulnerability advisory for gin is fixed before v1.11.0.
+    range: ">=v1.11.0 <v2.0.0"
+    default: v1.12.0
+
+  github.com/go-chi/chi/v5:
+    components: [framework/chi]
+    role: library
+    # v5.3.0 fixes GO-2026-5774, GO-2026-5775, and GO-2026-5777, and every
+    # older chi advisory.
+    range: ">=v5.3.0 <v6.0.0"
+    default: v5.5.0
+
+  github.com/jackc/pgx/v5:
+    components: [database/postgres]
+    role: library
+    # Advisories affect pgx before v5.9.2 (GO-2026-5004 and earlier), and
+    # v5.9.2 to v5.11.0 require golang.org/x/text v0.29.0, which pgx's SCRAM
+    # authentication uses and which has GO-2026-6629 (fixed in v0.41.0).
+    # v5.12.0 is the first release whose requirements are all clean. It
+    # declares go 1.25.0, below the go floor, so it needs no go constraint.
+    range: ">=v5.12.0 <v6.0.0"
+    default: v5.12.0
+
   github.com/sqlc-dev/sqlc:
     components: [data/sqlc]
     role: tool # run with go run; never added to go.mod
     range: "=v1.31.1"
     default: v1.31.1
+
+  gorm.io/gorm:
+    components: [data/gorm]
+    role: library
+    range: ">=v1.31.1 <v2.0.0"
+    default: v1.31.2
+
+  # Pure-Go SQLite dialect for GORM on modernc.org/sqlite (no cgo, and no
+  # second SQLite driver or engine next to the database component's).
+  github.com/libtnb/sqlite:
+    components: [data/gorm]
+    traits: { sql-dialect: [sqlite] }
+    role: library
+    range: ">=v1.1.0 <v2.0.0"
+    default: v1.2.2
+    constraints:
+      - when: ">=v1.2.0"
+        require: { gorm.io/gorm: ">=v1.31.2" }
+
+  gorm.io/driver/postgres:
+    components: [data/gorm]
+    traits: { sql-dialect: [postgresql] }
+    role: library
+    # v1.6.1 is the first release that requires github.com/jackc/pgx/v5
+    # v5.10.0, past every pgx advisory (the last was fixed in v5.9.2).
+    range: ">=v1.6.1 <v2.0.0"
+    default: v1.6.3
+    constraints:
+      - when: ">=v1.6.2"
+        require: { gorm.io/gorm: ">=v1.31.2" }
+
+  github.com/a-h/templ:
+    components: [frontend/htmx]
+    # A library: the generated code imports the templ runtime. The range is
+    # exact because the component ships the code this version generates
+    # (pages_templ.go); bump it together with that file. The runtime imports
+    # only the standard library, so the golang.org/x/net version templ's
+    # command requires (with advisories in x/net/html and x/net/http2) is
+    # not built into generated projects.
+    role: library
+    range: "=v0.3.1100"
+    default: v0.3.1100
+
+assets:
+  # npm's latest release of htmx (htmx 4 is tagged next and changes
+  # defaults). 0BSD license.
+  htmx.org:
+    components: [frontend/htmx]
+    version: 2.0.11
+    source: https://registry.npmjs.org/htmx.org/-/htmx.org-2.0.11.tgz
+    path: package/dist/htmx.min.js
+    sha256: d6fdc75f204e6bdefa99b69bf1e6d4ac69b8a364f77929f45c13476b4000f717
+
+# Programs that generated projects download on demand, one file per platform
+# (GOOS/GOARCH), instead of requiring them to build. Like assets, they are
+# fixed per gobento release and cannot be pinned. Every url must contain the
+# version, so a bump cannot leave one behind; sha256 is the file's checksum,
+# which the generated project checks before running it. checksums is the
+# release's checksum file ("<sha256>  <file>" lines), which gobento's tests
+# compare every sha256 with when they have network access.
+#
+# Templates read them as {{.Binaries.<name>.Version}} and range over
+# {{.Binaries.<name>.Platforms}} (.OS, .Arch, .URL, .SHA256).
+#
+# Last checked against GitHub releases and the GitHub advisory database:
+# 2026-11-04 (no advisories for tailwindcss or @tailwindcss/vite).
+binaries:
+  # The standalone Tailwind CSS CLI, which needs no Node.js. MIT license.
+  # Tailwind releases the CLI and the npm packages tailwindcss and
+  # @tailwindcss/vite together, so the npm section lists those packages at
+  # this version for Vite frontends (a test keeps the three equal). The
+  # release has no build for Windows on ARM, which runs the x64 build under
+  # emulation, or for musl-based Linux; the generated runner explains how
+  # to use another binary there.
+  tailwindcss:
+    components: [css/tailwind]
+    # Only frontends built by the Go toolchain use the CLI.
+    traits: {frontend-build: [go]}
+    version: 4.3.4
+    checksums: https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.4/sha256sums.txt
+    platforms:
+      darwin/amd64:
+        url: https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.4/tailwindcss-macos-x64
+        sha256: 7ec771593a1fb8bbd204f70429361b0158f7989e4136bc68d04513bf543a15ba
+      darwin/arm64:
+        url: https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.4/tailwindcss-macos-arm64
+        sha256: a516a11b439bfbb5ecd4a2d13b75e6cdcc284dc710aed8731e31d2e5c03895a4
+      linux/amd64:
+        url: https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.4/tailwindcss-linux-x64
+        sha256: 149a8ece5b855587a9c10de6da9dcbcfad0e47c4ed5dca219f721b3eae39d817
+      linux/arm64:
+        url: https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.4/tailwindcss-linux-arm64
+        sha256: f6d7baae1d350ed3a2defe98d0b5cc58e37400c0173b2e38d42f690ccc4bbfe1
+      windows/amd64:
+        url: https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.4/tailwindcss-windows-x64.exe
+        sha256: ad84612696f3be102fa005d4827f0df84c7b4570d31c06865ce5fde0311478af
+      windows/arm64:
+        url: https://github.com/tailwindlabs/tailwindcss/releases/download/v4.3.4/tailwindcss-windows-x64.exe
+        sha256: ad84612696f3be102fa005d4827f0df84c7b4570d31c06865ce5fde0311478af
+
+node:
+  # create-vite 9.3.3 and the Vite 8 it scaffolds declare
+  # engines.node "^20.19.0 || >=22.12.0"; Node.js 20 is end of life.
+  # (@sveltejs/vite-plugin-svelte also leaves out Node.js 23, an end-of-life
+  # odd release, for which npm only warns.)
+  range: ">=v22.12.0"
+  # The Active LTS line (26.13.0 on 2026-11-04).
+  default: "26"
+
+npm:
+  # npm's latest create-vite. Its react-ts, vue-ts, and svelte-ts templates
+  # scaffold Vite 8 projects. npm audit reports nothing for react-ts and
+  # vue-ts; for svelte-ts it reports GHSA-gcqx-w48m-w2h4 (low: prototype
+  # poisoning in deepmerge, used by @sveltejs/vite-plugin-svelte at build
+  # time only, with no fixed release yet).
+  create-vite:
+    components: [frontend/react, frontend/svelte, frontend/vue]
+    role: scaffolder
+    version: 9.3.3
+  # Tailwind CSS for the Vite frontends: the compiler and its Vite plugin,
+  # added to the scaffolded frontend's devDependencies. Always the version
+  # of the standalone CLI in binaries (released together); htmx uses the
+  # CLI instead. MIT license; npm audit reports nothing for either.
+  "@tailwindcss/vite":
+    components: [css/tailwind]
+    traits: {frontend-build: [vite]}
+    role: dev-dependency
+    version: 4.3.4
+  tailwindcss:
+    components: [css/tailwind]
+    traits: {frontend-build: [vite]}
+    role: dev-dependency
+    version: 4.3.4
+
+# Versions of the project tooling that are not Go module requirements: the
+# images of the generated Dockerfile and CI workflow, the GitHub Actions the
+# workflow uses, and tools the Makefile and the workflow run. They are fixed
+# per gobento release and cannot be pinned; generated projects keep them
+# current with Dependabot (.github/dependabot.yml).
+#
+# Templates read them as {{.Images.<key>}} (name:tag[@digest]; {node} in a
+# tag is node.default),
+# {{index .Actions "<owner/repo>"}} (the complete uses: value, the commit SHA
+# followed by "# <version>"), and {{index .Tools "<name>"}}.
+#
+# Last checked: 2026-11-04, against Docker Hub and gcr.io with
+# `docker buildx imagetools inspect <image>` and against GitHub with
+# `gh api repos/<owner/repo>/commits/<version>`.
+tooling:
+  images:
+    # Build stage of the Dockerfile. The tag is the selected Go version, so
+    # builds use its newest patch release; the image never ships.
+    go:
+      image: golang
+      tag: "{go}"
+    # Runtime stage of the Dockerfile: no shell or package manager, and a
+    # non-root user (65532). Pinned by digest because it ships.
+    runtime:
+      image: gcr.io/distroless/static-debian13
+      tag: nonroot
+      digest: sha256:25ac8f0c3b2334a9eb05452266bd4697864a8c8ef0ef71e5e6480d7f92868329
+    # Frontend build stage of the Dockerfile of Vite frontends, on the
+    # Node.js release line. Like golang, the image never ships, so it is
+    # not pinned by digest.
+    node:
+      image: node
+      tag: "{node}-alpine"
+    # The PostgreSQL server of the CI service and the README's local server.
+    postgres:
+      image: postgres
+      tag: 18-alpine
+
+  actions:
+    actions/checkout:
+      version: v7.0.1
+      sha: 3d3c42e5aac5ba805825da76410c181273ba90b1
+    actions/setup-go:
+      version: v7.0.0
+      sha: b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+    actions/setup-node:
+      version: v7.1.0
+      sha: 949feb2413d6458794dcd2491c4babbbce0c15c1
+    golangci/golangci-lint-action:
+      version: v9.3.0
+      sha: ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a
+
+  tools:
+    golangci-lint: v2.15.0

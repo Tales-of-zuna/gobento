@@ -7,19 +7,21 @@ import (
 	"go/format"
 	"go/token"
 	"io/fs"
+	"maps"
 	"path"
 	"slices"
 	"strings"
 	"text/template"
 
 	"github.com/Tales-of-zuna/gobento/internal/catalog"
+	"github.com/Tales-of-zuna/gobento/internal/compat"
 )
 
 // Errors returned by Compose, wrapped with details. Test for them with
 // errors.Is.
 var (
 	// ErrSelection reports a selection without exactly one component of
-	// each kind.
+	// each required kind, or with a component in the wrong field.
 	ErrSelection = errors.New("incomplete selection")
 	// ErrUnknownSlot reports templates for a slot the architecture does not
 	// declare.
@@ -59,6 +61,21 @@ type Input struct {
 	Selection catalog.Selection
 	// Versions maps module paths to the chosen versions.
 	Versions map[string]string
+	// Assets maps the names of the selected components' vendored assets
+	// to their versions.
+	Assets map[string]string
+	// Binaries maps the names of the selected components' platform
+	// binaries to their rules.
+	Binaries map[string]compat.Binary
+	// Base is the base layer composed into every selection, or nil for
+	// none (catalog.Catalog.Base).
+	Base *catalog.Component
+	// Tooling holds the tooling versions: images, actions, and tools.
+	Tooling compat.ToolingVersions
+	// Node is the Node.js release line of the generated tooling.
+	Node string
+	// NPM maps the selected components' npm packages to their versions.
+	NPM map[string]string
 }
 
 // Plan is the composed project: every file to write, in path order. It
@@ -68,6 +85,21 @@ type Plan struct {
 	Files []File
 	// Slots locates every slot of the architecture, as given to templates.
 	Slots map[string]SlotData
+	// Contributions lists the rendered contributions of the selected
+	// components to the points of the base layer and of the selected
+	// components, in kind order and then by point.
+	Contributions []Contribution
+}
+
+// Contribution is one component's rendered contribution to a point.
+type Contribution struct {
+	// Component is the ID of the contributing component.
+	Component string
+	// Point is the name of the contribution point.
+	Point string
+	// Content is the rendered contribution, without leading and trailing
+	// newlines.
+	Content string
 }
 
 // File is one planned file.
@@ -103,7 +135,8 @@ func (p *Plan) File(path string) (File, bool) {
 }
 
 // Compose checks the selection and renders every template of every selected
-// component into a Plan. It reports every problem it finds, joined with
+// component, and of the base layer, with the contributions to their points,
+// into a Plan. A template that renders to whitespace produces no file. It reports every problem it finds, joined with
 // errors.Join: an incomplete selection, unmet traits, unknown or unfilled
 // slots, slots with more than one owner, path conflicts, and templates that
 // fail to render or, for .go files, to format. Nothing is written to disk.
@@ -114,7 +147,7 @@ func Compose(in Input) (*Plan, error) {
 		return nil, err
 	}
 	slices.SortFunc(c.files, func(a, b File) int { return strings.Compare(a.Path, b.Path) })
-	return &Plan{Files: c.files, Slots: c.data.Slots}, nil
+	return &Plan{Files: c.files, Slots: c.data.Slots, Contributions: c.contribs}, nil
 }
 
 // composer holds the state of one Compose call.
@@ -125,6 +158,21 @@ type composer struct {
 	files []File
 	// owner maps each output path to the component that produced it.
 	owner map[string]string
+	// contribs holds the rendered contributions, in kind order.
+	contribs []Contribution
+	// included records the points whose contributions a template asked
+	// for.
+	included map[string]bool
+}
+
+// components returns the selected components in kind order, followed by
+// the base layer if there is one.
+func (c *composer) components() []*catalog.Component {
+	comps := c.in.Selection.Components()
+	if c.in.Base != nil {
+		comps = append(comps, c.in.Base)
+	}
+	return comps
 }
 
 func (c *composer) fail(format string, args ...any) {
@@ -145,43 +193,161 @@ func (c *composer) run() {
 		Project:  c.in.Project,
 		Slots:    make(map[string]SlotData),
 		Traits:   sel.Traits(),
-		Versions: c.in.Versions,
+		Versions: orEmpty(c.in.Versions),
+		Assets:   orEmpty(c.in.Assets),
+		Binaries: c.in.Binaries,
+		Images:   orEmpty(c.in.Tooling.Images),
+		Actions:  orEmpty(c.in.Tooling.Actions),
+		Tools:    orEmpty(c.in.Tooling.Tools),
+		Node:     c.in.Node,
+		NPM:      orEmpty(c.in.NPM),
 	}
-	if c.data.Versions == nil {
-		c.data.Versions = map[string]string{}
+	if sel.Frontend != nil {
+		c.data.APIPrefix = FrontendAPIPrefix
 	}
 	c.resolveSlots()
 	c.checkOwnership()
 	c.checkRootFiles()
+	if c.data.Binaries == nil {
+		c.data.Binaries = map[string]compat.Binary{}
+	}
+	c.renderContributions()
 
 	c.owner = make(map[string]string)
-	for _, comp := range sel.Components() {
+	c.included = make(map[string]bool)
+	for _, comp := range c.components() {
 		for _, f := range comp.Files {
 			c.render(comp, f)
 		}
 	}
 	c.appendNotes()
+	c.checkIncluded()
 }
 
-// checkSelection reports kinds without a component and components in the
-// wrong field.
+// checkIncluded reports every contribution to a point that no rendered
+// template of the selection included, which would otherwise be lost: for
+// example a CSS framework's contribution to a point of the frontend kind
+// that the selected frontend does not use.
+func (c *composer) checkIncluded() {
+	for _, k := range c.contribs {
+		if !c.included[k.Point] {
+			c.fail("%w: %s/%s/%s%s: %s includes no contributions to the point %q",
+				ErrTemplate, k.Component, catalog.ContribDir, k.Point, catalog.TemplateSuffix, c.declarer(k.Point).ID(), k.Point)
+		}
+	}
+}
+
+// orEmpty returns m, or an empty map if m is nil, so that templates report
+// a missing key instead of rendering "<no value>".
+func orEmpty(m map[string]string) map[string]string {
+	if m == nil {
+		return map[string]string{}
+	}
+	return m
+}
+
+// renderContributions renders every selected component's contributions to
+// the points of the base layer and of the selected components, in kind
+// order and then by point. A contribution that renders to whitespace is
+// left out before its point is checked, so a contribution guarded by a
+// trait may name a point that only other selections declare.
+func (c *composer) renderContributions() {
+	for _, comp := range c.in.Selection.Components() {
+		for _, point := range slices.Sorted(maps.Keys(comp.Contributions)) {
+			source := comp.ID() + "/" + catalog.ContribDir + "/" + point + catalog.TemplateSuffix
+			content, err := c.execute(source, comp.Contributions[point], nil)
+			if err != nil {
+				c.fail("%w: %s: %w", ErrTemplate, source, err)
+				continue
+			}
+			text := strings.Trim(string(content), "\n")
+			if strings.TrimSpace(text) == "" {
+				continue
+			}
+			if c.declarer(point) == nil {
+				c.fail("%w: %s: no part of the selection %s declares the contribution point %q", ErrTemplate, source, c.in.Selection, point)
+				continue
+			}
+			c.contribs = append(c.contribs, Contribution{Component: comp.ID(), Point: point, Content: text})
+		}
+	}
+}
+
+// declarer returns the base layer or the selected component that declares
+// point, or nil if none does.
+func (c *composer) declarer(point string) *catalog.Component {
+	for _, comp := range c.components() {
+		if _, ok := comp.Point(point); ok {
+			return comp
+		}
+	}
+	return nil
+}
+
+// contribsFunc returns the template function "contribs" of owner's
+// templates and notes: it returns the contributions to a point of the base
+// layer or of owner (its own or its kind's), one per contributing
+// component, for example to separate Markdown paragraphs with blank lines.
+func (c *composer) contribsFunc(owner *catalog.Component) func(string) ([]string, error) {
+	return func(point string) ([]string, error) {
+		_, own := owner.Point(point)
+		base := false
+		if c.in.Base != nil {
+			_, base = c.in.Base.Point(point)
+		}
+		switch {
+		case own || base:
+		case owner.IsBase():
+			return nil, fmt.Errorf("the base layer declares no contribution point %q in %s", point, catalog.BaseManifestFile)
+		default:
+			return nil, fmt.Errorf("%s declares no contribution point %q in its %s or its kind's %s, and the base layer declares none in %s",
+				owner.ID(), point, catalog.ManifestFile, catalog.KindManifestFile, catalog.BaseManifestFile)
+		}
+		c.included[point] = true
+		var parts []string
+		for _, k := range c.contribs {
+			if k.Point == point {
+				parts = append(parts, k.Content)
+			}
+		}
+		return parts, nil
+	}
+}
+
+// contribFunc returns the template function "contrib" of owner's
+// templates: the contributions to the point, as contribs returns them,
+// joined with newlines, or "" if no selected component contributes.
+func (c *composer) contribFunc(owner *catalog.Component) func(string) (string, error) {
+	list := c.contribsFunc(owner)
+	return func(point string) (string, error) {
+		parts, err := list(point)
+		return strings.Join(parts, "\n"), err
+	}
+}
+
+// funcsFor returns the extra template functions of comp's templates and
+// notes: they may include the contributions to the points of the base
+// layer and to comp's own points (those of its kind), so that one component
+// can extend a file another one owns. Contribution templates themselves
+// get no extra functions.
+func (c *composer) funcsFor(comp *catalog.Component) template.FuncMap {
+	if len(comp.Points) == 0 && c.in.Base == nil {
+		return nil
+	}
+	return template.FuncMap{"contrib": c.contribFunc(comp), "contribs": c.contribsFunc(comp)}
+}
+
+// checkSelection reports required kinds without a component and components
+// in the wrong field. An optional kind may have no component.
 func (c *composer) checkSelection() {
 	sel := c.in.Selection
-	fields := []struct {
-		kind catalog.Kind
-		comp *catalog.Component
-	}{
-		{catalog.KindArchitecture, sel.Architecture},
-		{catalog.KindFramework, sel.Framework},
-		{catalog.KindDatabase, sel.Database},
-		{catalog.KindData, sel.Data},
-	}
-	for _, f := range fields {
+	for _, kind := range catalog.Kinds() {
+		comp := sel.Component(kind)
 		switch {
-		case f.comp == nil:
-			c.fail("%w: no %s component selected", ErrSelection, f.kind)
-		case f.comp.Kind != f.kind:
-			c.fail("%w: %s is not a %s component", ErrSelection, f.comp.ID(), f.kind)
+		case comp == nil && !kind.Optional():
+			c.fail("%w: no %s component selected", ErrSelection, kind)
+		case comp != nil && comp.Kind != kind:
+			c.fail("%w: %s is not a %s component", ErrSelection, comp.ID(), kind)
 		}
 	}
 }
@@ -192,7 +358,7 @@ func (c *composer) resolveSlots() {
 	dirs := make(map[string]string) // rendered dir -> slot name
 	for _, s := range arch.Slots {
 		var buf bytes.Buffer
-		tmpl, err := newTemplate(arch.ID()+": slot "+s.Name+" dir", s.Dir)
+		tmpl, err := newTemplate(arch.ID()+": slot "+s.Name+" dir", s.Dir, nil)
 		if err == nil {
 			err = tmpl.Execute(&buf, c.data)
 		}
@@ -229,7 +395,7 @@ func (c *composer) checkOwnership() {
 	sel := c.in.Selection
 	arch := sel.Architecture
 	fillers := make(map[string][]*catalog.Component)
-	for _, comp := range sel.Components() {
+	for _, comp := range c.components() {
 		for _, name := range comp.FilledSlots() {
 			if _, ok := arch.Slot(name); !ok {
 				c.fail("%w: %s has templates for slot %s, which %s does not declare", ErrUnknownSlot, comp.ID(), name, arch.ID())
@@ -240,6 +406,10 @@ func (c *composer) checkOwnership() {
 	}
 	for _, s := range arch.Slots {
 		owners := fillers[s.Name]
+		if d, ok := c.data.Slots[s.Name]; ok && len(owners) > 0 {
+			d.Filled = true
+			c.data.Slots[s.Name] = d
+		}
 		switch {
 		case len(owners) > 1:
 			ids := make([]string, len(owners))
@@ -261,7 +431,7 @@ func (c *composer) checkOwnership() {
 func (c *composer) checkRootFiles() {
 	owners := make(map[string][]string)
 	var order []string
-	for _, comp := range c.in.Selection.Components() {
+	for _, comp := range c.components() {
 		for _, f := range comp.Files {
 			if f.Slot != catalog.RootSlot {
 				continue
@@ -298,11 +468,21 @@ func (c *composer) render(comp *catalog.Component, f catalog.File) {
 			return
 		}
 		out = s.Dir + "/" + f.Path
+		if inner, ok := c.nestedSlot(f.Slot, out); ok {
+			c.fail("%w: %s: %s would be written to %s, inside slot %s (%s); only that slot's owner writes there",
+				ErrSlotOwner, comp.ID(), f.Source, out, inner, c.data.Slots[inner].Dir)
+			return
+		}
 	}
 
-	content, err := c.execute(f.Source, f.Template)
+	content, err := c.execute(f.Source, f.Template, c.funcsFor(comp))
 	if err != nil {
 		c.fail("%w: %s: %s: %w", ErrTemplate, comp.ID(), f.Source, err)
+		return
+	}
+	if len(bytes.TrimSpace(content)) == 0 {
+		// A template that renders nothing, for example one guarded by a
+		// trait, produces no file.
 		return
 	}
 	if strings.HasSuffix(out, ".go") {
@@ -325,16 +505,31 @@ func (c *composer) render(comp *catalog.Component, f catalog.File) {
 	c.files = append(c.files, File{Path: out, Mode: fileMode, Content: content, Component: comp.ID()})
 }
 
-// appendNotes renders every component's notes, in kind order, and appends
-// them to the README.
+// nestedSlot reports the slot whose directory lies inside the directory of
+// slot owner and contains out, the output path of one of owner's files. A
+// slot directory may be nested inside another one, but the outer slot's
+// files must stay out of it, so that every package has exactly one owner.
+func (c *composer) nestedSlot(owner, out string) (string, bool) {
+	outer := c.data.Slots[owner].Dir
+	for _, name := range slices.Sorted(maps.Keys(c.data.Slots)) {
+		dir := c.data.Slots[name].Dir
+		if name != owner && strings.HasPrefix(dir, outer+"/") && strings.HasPrefix(out, dir+"/") {
+			return name, true
+		}
+	}
+	return "", false
+}
+
+// appendNotes renders every component's notes, in kind order and then the
+// base layer's, and appends them to the README.
 func (c *composer) appendNotes() {
 	var notes []string
 	var from []string
-	for _, comp := range c.in.Selection.Components() {
+	for _, comp := range c.components() {
 		if comp.Notes == "" {
 			continue
 		}
-		content, err := c.execute(comp.ID()+"/"+catalog.NotesFile, comp.Notes)
+		content, err := c.execute(comp.ID()+"/"+catalog.NotesFile, comp.Notes, c.funcsFor(comp))
 		if err != nil {
 			c.fail("%w: %s: %s: %w", ErrTemplate, comp.ID(), catalog.NotesFile, err)
 			continue
@@ -354,9 +549,10 @@ func (c *composer) appendNotes() {
 	c.files[i].Content = []byte(readme + "\n\n" + strings.Join(notes, "\n\n") + "\n")
 }
 
-// execute parses and renders one template with the composition data.
-func (c *composer) execute(name, text string) ([]byte, error) {
-	tmpl, err := newTemplate(name, text)
+// execute parses and renders one template with the composition data and the
+// extra functions funcs.
+func (c *composer) execute(name, text string, funcs template.FuncMap) ([]byte, error) {
+	tmpl, err := newTemplate(name, text, funcs)
 	if err != nil {
 		return nil, err
 	}
@@ -368,9 +564,32 @@ func (c *composer) execute(name, text string) ([]byte, error) {
 }
 
 // newTemplate parses a template that fails on missing map keys, so a typo
-// such as .Slots.handler is an error instead of "<no value>".
-func newTemplate(name, text string) (*template.Template, error) {
-	return template.New(name).Option("missingkey=error").Parse(text)
+// such as .Slots.handler is an error instead of "<no value>". Every
+// template may use the functions indent and prefix, and the functions in
+// funcs.
+func newTemplate(name, text string, funcs template.FuncMap) (*template.Template, error) {
+	return template.New(name).Option("missingkey=error").
+		Funcs(template.FuncMap{"indent": indent, "prefix": prefix}).
+		Funcs(funcs).
+		Parse(text)
+}
+
+// indent returns s with n spaces before every line that is not empty, for
+// placing a contribution written at column zero inside YAML.
+func indent(n int, s string) string {
+	return prefix(strings.Repeat(" ", n), s)
+}
+
+// prefix returns s with p before every line that is not empty, for example
+// a tab before every line of a Make recipe.
+func prefix(p, s string) string {
+	lines := strings.Split(s, "\n")
+	for i, l := range lines {
+		if l != "" {
+			lines[i] = p + l
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 // checkRelPath reports whether p is a clean, relative, slash-separated

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"mime"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -51,8 +52,8 @@ func TestHealth(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /health status = %d, want %d", rec.Code, http.StatusOK)
 	}
-	if got := rec.Header().Get("Content-Type"); got != "application/json" {
-		t.Errorf("Content-Type = %q, want application/json", got)
+	if mt, _, err := mime.ParseMediaType(rec.Header().Get("Content-Type")); err != nil || mt != "application/json" {
+		t.Errorf("Content-Type = %q, want application/json", rec.Header().Get("Content-Type"))
 	}
 }
 
@@ -70,12 +71,12 @@ func TestItemsRoundTrip(t *testing.T) {
 	}
 
 	rec = serve(t, h, http.MethodGet, "/items", "")
-	var items []models.Item
-	if err := json.Unmarshal(rec.Body.Bytes(), &items); err != nil {
+	var got []models.Item
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode GET /items: %v", err)
 	}
-	if len(items) != 1 || items[0].Name != "first" {
-		t.Errorf("GET /items = %+v, want one item named first", items)
+	if len(got) != 1 || got[0].Name != "first" {
+		t.Errorf("GET /items = %+v, want one item named first", got)
 	}
 }
 
@@ -115,9 +116,23 @@ func TestListItemsStoreError(t *testing.T) {
 	}
 }
 
-func TestUnknownRoute(t *testing.T) {
-	rec := serve(t, NewRouter(&fakeStore{}), http.MethodDelete, "/items", "")
-	if rec.Code != http.StatusMethodNotAllowed {
-		t.Errorf("DELETE /items status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
+func TestRouting(t *testing.T) {
+	tests := []struct {
+		method, target string
+		want           int
+	}{
+		{http.MethodHead, "/health", http.StatusOK},
+		{http.MethodHead, "/items", http.StatusOK},
+		{http.MethodDelete, "/items", http.StatusMethodNotAllowed},
+		{http.MethodGet, "/items/", http.StatusNotFound},
+		{http.MethodPost, "/items/", http.StatusNotFound},
+		{http.MethodGet, "/ITEMS", http.StatusNotFound},
+		{http.MethodGet, "/nowhere", http.StatusNotFound},
+	}
+	for _, tt := range tests {
+		rec := serve(t, NewRouter(&fakeStore{}), tt.method, tt.target, "")
+		if rec.Code != tt.want {
+			t.Errorf("%s %s status = %d, want %d", tt.method, tt.target, rec.Code, tt.want)
+		}
 	}
 }

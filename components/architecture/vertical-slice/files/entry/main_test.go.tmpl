@@ -1,0 +1,59 @@
+package main
+
+import (
+	"context"
+	"mime"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"{{.Slots.models.Import}}"
+)
+
+// memStore is an in-memory {{.Slots.models.Package}}.ItemStore, so the routing test
+// needs no database.
+type memStore struct {
+	items []{{.Slots.models.Package}}.Item
+}
+
+func (s *memStore) List(context.Context) ([]{{.Slots.models.Package}}.Item, error) {
+	return s.items, nil
+}
+
+func (s *memStore) Create(_ context.Context, name string) ({{.Slots.models.Package}}.Item, error) {
+	item := {{.Slots.models.Package}}.Item{ID: int64(len(s.items) + 1), Name: name, CreatedAt: time.Now()}
+	s.items = append(s.items, item)
+	return item, nil
+}
+
+// TestHandlerRoutes checks which handler serves which path: the API
+{{- if .Slots.web.Filled}} under
+// {{.APIPrefix}}/ and the web pages at every other path.
+{{- else}} at
+// the root.
+{{- end}}
+func TestHandlerRoutes(t *testing.T) {
+	tests := []struct {
+		target    string
+		mediaType string
+	}{
+		{"{{.APIPrefix}}/health", "application/json"},
+		{"{{.APIPrefix}}/items", "application/json"},
+{{- if .Slots.web.Filled}}
+		{"/", "text/html"},
+{{- end}}
+	}
+	h := newHandler(&memStore{})
+	for _, tt := range tests {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.target, nil))
+		if rec.Code != http.StatusOK {
+			t.Errorf("GET %s status = %d, want %d", tt.target, rec.Code, http.StatusOK)
+			continue
+		}
+		if mt, _, err := mime.ParseMediaType(rec.Header().Get("Content-Type")); err != nil || mt != tt.mediaType {
+			t.Errorf("GET %s Content-Type = %q, want %s", tt.target, rec.Header().Get("Content-Type"), tt.mediaType)
+		}
+	}
+}

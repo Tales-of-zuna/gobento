@@ -1,24 +1,15 @@
 package store
 
 import (
-	"context"
-	"path/filepath"
 	"testing"
 
-	"example.com/shop/internal/database"
+	"example.com/shop/internal/database/dbtest"
 )
 
-// TestItemStore runs the store against a real database file.
+// TestItemStore runs the store against a real, empty database.
 func TestItemStore(t *testing.T) {
-	ctx := context.Background()
-	db, err := database.Open(ctx, filepath.Join(t.TempDir(), "test.db"))
-	if err != nil {
-		t.Fatalf("open database: %v", err)
-	}
-	// Windows cannot remove open files, so close before TempDir cleanup.
-	t.Cleanup(func() { _ = db.Close() })
-
-	s := New(db)
+	ctx := t.Context()
+	s := New(dbtest.Open(t))
 	items, err := s.List(ctx)
 	if err != nil || len(items) != 0 {
 		t.Fatalf("List() on an empty database = %v, %v; want no items", items, err)

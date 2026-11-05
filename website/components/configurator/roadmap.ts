@@ -13,11 +13,10 @@ export interface PlannedComponent {
 }
 
 export const ROADMAP: Readonly<Record<KindId, readonly PlannedComponent[]>> = {
-  architecture: [{ name: 'vertical-slice', title: 'Vertical slice' }],
-  framework: [
-    { name: 'gin', title: 'gin' },
-    { name: 'chi', title: 'chi' },
-  ],
-  database: [{ name: 'postgres', title: 'PostgreSQL' }],
-  data: [{ name: 'gorm', title: 'GORM' }],
+  architecture: [],
+  framework: [],
+  database: [],
+  data: [],
+  frontend: [],
+  css: [],
 };

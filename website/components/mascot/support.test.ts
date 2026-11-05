@@ -2,8 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   prefersReducedMotion,
   REDUCED_MOTION_QUERY,
+  isSoftwareRenderer,
+  probeWebGL,
   shouldMountScene,
-  supportsWebGL,
   type CanvasFactory,
   type SceneConditions,
 } from './support';
@@ -29,41 +30,97 @@ describe('prefersReducedMotion', () => {
   });
 });
 
-/** A canvas whose getContext answers from `contexts` by context id. */
-function fakeCanvas(contexts: Record<string, unknown>): {
+const UNMASKED_RENDERER = 0x9246;
+
+/**
+ * A canvas whose getContext answers from `contexts` by context id, with a
+ * context reporting `renderer` as its unmasked renderer name (or hiding it
+ * when undefined).
+ */
+function fakeCanvas(
+  contexts: Record<string, unknown>,
+  renderer?: string,
+): {
   factory: CanvasFactory;
   loseContext: ReturnType<typeof vi.fn>;
 } {
   const loseContext = vi.fn();
-  const context = { getExtension: () => ({ loseContext }) };
+  const context = {
+    getExtension: (name: string) => {
+      if (name === 'WEBGL_lose_context') return { loseContext };
+      if (name === 'WEBGL_debug_renderer_info' && renderer !== undefined) {
+        return { UNMASKED_RENDERER_WEBGL: UNMASKED_RENDERER };
+      }
+      return null;
+    },
+    getParameter: (parameter: number) => (parameter === UNMASKED_RENDERER ? renderer : null),
+  };
   const factory = (() => ({
     getContext: (id: string) => (contexts[id] ? context : null),
   })) as unknown as CanvasFactory;
   return { factory, loseContext };
 }
 
-describe('supportsWebGL', () => {
-  it('accepts WebGL 2 and releases the probe context', () => {
-    const { factory, loseContext } = fakeCanvas({ webgl2: true });
-    expect(supportsWebGL(factory)).toBe(true);
+const GPU = 'ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 Direct3D11 vs_5_0 ps_5_0, D3D11)';
+const SWIFTSHADER =
+  'ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)';
+
+describe('probeWebGL', () => {
+  it('finds hardware WebGL 2 and releases the probe context', () => {
+    const { factory, loseContext } = fakeCanvas({ webgl2: true }, GPU);
+    expect(probeWebGL(factory)).toBe('hardware');
     expect(loseContext).toHaveBeenCalledOnce();
   });
 
   it('falls back to WebGL 1', () => {
-    expect(supportsWebGL(fakeCanvas({ webgl: true }).factory)).toBe(true);
+    expect(probeWebGL(fakeCanvas({ webgl: true }, GPU).factory)).toBe('hardware');
   });
 
-  it('rejects a browser without any WebGL context', () => {
-    expect(supportsWebGL(fakeCanvas({}).factory)).toBe(false);
+  it('finds a software rasterizer and releases the probe context', () => {
+    const { factory, loseContext } = fakeCanvas({ webgl2: true }, SWIFTSHADER);
+    expect(probeWebGL(factory)).toBe('software');
+    expect(loseContext).toHaveBeenCalledOnce();
   });
 
-  it('rejects a browser where creating a context throws', () => {
+  it('counts a hidden renderer name as hardware', () => {
+    expect(probeWebGL(fakeCanvas({ webgl2: true }).factory)).toBe('hardware');
+  });
+
+  it('finds none without any WebGL context', () => {
+    expect(probeWebGL(fakeCanvas({}).factory)).toBe('none');
+  });
+
+  it('finds none when creating a context throws', () => {
     const throwing = (() => ({
       getContext: () => {
         throw new Error('blocked');
       },
     })) as unknown as CanvasFactory;
-    expect(supportsWebGL(throwing)).toBe(false);
+    expect(probeWebGL(throwing)).toBe('none');
+  });
+});
+
+describe('isSoftwareRenderer', () => {
+  it.each([
+    SWIFTSHADER,
+    'Google SwiftShader',
+    'llvmpipe (LLVM 17.0.6, 256 bits)',
+    'Mesa softpipe',
+    'ANGLE (Microsoft, Microsoft Basic Render Driver Direct3D11 vs_5_0 ps_5_0, D3D11)',
+    'Apple Software Renderer',
+  ])('%s is software', (renderer) => {
+    expect(isSoftwareRenderer(renderer)).toBe(true);
+  });
+
+  it.each([
+    GPU,
+    'ANGLE (Intel, Mesa Intel(R) UHD Graphics 620 (KBL GT2), OpenGL 4.6)',
+    'Apple M2',
+    'Mali-G78',
+    'Adreno (TM) 740',
+    '',
+  ])('%s is hardware', (renderer) => {
+    expect(isSoftwareRenderer(renderer)).toBe(false);
   });
 });
 

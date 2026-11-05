@@ -3,6 +3,7 @@ package compat
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 )
 
@@ -14,9 +15,9 @@ var (
 	// ErrNotSelected reports a pin for a module that no selected component
 	// uses.
 	ErrNotSelected = errors.New("module not used by the selection")
-	// ErrNotPinnable reports a pin for a tool module, whose version is fixed
-	// per gobento release.
-	ErrNotPinnable = errors.New("tool version is fixed")
+	// ErrNotPinnable reports a pin for a tool module, a vendored asset, or
+	// a platform binary, whose version is fixed per gobento release.
+	ErrNotPinnable = errors.New("version is fixed")
 	// ErrConstraint reports a violated constraint between chosen versions.
 	ErrConstraint = errors.New("incompatible versions")
 )
@@ -30,6 +31,12 @@ type Request struct {
 	Go string
 	// Pins maps module paths to versions chosen by the user.
 	Pins map[string]string
+	// Traits maps trait names to the values the selection provides; it
+	// decides whether modules with trait conditions are used. Nil means the
+	// traits are not known yet (for example, while a component kind is
+	// unresolved): trait conditions are then ignored, so every module of a
+	// selected component counts as used.
+	Traits map[string]string
 }
 
 // Resolved is the outcome of Resolve: the exact versions a generated project
@@ -39,6 +46,46 @@ type Resolved struct {
 	Go string
 	// Modules lists every module the selection uses, sorted by path.
 	Modules []ModuleVersion
+	// Assets lists every asset the selected components ship, sorted by
+	// name.
+	Assets []AssetVersion
+	// Binaries lists every platform binary the selected components use,
+	// sorted by name.
+	Binaries []Binary
+	// Tooling holds the tooling versions for the chosen Go version.
+	Tooling ToolingVersions
+	// NPM lists every npm package the selected components use, sorted by
+	// name.
+	NPM []NPMVersion
+	// Node is the Node.js release line of the generated tooling, or "" if
+	// the rules have none.
+	Node string
+}
+
+// NPMVersions returns the npm package versions keyed by package name.
+func (r Resolved) NPMVersions() map[string]string {
+	out := make(map[string]string, len(r.NPM))
+	for _, p := range r.NPM {
+		out[p.Name] = p.Version
+	}
+	return out
+}
+
+// AssetVersion is one vendored asset with its version.
+type AssetVersion struct {
+	// Name is the asset's name in the rules file.
+	Name string
+	// Version is the vendored version.
+	Version string
+}
+
+// AssetVersions returns the vendored versions keyed by asset name.
+func (r Resolved) AssetVersions() map[string]string {
+	out := make(map[string]string, len(r.Assets))
+	for _, a := range r.Assets {
+		out[a.Name] = a.Version
+	}
+	return out
 }
 
 // ModuleVersion is one module with its chosen version.
@@ -82,18 +129,50 @@ func (r *Rules) Resolve(req Request) (Resolved, error) {
 
 	chosen := make(map[string]int) // module path -> index in res.Modules
 	for _, m := range r.Modules {
-		if !m.usedBy(req.Components) {
+		if !m.usedBy(req.Components, req.Traits) {
 			continue
 		}
 		chosen[m.Path] = len(res.Modules)
 		res.Modules = append(res.Modules, ModuleVersion{Path: m.Path, Version: m.Default, Role: m.Role})
 	}
 
+	for _, a := range r.Assets {
+		if slices.ContainsFunc(a.Components, func(c string) bool { return slices.Contains(req.Components, c) }) {
+			res.Assets = append(res.Assets, AssetVersion{Name: a.Name, Version: a.Version})
+		}
+	}
+
+	for _, b := range r.Binaries {
+		if usedBy(b.Components, b.Traits, req.Components, req.Traits) {
+			res.Binaries = append(res.Binaries, b)
+		}
+	}
+
+	for _, p := range r.NPM {
+		if usedBy(p.Components, p.Traits, req.Components, req.Traits) {
+			res.NPM = append(res.NPM, NPMVersion{Name: p.Name, Role: p.Role, Version: p.Version})
+		}
+	}
+
 	for _, path := range sortedKeys(req.Pins) {
 		version := req.Pins[path]
 		m, known := r.Module(path)
 		i, used := chosen[path]
+		if a, ok := r.Asset(path); ok && !known {
+			errs = append(errs, fmt.Errorf("%w: cannot pin %s, vendored asset versions are fixed per gobento release (this release ships %s)", ErrNotPinnable, path, a.Version))
+			continue
+		}
+		if b, ok := r.Binary(path); ok && !known {
+			errs = append(errs, fmt.Errorf("%w: cannot pin %s, binary versions are fixed per gobento release (this release uses %s)", ErrNotPinnable, path, b.Version))
+			continue
+		}
+		if p, ok := r.NPMPackage(path); ok && !known {
+			errs = append(errs, fmt.Errorf("%w: cannot pin %s, npm package versions are fixed per gobento release (this release uses %s)", ErrNotPinnable, path, p.Version))
+			continue
+		}
 		switch {
+		case known && !used && m.usedBy(req.Components, nil):
+			errs = append(errs, fmt.Errorf("%w: cannot pin %s, it is only used with %s", ErrNotSelected, path, m.traitCondition()))
 		case !known || !used:
 			errs = append(errs, fmt.Errorf("%w: cannot pin %s, no selected component uses it", ErrNotSelected, path))
 		case m.Role == RoleTool:
@@ -118,6 +197,8 @@ func (r *Rules) Resolve(req Request) (Resolved, error) {
 	if err := errors.Join(errs...); err != nil {
 		return Resolved{}, err
 	}
+	res.Node = r.Node.Default
+	res.Tooling = r.Tooling.Resolve(res.Go, res.Node)
 	return res, nil
 }
 

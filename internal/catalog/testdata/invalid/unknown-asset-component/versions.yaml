@@ -1,0 +1,10 @@
+go:
+  range: ">=1.26 <1.28"
+  default: "1.27"
+assets:
+  lib.js:
+    components: [frontend/missing]
+    version: 1.0.0
+    source: https://registry.example.com/lib/-/lib-1.0.0.tgz
+    path: package/dist/lib.js
+    sha256: 0000000000000000000000000000000000000000000000000000000000000000

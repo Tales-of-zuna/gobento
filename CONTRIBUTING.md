@@ -26,6 +26,9 @@ an issue.
 
   The official guide also covers Homebrew, Windows, and other package managers.
   Please use the same version as CI, so local results match.
+- [Node.js](https://nodejs.org/) v22.12.0 or newer, with npm, only for the
+  integration tests (see below) and the website. `make test` does not need
+  it: the unit tests use a fake `node` and `npm`.
 
 ## First build
 
@@ -48,14 +51,58 @@ commands, so you can always run them directly.
 | `help` | Lists all targets (the default) | Read the [Makefile](Makefile) |
 | `build` | Builds the binary into `bin/` | `go build -o bin/gobento ./cmd/gobento` |
 | `test` | Runs fast unit tests with the race detector | `go test -short -race ./...` |
-| `test-all` | Runs every test, including slow ones | `go test -race ./...` |
+| `test-all` | Runs every test, including slow ones | `go test -race -timeout 60m ./...` |
 | `lint` | Runs the linters configured in [.golangci.yml](.golangci.yml) | `golangci-lint run` |
 | `fmt` | Formats the code | `golangci-lint fmt` |
 | `tidy` | Cleans up `go.mod` and `go.sum` | `go mod tidy` |
 | `cover` | Prints test coverage per function | `go test -short -coverprofile=coverage.out ./...` then `go tool cover -func=coverage.out` |
-| `catalog` | Regenerates the website's `website/src/generated/catalog.json` from the component catalog, then (if `website/node_modules` exists) the website's CLI cross-check commands | `go run ./internal/tools/catalogexport -o website/src/generated/catalog.json`, then in `website/`: `pnpm exec vitest run lib/command/cli-commands.test.ts --update` |
+| `catalog` | Regenerates the website's `website/src/generated/catalog.json` from the component catalog (the document `internal/catalogjson` builds, which `gobento list --json` prints too), then (if `website/node_modules` exists) the website's CLI cross-check commands | `go run ./internal/tools/catalogexport -o website/src/generated/catalog.json`, then in `website/`: `pnpm exec vitest run lib/command/cli-commands.test.ts --update` |
 | `catalog-check` | Fails if `catalog.json` is stale or a command the website offers is rejected by `gobento new --dry-run` | `go test -run 'TestCommittedCatalogIsCurrent\|TestWebsiteCommands' ./internal/tools/catalogexport ./internal/cli` |
 | `clean` | Removes build and coverage output | Delete `bin/` and `coverage.out` |
+
+### Integration tests and PostgreSQL
+
+`make test-all` includes `TestIntegration` in `internal/generate`, which
+generates every supported selection without a frontend or CSS framework,
+plus a pairwise covering set of those with one (`compose.Coverage`), and runs
+`go test ./...` inside each project. The selections with React, Vue, or
+Svelte run `npm create vite` during generation (and, with Tailwind CSS,
+`npm install` of its packages), so the integration test needs
+Node.js v22.12.0 or newer, npm, and access to the npm registry; with the
+default versions it also builds each of these frontends (`npm ci`, the
+frontend's lint and check scripts, and `npm run build`) before the Go checks.
+CI sets up Node.js 26 on Linux and Windows and the range floor, 22.12.0, on
+macOS. The tests of a PostgreSQL project are skipped unless
+`TEST_DATABASE_URL` names a server; CI sets it on Linux, so the PostgreSQL code
+paths always run there. To run them locally, start a throwaway server with
+Docker and pass its URL:
+
+```sh
+docker run --rm -d --name gobento-postgres -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:18-alpine
+TEST_DATABASE_URL='postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable' \
+  go test -count=1 -timeout 60m -run TestIntegration ./internal/generate/
+docker stop gobento-postgres
+```
+
+Each test creates a schema of its own on that server and drops it at the end.
+
+With the default versions, `TestIntegration` also checks each project's
+[tooling](https://tales-of-zuna.github.io/gobento/docs/concepts/project-tooling/):
+it installs actionlint and the golangci-lint version of
+`components/versions.yaml` into a temporary directory (so the first run needs
+a few minutes more), runs actionlint on the generated workflow and
+golangci-lint on the code, and, where `make` is installed, runs `make`,
+`make build`, and `make lint`; with htmx, it also runs
+`go generate` in the web package and checks that the shipped templ code is
+unchanged, and with Tailwind CSS too, it rebuilds the stylesheet with the
+pinned standalone Tailwind CLI (downloaded once into your user cache directory,
+about 100 MB) and checks that the shipped stylesheet is unchanged.
+`TestIntegrationTailwindProjectName` does the same for a project named
+`container`, a Tailwind utility. `TestIntegrationDocker` (matched by the same `-run
+TestIntegration`) builds the images of one SQLite and one PostgreSQL project
+and of a SQLite project with htmx with the generated `Dockerfile`, and runs
+the SQLite ones; it is skipped when no Docker daemon runs Linux containers, so
+in CI it runs on Linux only.
 
 ### Notes for Windows
 
@@ -210,7 +257,7 @@ you get stuck, ask in the issue; there are no silly questions.
 ## Adding a component
 
 Components (frameworks, databases, data access libraries, architectures,
-frontends) are the heart of gobento. To suggest one, open a
+frontends, CSS frameworks) are the heart of gobento. To suggest one, open a
 [component request](https://github.com/Tales-of-zuna/gobento/issues/new?template=component_request.yml).
 For how to build one, see
 [Adding a component](https://tales-of-zuna.github.io/gobento/docs/contributing/adding-a-component/)

@@ -7,11 +7,14 @@
 import {
   componentReasons,
   goVersionReasons,
+  selectedAssets,
+  selectedBinaries,
   selectedModules,
+  selectedNpmPackages,
   type Selection,
 } from '@/lib/catalog/compat';
-import { KIND_IDS } from '@/lib/catalog/kinds';
-import type { Catalog, KindId, Module } from '@/lib/catalog/schema';
+import { isOptionalKind, KIND_IDS, titleInSentence } from '@/lib/catalog/kinds';
+import type { Catalog, KindId, Module, NpmPackage } from '@/lib/catalog/schema';
 import {
   compareVersions,
   parseGoVersion,
@@ -20,7 +23,7 @@ import {
   satisfies,
 } from '@/lib/catalog/semver';
 import type { BuildResult, ConfigState, FieldError } from '@/lib/command/build';
-import { ROADMAP } from './roadmap';
+import { ROADMAP, type PlannedComponent } from './roadmap';
 
 /** How an option card is drawn. */
 export type OptionStatus = 'selected' | 'available' | 'incompatible' | 'soon';
@@ -54,11 +57,49 @@ export function errorsByField(result: BuildResult): ReadonlyMap<FieldError['fiel
   return map;
 }
 
-/** The choice cards for each component kind, in flag order. */
+/**
+ * Value of the "None" card of an optional kind; the CLI accepts the same word
+ * (`--frontend none`) and reserves it as a component name.
+ */
+export const NONE = 'none';
+
+/** Title of the "None" card, by kind. */
+const NONE_TITLES: Readonly<Partial<Record<KindId, string>>> = {
+  frontend: 'None (API only)',
+  css: 'None (plain CSS)',
+};
+
+/** Description of the "None" card, by kind. */
+const NONE_DESCRIPTIONS: Readonly<Partial<Record<KindId, string>>> = {
+  frontend: 'No web pages; the project serves only its API.',
+  css: 'No CSS framework; the frontend keeps its own plain stylesheet.',
+};
+
+/**
+ * Returns the components after choosing `value` for `kind`: {@link NONE}
+ * clears an optional kind's choice.
+ */
+export function withChoice(
+  catalog: Catalog,
+  components: Selection['components'],
+  kind: KindId,
+  value: string,
+): Selection['components'] {
+  if (value === NONE && isOptionalKind(catalog, kind)) {
+    return Object.fromEntries(Object.entries(components).filter(([k]) => k !== kind));
+  }
+  return { ...components, [kind]: value };
+}
+
+/**
+ * The choice cards for each component kind, in flag order. An optional kind
+ * starts with a "None" card, selected while no component of the kind is.
+ */
 export function kindGroups(
   catalog: Catalog,
   state: Selection,
   errors: ReadonlyMap<FieldError['field'], string>,
+  roadmap: Readonly<Partial<Record<KindId, readonly PlannedComponent[]>>> = ROADMAP,
 ): KindGroupView[] {
   return KIND_IDS.map((kind) => {
     const meta = catalog.kinds.find((k) => k.id === kind)!;
@@ -74,8 +115,18 @@ export function kindGroups(
         reasons,
       };
     });
+    const optional = isOptionalKind(catalog, kind);
+    if (optional) {
+      options.unshift({
+        value: NONE,
+        title: NONE_TITLES[kind] ?? 'None',
+        description: NONE_DESCRIPTIONS[kind] ?? 'Leave this part out.',
+        status: state.components[kind] === undefined ? 'selected' : 'available',
+        reasons: [],
+      });
+    }
     const known = new Set(components.map((c) => c.name));
-    for (const planned of ROADMAP[kind]) {
+    for (const planned of roadmap[kind] ?? []) {
       if (known.has(planned.name)) continue;
       options.push({
         value: planned.name,
@@ -88,7 +139,11 @@ export function kindGroups(
     return {
       kind,
       title: meta.title,
-      description: components.length === 1 ? 'One option today, preselected.' : meta.description,
+      description: optional
+        ? `Optional. ${meta.description}`
+        : components.length === 1
+          ? 'One option today, preselected.'
+          : meta.description,
       options,
       error: errors.get(kind),
     };
@@ -134,12 +189,21 @@ export function goOptions(catalog: Catalog, state: Selection): OptionView[] {
   });
 }
 
-/** A module version field in the Advanced section. */
+/**
+ * A module version field in the Advanced section, or the fixed version of a
+ * vendored asset, of a binary downloaded on demand, or of an npm package.
+ */
 export interface ModuleFieldView {
+  /** The module path, or the asset, binary, or package name. */
   readonly path: string;
   /** The component titles using the module, for the label. */
   readonly usedBy: string;
   readonly fixed: boolean;
+  /**
+   * Tag shown next to a fixed version: a tool's `Fixed`, an asset's
+   * `Vendored`, a binary's `On demand`, or a package's role.
+   */
+  readonly tag?: string;
   /** What the input shows: the override, or else the default. */
   readonly value: string;
   readonly hint: string;
@@ -153,21 +217,54 @@ function goNeeds(module: Module, version: string): string | undefined {
   return needs.length > 0 ? needs.join(' ') : undefined;
 }
 
-/** The version fields for the modules the chosen components use. */
+function titlesOf(catalog: Catalog, ids: readonly string[]): string {
+  return ids.map((id) => catalog.components.find((c) => c.id === id)?.title ?? id).join(', ');
+}
+
+/** Tag of an npm package's fixed version, by role. */
+const NPM_TAGS: Readonly<Record<NpmPackage['role'], string>> = {
+  scaffolder: 'Scaffolder',
+  dependency: 'npm',
+  'dev-dependency': 'npm (dev)',
+};
+
+/**
+ * The version fields for the modules the chosen components use, followed by
+ * the files they vendor, the binaries they download on demand, and the npm
+ * packages they use (shown with their fixed version, never pinnable).
+ */
 export function moduleFields(
   catalog: Catalog,
   state: Selection,
   errors: ReadonlyMap<FieldError['field'], string>,
 ): ModuleFieldView[] {
-  return selectedModules(catalog, state).map((module) => {
-    const usedBy = module.components
-      .map((id) => catalog.components.find((c) => c.id === id)?.title ?? id)
-      .join(', ');
+  const assets = selectedAssets(catalog, state).map((asset): ModuleFieldView => ({
+    path: asset.name,
+    usedBy: titlesOf(catalog, asset.components),
+    fixed: true,
+    tag: 'Vendored',
+    value: asset.version,
+    hint: 'Vendored into the project; its version is fixed per gobento release.',
+  }));
+  const packages = selectedNpmPackages(catalog, state).map((pkg): ModuleFieldView => ({
+    path: pkg.name,
+    usedBy: titlesOf(catalog, pkg.components),
+    fixed: true,
+    tag: NPM_TAGS[pkg.role],
+    value: pkg.version,
+    hint:
+      pkg.role === 'scaffolder'
+        ? `Scaffolds the app at generation time and needs Node.js ${catalog.node.range}; its version is fixed per gobento release.`
+        : 'An npm package of the app; its version is fixed per gobento release.',
+  }));
+  const modules = selectedModules(catalog, state).map((module): ModuleFieldView => {
+    const usedBy = titlesOf(catalog, module.components);
     if (module.role === 'tool') {
       return {
         path: module.path,
         usedBy,
         fixed: true,
+        tag: 'Fixed',
         value: module.default,
         hint: 'Tool versions are fixed per gobento release.',
       };
@@ -180,6 +277,15 @@ export function moduleFields(
       (needs ? ` · this version needs Go ${needs}` : '');
     return { path: module.path, usedBy, fixed: false, value, hint, error };
   });
+  const binaries = selectedBinaries(catalog, state).map((binary): ModuleFieldView => ({
+    path: binary.name,
+    usedBy: titlesOf(catalog, binary.components),
+    fixed: true,
+    tag: 'On demand',
+    value: binary.version,
+    hint: 'Downloaded on demand by the project, never needed to build; its version is fixed per gobento release.',
+  }));
+  return [...modules, ...assets, ...binaries, ...packages];
 }
 
 /** Returns the pins after the visitor typed `value` for `path`: a default clears the pin. */
@@ -201,6 +307,8 @@ export const COMPARTMENTS: Readonly<Record<KindId, { food: string; piece: string
   framework: { food: 'pickled plum', piece: 'ume' },
   database: { food: 'omelette', piece: 'tamago' },
   data: { food: 'edamame', piece: 'eda' },
+  frontend: { food: 'cucumber roll', piece: 'kappa' },
+  css: { food: 'purple pickles', piece: 'shiba' },
 };
 
 /** One compartment of the bento tray. */
@@ -213,8 +321,12 @@ export interface CellView {
   readonly piece: string;
 }
 
-/** The four tray compartments, one per kind. */
-export function trayCells(catalog: Catalog, state: Selection): CellView[] {
+/**
+ * The tray compartments, one per kind; an optional kind left at none stays
+ * empty. Only the chosen components matter, so the configurator can keep the
+ * tray (and the 3D scene it feeds) unchanged while the visitor types.
+ */
+export function trayCells(catalog: Catalog, state: Pick<Selection, 'components'>): CellView[] {
   return KIND_IDS.map((kind) => {
     const name = state.components[kind];
     const component = catalog.components.find((c) => c.kind === kind && c.name === name);
@@ -236,7 +348,8 @@ export function blockedMessage(catalog: Catalog, result: BuildResult): string {
   else if (first === 'module') what = 'the module path';
   else if (first === 'go') what = 'the Go version';
   else if (first.startsWith('pin:')) what = `the ${first.slice(4)} version under Advanced`;
-  else what = `the ${catalog.kinds.find((k) => k.id === first)?.title.toLowerCase()} choice`;
+  else
+    what = `the ${titleInSentence(catalog.kinds.find((k) => k.id === first)?.title ?? first)} choice`;
   return `No command yet. Fix ${what} to get a copyable command.`;
 }
 
@@ -245,36 +358,153 @@ export interface TreeLine {
   readonly label: string;
   readonly depth: 0 | 1 | 2;
   readonly dir: boolean;
+  /**
+   * A remark shown next to the line, for a directory that a scaffolder
+   * completes at generation time (the preview lists only gobento's own files).
+   */
+  readonly note?: string;
 }
 
 /**
  * Files and folders each component adds to the generated project, by
  * component id. Illustrative: the generator owns the real layout, and a
- * component missing here simply adds nothing to the preview.
+ * component missing here simply adds nothing to the preview. The database
+ * package sits where the architecture puts it, so it is listed there.
  */
 const COMPONENT_FILES: Readonly<Record<string, readonly string[]>> = {
-  'architecture/mvc': ['internal/models/', 'internal/controllers/', 'internal/store/'],
-  'database/sqlite': ['internal/database/'],
+  'architecture/mvc': [
+    'internal/models/',
+    'internal/controllers/',
+    'internal/store/',
+    'internal/database/',
+  ],
+  'architecture/ddd': [
+    'internal/domain/',
+    'internal/app/',
+    'internal/adapters/httpapi/',
+    'internal/adapters/persistence/',
+    'internal/adapters/database/',
+  ],
+  'architecture/vertical-slice': [
+    'internal/items/',
+    'internal/items/itemshttp/',
+    'internal/items/itemsstore/',
+    'internal/platform/database/',
+  ],
   'data/sqlc': ['sqlc.yaml'],
 };
+
+/**
+ * Files a component adds only with a frontend built by the Go toolchain
+ * (trait `frontend-build: go`), by component id: with a Vite frontend,
+ * Tailwind CSS is compiled by the Vite build instead.
+ */
+const GO_BUILD_FILES: Readonly<Record<string, readonly string[]>> = {
+  'css/tailwind': ['tailwind.css', 'internal/tools/tailwindcss/'],
+};
+
+/**
+ * Where each architecture puts the frontend's package (its `web` slot), so a
+ * frontend's files are previewed in the right place.
+ */
+const WEB_DIRS: Readonly<Record<string, string>> = {
+  'architecture/ddd': 'internal/adapters/web/',
+  'architecture/mvc': 'internal/views/',
+  'architecture/vertical-slice': 'internal/web/',
+};
+
+/** Files a frontend adds inside the architecture's web package, by component id. */
+const FRONTEND_FILES: Readonly<Record<string, readonly string[]>> = {
+  'frontend/htmx': ['pages.templ', 'static/'],
+};
+
+/**
+ * The web package of a frontend built by Vite (trait `frontend-build: vite`):
+ * the handler that serves the embedded build, and the build directory.
+ */
+const VITE_WEB_FILES: readonly string[] = ['handler.go', 'handler_test.go', 'dist/.gitignore'];
+
+/**
+ * The files gobento writes over the scaffolded app in `frontend/`, by
+ * component id: the Vite config, the API client, the page, and the stylesheet.
+ * The scaffolder adds the rest (package.json, index.html, tsconfig, ...).
+ */
+const VITE_APP_FILES: Readonly<Record<string, readonly string[]>> = {
+  'frontend/react': ['src/App.tsx', 'src/index.css'],
+  'frontend/vue': ['src/App.vue', 'src/style.css'],
+  'frontend/svelte': ['src/App.svelte', 'src/app.css'],
+};
+
+/**
+ * The `frontend/` directory of a Vite frontend: gobento's own files, with the
+ * scaffolder from the catalog's npm packages that completes the rest.
+ */
+function viteApp(catalog: Catalog, id: string): TreeLine[] {
+  const scaffolder = catalog.npm.find(
+    (pkg) => pkg.role === 'scaffolder' && pkg.components.includes(id),
+  );
+  const files = ['vite.config.ts', 'src/api.ts', ...(VITE_APP_FILES[id] ?? [])].sort();
+  return [
+    {
+      label: 'frontend/',
+      depth: 1,
+      dir: true,
+      ...(scaffolder && {
+        note: `completed by ${scaffolder.name} ${scaffolder.version} at generation time`,
+      }),
+    },
+    ...files.map((label) => ({ label, depth: 2 as const, dir: false })),
+  ];
+}
+
+/**
+ * Files the base layer (components/base) adds to every project: the
+ * developer tooling. Files under .github/ are listed inside that directory.
+ */
+const BASE_FILES: readonly string[] = [
+  '.github/workflows/ci.yml',
+  '.github/dependabot.yml',
+  '.dockerignore',
+  '.golangci.yml',
+  'Dockerfile',
+  'Makefile',
+];
 
 /** The project tree preview for the chosen components. */
 export function fileTree(catalog: Catalog, state: ConfigState, nameValid: boolean): TreeLine[] {
   const name = nameValid ? state.name : '<name>';
-  const ids = KIND_IDS.flatMap((kind) => {
+  const components = KIND_IDS.flatMap((kind) => {
     const component = catalog.components.find(
       (c) => c.kind === kind && c.name === state.components[kind],
     );
-    return component ? [component.id] : [];
+    return component ? [component] : [];
   });
+  const ids = components.map((c) => c.id);
   const files = ids.flatMap((id) => COMPONENT_FILES[id] ?? []);
+  if (components.some((c) => c.provides['frontend-build'] === 'go')) {
+    files.push(...ids.flatMap((id) => GO_BUILD_FILES[id] ?? []));
+  }
+  const web = ids.map((id) => WEB_DIRS[id]).find((dir) => dir !== undefined) ?? 'internal/web/';
+  const vite = components.filter((c) => c.provides['frontend-build'] === 'vite');
+  for (const component of components) {
+    const frontend = vite.includes(component) ? VITE_WEB_FILES : FRONTEND_FILES[component.id];
+    if (frontend) files.push(web, ...frontend.map((file) => `${web}${file}`));
+  }
   const internal = files
     .filter((f) => f.startsWith('internal/'))
     .map((f) => f.slice('internal/'.length))
     .sort();
-  const top = files.filter((f) => !f.startsWith('internal/')).sort();
+  const top = [
+    ...files.filter((f) => !f.startsWith('internal/')),
+    ...BASE_FILES.filter((f) => !f.startsWith('.github/')),
+  ].sort();
+  const github = BASE_FILES.filter((f) => f.startsWith('.github/'))
+    .map((f) => f.slice('.github/'.length))
+    .sort();
   return [
     { label: `${name}/`, depth: 0, dir: true },
+    { label: '.github/', depth: 1, dir: true },
+    ...github.map((label) => ({ label, depth: 2 as const, dir: false })),
     { label: `cmd/${name}/main.go`, depth: 1, dir: false },
     ...(internal.length > 0
       ? [
@@ -282,6 +512,7 @@ export function fileTree(catalog: Catalog, state: ConfigState, nameValid: boolea
           ...internal.map((label) => ({ label, depth: 2 as const, dir: false })),
         ]
       : []),
+    ...vite.flatMap((component) => viteApp(catalog, component.id)),
     ...top.map((label) => ({ label, depth: 1 as const, dir: false })),
     { label: 'go.mod', depth: 1, dir: false },
     { label: 'README.md', depth: 1, dir: false },

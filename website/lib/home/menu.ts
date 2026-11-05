@@ -12,6 +12,8 @@ export const KIND_SHORT: Readonly<Record<KindId, string>> = {
   framework: 'HTTP',
   database: 'Database',
   data: 'Data',
+  frontend: 'Frontend',
+  css: 'CSS',
 };
 
 /** A component planned for a later release (shown dashed). */
@@ -21,12 +23,7 @@ export interface RoadmapItem {
 }
 
 /** Components on the roadmap; they join once they pass the CI matrix. */
-export const ROADMAP: readonly RoadmapItem[] = [
-  { kind: 'framework', name: 'gin' },
-  { kind: 'framework', name: 'chi' },
-  { kind: 'database', name: 'PostgreSQL' },
-  { kind: 'data', name: 'GORM' },
-];
+export const ROADMAP: readonly RoadmapItem[] = [];
 
 /** One plate on the belt. */
 export interface Plate {
@@ -64,6 +61,8 @@ export function beltPlates(catalog: Catalog, roadmap: readonly RoadmapItem[] = R
 export interface StackCell {
   readonly kind: KindId;
   readonly title: string;
+  /** Whether the kind may be left out (the frontend and the CSS framework). */
+  readonly optional: boolean;
   readonly options: readonly { readonly name: string; readonly description: string }[];
   readonly roadmap: readonly string[];
 }
@@ -76,6 +75,7 @@ export function stackCells(
   return KIND_IDS.map((kind) => ({
     kind,
     title: catalog.kinds.find((k) => k.id === kind)?.title ?? kind,
+    optional: catalog.kinds.find((k) => k.id === kind)?.optional ?? false,
     options: catalog.components
       .filter((c) => c.kind === kind)
       .map((c) => ({ name: shortTitle(c), description: c.description })),

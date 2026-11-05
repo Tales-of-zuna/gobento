@@ -53,11 +53,15 @@
   --on-matcha: #232634;
   --sora: var(--ctp-blue);
   --on-sora: var(--ctp-base);
+  --hisui: var(--ctp-teal);
+  --fuji: var(--ctp-mauve);
   /* text-safe accents (>= 4.5:1 on wash and paper) */
   --shu-text: #a03c08; /* darkened Latte peach (>= 5:1 on mantle) */
   --matcha-ink: #276a17; /* darkened Latte green */
   --sora-ink: #1a56cf; /* darkened Latte blue */
   --tamago-ink: #855209; /* darkened Latte yellow */
+  --hisui-ink: #0b6468; /* darkened Latte teal */
+  --fuji-ink: #7529d6; /* darkened Latte mauve */
   --danger-ink: #b00c30; /* darkened Latte red */
   /* soft pastels: section bands, compartments, selected states */
   --shu-soft: color-mix(in oklab, var(--ctp-peach) 14%, var(--ctp-base));
@@ -65,6 +69,8 @@
   --matcha-soft: color-mix(in oklab, var(--ctp-green) 14%, var(--ctp-base));
   --sora-soft: color-mix(in oklab, var(--ctp-blue) 12%, var(--ctp-base));
   --sakura-soft: color-mix(in oklab, var(--ctp-pink) 14%, var(--ctp-base));
+  --hisui-soft: color-mix(in oklab, var(--ctp-teal) 14%, var(--ctp-base));
+  --fuji-soft: color-mix(in oklab, var(--ctp-mauve) 12%, var(--ctp-base));
   /* illustration only (never text) */
   --tamago: var(--ctp-yellow);
   --sakura: var(--ctp-pink);
@@ -95,6 +101,8 @@
   --kind-framework: var(--shu-soft);
   --kind-database: var(--tamago-soft);
   --kind-data: var(--matcha-soft);
+  --kind-frontend: var(--hisui-soft);
+  --kind-css: var(--fuji-soft);
   /* patterns: background-image values for wide bands; keep body text on solid panels */
   --pat-color: color-mix(in oklab, var(--ctp-text) 8%, transparent);
   --pat-seigaiha:
@@ -172,17 +180,23 @@
   --on-matcha: var(--ctp-crust);
   --sora: var(--ctp-blue);
   --on-sora: var(--ctp-crust);
+  --hisui: var(--ctp-teal);
+  --fuji: var(--ctp-mauve);
   /* Frappé accents already pass 4.5:1 on base and surface0 */
   --shu-text: var(--ctp-peach);
   --matcha-ink: var(--ctp-green);
   --sora-ink: var(--ctp-blue);
   --tamago-ink: var(--ctp-yellow);
+  --hisui-ink: var(--ctp-teal);
+  --fuji-ink: #d4b0ec; /* lightened Frappé mauve (5:1 on surface0) */
   --danger-ink: var(--ctp-red);
   --shu-soft: color-mix(in oklab, var(--ctp-peach) 15%, var(--ctp-base));
   --tamago-soft: color-mix(in oklab, var(--ctp-yellow) 14%, var(--ctp-base));
   --matcha-soft: color-mix(in oklab, var(--ctp-green) 14%, var(--ctp-base));
   --sora-soft: color-mix(in oklab, var(--ctp-blue) 15%, var(--ctp-base));
   --sakura-soft: color-mix(in oklab, var(--ctp-pink) 14%, var(--ctp-base));
+  --hisui-soft: color-mix(in oklab, var(--ctp-teal) 14%, var(--ctp-base));
+  --fuji-soft: color-mix(in oklab, var(--ctp-mauve) 12%, var(--ctp-base));
   --tamago: var(--ctp-yellow);
   --sakura: var(--ctp-pink);
   --nori: var(--ctp-crust);

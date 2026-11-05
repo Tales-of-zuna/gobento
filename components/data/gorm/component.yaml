@@ -1,0 +1,7 @@
+name: gorm
+title: GORM
+description: Data access through the GORM ORM, on the database's own connection and schema.
+requires:
+  sql-dialect: [sqlite, postgresql]
+  conn: [database/sql]
+  sql-schema: [schema.sql]

@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Tales-of-zuna/gobento/internal/catalog"
+	"github.com/Tales-of-zuna/gobento/internal/compose"
 	"github.com/Tales-of-zuna/gobento/internal/generate"
 )
 
@@ -20,10 +21,13 @@ type newFlags struct {
 	framework string
 	db        string
 	data      string
+	frontend  string
+	css       string
 	goVersion string
 	pins      []string
 	dir       string
 	dryRun    bool
+	noInput   bool
 }
 
 // kindFlag returns the flag that selects components of kind k.
@@ -35,6 +39,10 @@ func kindFlag(k catalog.Kind) string {
 		return "--framework"
 	case catalog.KindDatabase:
 		return "--db"
+	case catalog.KindFrontend:
+		return "--frontend"
+	case catalog.KindCSS:
+		return "--css"
 	default:
 		return "--data"
 	}
@@ -44,76 +52,168 @@ func kindFlag(k catalog.Kind) string {
 func newNewCommand(a *app) *cobra.Command {
 	var f newFlags
 	cmd := &cobra.Command{
-		Use:   "new <name>",
+		Use:   "new [name]",
 		Short: "Create a new Go project",
 		Long: `Create a new Go project named <name> in ./<name>, or in --dir.
 
-Every flag is optional. A component kind with a single supported option is
-selected automatically, and versions default to gobento's compatibility rules.
-All input is checked before anything is written, and every problem is
-reported at once. If generation fails or is interrupted, nothing is left
-behind.
+A component kind with a single supported option is selected automatically;
+for a kind with several, choose one with its flag. The frontend is optional:
+without --frontend (or with --frontend none), the project is API-only.
+With a frontend, the API is served under /api and the frontend's pages at
+every other path. The CSS framework is optional too, and needs a frontend:
+without --css (or with --css none), the frontend keeps its own stylesheet.
+Versions default to
+gobento's compatibility rules. All input is checked before anything is
+written, and every problem is reported at once. If generation fails or is
+interrupted, nothing is left behind.
+
+In a terminal, gobento asks for what is missing: the name (and then the module
+path) when <name> is omitted, and each component kind with several options
+whose flag is omitted, including the frontend ("None (API only)" first) and,
+with a frontend, the CSS framework ("None (plain CSS)" first). Flags skip
+their questions. Without a terminal, or with --no-input, gobento asks
+nothing: <name> is required, a required kind with several options needs its
+flag, and no frontend or CSS framework is selected unless its flag names
+one. Set ACCESSIBLE=1 for plain-text questions.
 
 Generation runs the go command (go get and go mod tidy), so it needs Go and
-access to the Go module proxy. --dry-run needs neither.`,
-		Example: `  # Create ./shop with the default components and versions
-  gobento new shop
+access to the Go module proxy. The React, Vue, and Svelte frontends are
+created by the official scaffolder (npm create vite), so they also need
+Node.js, npm, and access to the npm registry. --dry-run needs none of this.
+
+` + listHint,
+		Example: `  # Create ./shop with mvc, the chi router, SQLite, sqlc, and the default versions
+  gobento new shop --arch mvc --framework chi --db sqlite --data sqlc
+
+  # Organize the code by feature instead of by layer, with PostgreSQL and GORM
+  gobento new shop --arch vertical-slice --framework nethttp --db postgres --data gorm
+
+  # Use domain-driven design: a domain, an application service, and adapters
+  gobento new shop --arch ddd --framework gin --db sqlite --data sqlc
+
+  # Add server-rendered pages with htmx and templ; the API moves under /api
+  gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend htmx
+
+  # Style the pages with Tailwind CSS (standalone CLI, no Node.js needed)
+  gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend htmx --css tailwind
+
+  # Add a React single-page app built with Vite (or --frontend vue, svelte)
+  gobento new shop --arch mvc --framework chi --db sqlite --data sqlc --frontend react
 
   # Choose every component and the module path explicitly
   gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
 
   # Choose versions within the supported ranges
-  gobento new shop --go 1.26 --pin modernc.org/sqlite=v1.61.0
+  gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --go 1.26 --pin modernc.org/sqlite=v1.61.0
 
   # Fill the current, empty directory
-  gobento new shop --dir .
+  gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --dir .
 
   # Show the files that would be created, without writing anything
-  gobento new shop --dry-run`,
+  gobento new shop --arch mvc --framework gin --db sqlite --data sqlc --dry-run
+
+  # Never ask a question, even in a terminal (as in scripts)
+  gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --no-input`,
 		Args: func(_ *cobra.Command, args []string) error {
-			if len(args) != 1 {
-				return fmt.Errorf("expected exactly one project name, for example: gobento new shop (got %d arguments)", len(args))
+			if len(args) > 1 {
+				return nameArgError(len(args))
 			}
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return a.runNew(cmd, args[0], f)
+			return a.runNew(cmd, args, f)
 		},
 	}
 
 	fl := cmd.Flags()
 	fl.StringVar(&f.module, "module", "", "Go module path, for example example.com/shop (default: the project name)")
-	fl.StringVar(&f.arch, "arch", "", "architecture, for example mvc (default: the only supported one)")
-	fl.StringVar(&f.framework, "framework", "", "HTTP framework, for example nethttp (default: the only supported one)")
-	fl.StringVar(&f.db, "db", "", "database, for example sqlite (default: the only supported one)")
-	fl.StringVar(&f.data, "data", "", "data-access library, for example sqlc (default: the only supported one)")
+	fl.StringVar(&f.arch, "arch", "", "architecture, for example mvc, vertical-slice, or ddd (asked for in a terminal; required otherwise when several are supported)")
+	fl.StringVar(&f.framework, "framework", "", "HTTP framework, for example chi, gin, or nethttp (asked for in a terminal; required otherwise when several are supported)")
+	fl.StringVar(&f.db, "db", "", "database, for example sqlite or postgres (asked for in a terminal; required otherwise when several are supported)")
+	fl.StringVar(&f.data, "data", "", "data-access library, for example sqlc or gorm (asked for in a terminal; required otherwise when several are supported)")
+	fl.StringVar(&f.frontend, "frontend", "", "frontend, for example htmx, react, vue, or svelte, or none for an API-only project (asked for in a terminal; default otherwise: none)")
+	fl.StringVar(&f.css, "css", "", "CSS framework for the frontend, for example tailwind, or none for the frontend's own stylesheet (asked for in a terminal when a frontend is selected; default otherwise: none)")
 	fl.StringVar(&f.goVersion, "go", "", "Go version for go.mod, for example 1.26 (default: from the compatibility rules)")
 	fl.StringArrayVar(&f.pins, "pin", nil, "library version as module=version, for example modernc.org/sqlite=v1.61.0 (repeatable)")
 	fl.StringVar(&f.dir, "dir", "", "target directory, for example . for the current one (default: ./<name>)")
 	fl.BoolVar(&f.dryRun, "dry-run", false, "check the input and list the files that would be created, without writing anything")
+	fl.BoolVar(&f.noInput, "no-input", false, "never ask a question; fail on missing input instead, as without a terminal")
 	return cmd
 }
 
-// runNew validates the input, composes the project, and either lists the
-// planned files (--dry-run) or generates the project and prints next steps.
-func (a *app) runNew(cmd *cobra.Command, name string, f newFlags) error {
+// nameArgError reports a wrong number of project name arguments.
+func nameArgError(got int) error {
+	return fmt.Errorf("expected exactly one project name, for example: gobento new shop (got %d arguments)", got)
+}
+
+// mayAsk reports whether gobento may ask questions in this run.
+func (a *app) mayAsk(f newFlags) bool {
+	return !f.noInput && a.interactive != nil && a.interactive()
+}
+
+// runNew asks for missing input in a terminal, validates the input,
+// composes the project, and either lists the planned files (--dry-run) or
+// generates the project and prints next steps.
+func (a *app) runNew(cmd *cobra.Command, args []string, f newFlags) error {
+	asking := a.mayAsk(f)
+	if len(args) == 0 && !asking {
+		return nameArgError(0)
+	}
 	cat, err := catalog.Load(a.catalog)
 	if err != nil {
 		return fmt.Errorf("load the component catalog: %w", err)
 	}
 
-	pins, pinErrs := parsePins(f.pins)
-	prepared, err := generate.Prepare(cat, generate.Spec{
-		Name:   name,
-		Module: f.module,
-		Components: map[catalog.Kind]string{
+	in := newInput{
+		hasName:   len(args) == 1,
+		module:    f.module,
+		hasModule: f.module != "", // --module "" means the default, as without it
+		components: map[catalog.Kind]string{
 			catalog.KindArchitecture: f.arch,
 			catalog.KindFramework:    f.framework,
 			catalog.KindDatabase:     f.db,
 			catalog.KindData:         f.data,
+			catalog.KindFrontend:     f.frontend,
+			catalog.KindCSS:          f.css,
 		},
-		Go:   f.goVersion,
-		Pins: pins,
+	}
+	if in.hasName {
+		in.name = args[0]
+	}
+	pins, pinErrs := parsePins(f.pins)
+	if asking {
+		supported := compose.Supported(cat)
+		if canAsk(supported, in, pinErrs) {
+			asked, err := interview(cmd.Context(), supported, &in, a.questions())
+			if err != nil {
+				return err
+			}
+			if asked {
+				_, _ = fmt.Fprintf(a.stderr, "Equivalent command: %s\n", equivalentCommand(supported, in, f))
+			}
+		}
+	}
+	if !in.hasName {
+		if asking {
+			// Invalid flags kept gobento from asking: report them together
+			// with the missing name, checked with a placeholder name.
+			_, err := generate.Prepare(cat, generate.Spec{
+				Name: "app", Module: in.module, Components: in.components, Go: f.goVersion, Pins: pins,
+			})
+			if err != nil || len(pinErrs) > 0 {
+				return problemsError("<name>", append(append([]error{nameArgError(0)}, pinErrs...), err))
+			}
+		}
+		return nameArgError(0)
+	}
+
+	name := in.name
+	prepared, err := generate.Prepare(cat, generate.Spec{
+		Name:       name,
+		Module:     in.module,
+		Components: in.components,
+		Go:         f.goVersion,
+		Pins:       pins,
 	})
 	if err != nil || len(pinErrs) > 0 {
 		return problemsError(name, append(pinErrs, err))
@@ -219,6 +319,17 @@ func (a *app) printDryRun(p *generate.Prepared, target string) error {
 	for _, path := range paths {
 		fmt.Fprintf(&b, "  %s\n", path)
 	}
+	for _, s := range p.Scaffolds {
+		fmt.Fprintf(&b, "During generation, %s adds more files to %s/ (template %s) and npm writes %s/package-lock.json;\n",
+			s.Command(), s.Dir, s.Template, s.Dir)
+		if len(s.Dependencies) > 0 {
+			fmt.Fprintf(&b, "npm adds the dependencies %s to %s/package.json;\n", strings.Join(s.Dependencies, ", "), s.Dir)
+		}
+		if len(s.DevDependencies) > 0 {
+			fmt.Fprintf(&b, "npm adds the development dependencies %s to %s/package.json;\n", strings.Join(s.DevDependencies, ", "), s.Dir)
+		}
+		fmt.Fprintf(&b, "this needs Node.js %s, npm, and network access to the npm registry.\n", p.Node.Range)
+	}
 	_, err := io.WriteString(a.stdout, b.String())
 	return err
 }
@@ -232,6 +343,9 @@ func (a *app) printNextSteps(p *generate.Prepared, target string) error {
 		fmt.Fprintf(&b, "Created %s in %s.\n\nNext steps:\n  cd %s\n", p.Module, target, shellQuote(target))
 	}
 	b.WriteString("  go test ./...\n")
+	for _, s := range p.Scaffolds {
+		fmt.Fprintf(&b, "  npm --prefix %s ci\n  npm --prefix %s run build\n", s.Dir, s.Dir)
+	}
 	if entry, ok := p.Plan.Slots["entry"]; ok {
 		fmt.Fprintf(&b, "  go run ./%s\n", entry.Dir)
 	}

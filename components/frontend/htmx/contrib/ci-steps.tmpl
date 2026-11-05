@@ -1,0 +1,9 @@
+- name: Check that the templ code is current
+  run: |
+    go generate ./{{.Slots.web.Dir}}
+    if [ -n "$(git status --porcelain -- {{.Slots.web.Dir}})" ]; then
+      git status --short -- {{.Slots.web.Dir}}
+      git diff -- {{.Slots.web.Dir}}
+      echo "::error::the templ code in {{.Slots.web.Dir}} is stale; run make generate and commit the result"
+      exit 1
+    fi

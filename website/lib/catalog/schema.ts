@@ -1,9 +1,10 @@
 /**
  * Schema of `src/generated/catalog.json`, the component catalog and version
  * rules the CLI uses, exported for the website (design D3) by
- * `internal/tools/catalogexport` (`make catalog`). The exporter's Go types
- * mirror this schema; this schema is the contract between the two, and both
- * change together.
+ * `internal/tools/catalogexport` (`make catalog`). The Go types in
+ * `internal/catalogjson` mirror this schema; `gobento list --json` prints the
+ * same document. This schema is the contract between them, and both change
+ * together.
  */
 import { z } from 'zod';
 import { KIND_IDS } from './kinds';
@@ -17,6 +18,11 @@ const kindSchema = z.object({
   id: z.enum(KIND_IDS),
   title: text,
   description: text,
+  /**
+   * An optional kind may be left without a component (its flag defaults to
+   * none); every other kind needs exactly one.
+   */
+  optional: z.boolean().default(false),
 });
 
 const componentSchema = z.object({
@@ -48,11 +54,90 @@ const moduleSchema = z.object({
   path: text,
   /** Ids of the components that use this module. */
   components: z.array(text).min(1),
+  /**
+   * Trait conditions as trait → allowed values: the module is used only when
+   * the selection provides one of the values for every listed trait (for
+   * example a dialect-specific driver). Empty means no condition.
+   */
+  traits: z.record(text, z.array(text).min(1)).default({}),
   /** Libraries are pinned in go.mod and overridable; tools are fixed per release. */
   role: z.enum(['library', 'tool']),
   range: text,
   default: text,
   constraints: z.array(constraintSchema),
+});
+
+/**
+ * A file vendored into generated projects (for example htmx.org's script),
+ * with a version fixed per gobento release: not a Go module and not pinnable.
+ */
+const assetSchema = z.object({
+  name: text,
+  /** Ids of the components that vendor this asset. */
+  components: z.array(text).min(1),
+  version: text,
+  /** Where the release's copy was taken from. */
+  source: text,
+});
+
+/**
+ * A program generated projects download on demand (for example the standalone
+ * Tailwind CSS CLI), one file per platform, with a version fixed per gobento
+ * release: not a Go module and not pinnable.
+ */
+const binarySchema = z.object({
+  name: text,
+  /** Ids of the components that download this binary. */
+  components: z.array(text).min(1),
+  /** Trait conditions, as for modules: used only when the selection meets them. */
+  traits: z.record(text, z.array(text).min(1)).default({}),
+  version: text,
+  /** Supported platforms as `<GOOS>/<GOARCH>`, sorted. */
+  platforms: z.array(z.string().regex(/^[a-z0-9]+\/[a-z0-9]+$/)).min(1),
+});
+
+/**
+ * An npm package that components use (for example create-vite, which
+ * scaffolds a Vite frontend at generation time), with a version fixed per
+ * gobento release: not a Go module and not pinnable.
+ */
+const npmPackageSchema = z.object({
+  name: text,
+  /** Ids of the components that use this package. */
+  components: z.array(text).min(1),
+  /** Trait conditions, as for modules: used only when the selection meets them. */
+  traits: z.record(text, z.array(text).min(1)).default({}),
+  /** A scaffolder runs once at generation time; the others land in package.json. */
+  role: z.enum(['scaffolder', 'dependency', 'dev-dependency']),
+  version: text,
+});
+
+/**
+ * The Node.js that npm packages need: `range` is what generation needs on the
+ * machine running gobento (for example `>=v22.12.0`), `default` the release
+ * line the generated tooling uses (for example `26`, as in `{node}`). Both
+ * are empty when no component uses an npm package.
+ */
+const nodeSchema = z.object({ range: z.string(), default: z.string() });
+
+/**
+ * Versions of the project tooling that are not Go modules (container images,
+ * GitHub Actions, tools), fixed per gobento release and not pinnable.
+ */
+const toolingSchema = z.object({
+  images: z.array(
+    z.object({
+      /** The template key, as in `{{.Images.runtime}}`. */
+      key: text,
+      image: text,
+      /** May contain `{go}`, the selected Go version. */
+      tag: text,
+      /** Empty for an image that is not pinned by digest. */
+      digest: z.string(),
+    }),
+  ),
+  actions: z.array(z.object({ name: text, version: text, sha: text })),
+  tools: z.array(z.object({ name: text, version: text })),
 });
 
 const ruleSchema = z.object({
@@ -69,18 +154,31 @@ const projectNameRuleSchema = ruleSchema.extend({
   reservedMessage: text,
 });
 
-/** One component name per kind, as `kind → name`. */
-const supportedSelectionSchema = z.record(z.enum(KIND_IDS), text);
+/**
+ * One component name per kind, as `kind → name`. An optional kind without a
+ * component is left out; every other kind is present (checked against the
+ * catalog's kinds in {@link checkConsistency}).
+ */
+const supportedSelectionSchema = z.partialRecord(z.enum(KIND_IDS), text);
 
 const rawCatalogSchema = z.object({
   kinds: z.array(kindSchema),
   components: z.array(componentSchema),
   go: z.object({ range: text, default: text }),
   modules: z.array(moduleSchema),
+  assets: z.array(assetSchema).default([]),
+  binaries: z.array(binarySchema).default([]),
+  tooling: toolingSchema.default({ images: [], actions: [], tools: [] }),
+  node: nodeSchema.default({ range: '', default: '' }),
+  /** The CLI writes `null` when no component uses an npm package. */
+  npm: z
+    .array(npmPackageSchema)
+    .nullish()
+    .transform((packages) => packages ?? []),
   /**
    * The selections the CLI supports (compose.Supported): traits met, default
-   * versions resolved, and composition without errors. Every one of them is
-   * generated and tested in gobento's CI.
+   * versions resolved, and composition without errors. CI builds every one
+   * without an optional component, and those with one pairwise.
    */
   supported: z.array(supportedSelectionSchema).min(1),
   rules: z.object({ projectName: projectNameRuleSchema, modulePath: ruleSchema }),
@@ -160,11 +258,54 @@ function checkConsistency(catalog: RawCatalog, ctx: z.RefinementCtx): void {
     });
   });
 
+  const assetNames = new Set(catalog.assets.map((asset) => asset.name));
+  if (assetNames.size !== catalog.assets.length) issue(['assets'], 'duplicate asset name');
+  catalog.assets.forEach((asset, i) => {
+    asset.components.forEach((id, j) => {
+      if (!componentIds.has(id))
+        issue(['assets', i, 'components', j], `${asset.name}: unknown component "${id}"`);
+    });
+  });
+
+  const binaryNames = new Set(catalog.binaries.map((binary) => binary.name));
+  if (binaryNames.size !== catalog.binaries.length) issue(['binaries'], 'duplicate binary name');
+  catalog.binaries.forEach((binary, i) => {
+    binary.components.forEach((id, j) => {
+      if (!componentIds.has(id))
+        issue(['binaries', i, 'components', j], `${binary.name}: unknown component "${id}"`);
+    });
+  });
+  const npmNames = new Set(catalog.npm.map((pkg) => pkg.name));
+  if (npmNames.size !== catalog.npm.length) issue(['npm'], 'duplicate npm package name');
+  catalog.npm.forEach((pkg, i) => {
+    pkg.components.forEach((id, j) => {
+      if (!componentIds.has(id))
+        issue(['npm', i, 'components', j], `${pkg.name}: unknown component "${id}"`);
+    });
+  });
+  if (catalog.npm.length === 0) {
+    if (catalog.node.range !== '' || catalog.node.default !== '') {
+      issue(['node'], 'a Node.js rule without npm packages');
+    }
+  } else {
+    checkRange(['node', 'range'], catalog.node.range, 'module');
+    if (!/^[1-9]\d*$/.test(catalog.node.default)) {
+      issue(['node', 'default'], `node: malformed release line "${catalog.node.default}"`);
+    } else if (!satisfies(`v${catalog.node.default}`, catalog.node.range, 'module')) {
+      issue(
+        ['node', 'default'],
+        `node: release line ${catalog.node.default} is outside its range ${catalog.node.range}`,
+      );
+    }
+  }
+
+  const optional = new Set(catalog.kinds.filter((k) => k.optional).map((k) => k.id));
   catalog.supported.forEach((selection, i) => {
     for (const kind of KIND_IDS) {
       const name = selection[kind];
-      if (name === undefined) issue(['supported', i], `supported selection lacks a ${kind}`);
-      else if (!componentIds.has(`${kind}/${name}`)) {
+      if (name === undefined) {
+        if (!optional.has(kind)) issue(['supported', i], `supported selection lacks a ${kind}`);
+      } else if (!componentIds.has(`${kind}/${name}`)) {
         issue(
           ['supported', i, kind],
           `supported selection names unknown component "${kind}/${name}"`,
@@ -191,7 +332,15 @@ export type Catalog = z.infer<typeof catalogSchema>;
 export type Component = Catalog['components'][number];
 /** A Go module used by one or more components. */
 export type Module = Catalog['modules'][number];
-/** A selection the CLI supports. */
+/** A file vendored into generated projects, with a version fixed per release. */
+export type Asset = Catalog['assets'][number];
+/** A program generated projects download on demand, with a version fixed per release. */
+export type Binary = Catalog['binaries'][number];
+/** An npm package used by one or more components, with a version fixed per release. */
+export type NpmPackage = Catalog['npm'][number];
+/** A component kind as described by the catalog. */
+export type Kind = Catalog['kinds'][number];
+/** A selection the CLI supports; an optional kind without a component is absent. */
 export type SupportedSelection = Catalog['supported'][number];
 
 /** Parses and validates catalog data, throwing a ZodError that lists every problem. */

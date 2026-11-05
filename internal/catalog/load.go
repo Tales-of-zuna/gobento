@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
+	"maps"
 	"path"
 	"regexp"
 	"slices"
@@ -26,6 +28,17 @@ const (
 	NotesFile = "notes.md.tmpl"
 	// TemplateSuffix ends every template file name.
 	TemplateSuffix = ".tmpl"
+	// BaseDir is the directory of the base layer at the catalog root.
+	BaseDir = "base"
+	// BaseManifestFile is the manifest of the base layer.
+	BaseManifestFile = "base.yaml"
+	// KindManifestFile is the optional manifest of a kind directory, which
+	// declares contribution points for the templates of the kind's
+	// components.
+	KindManifestFile = "kind.yaml"
+	// ContribDir holds a component's contributions to the points of the
+	// base layer and of other components, one <point>.tmpl file per point.
+	ContribDir = "contrib"
 	// DotPrefix at the start of a path element maps to ".", so that
 	// templates for dotfiles are not dotfiles themselves.
 	DotPrefix = "dot-"
@@ -48,9 +61,10 @@ var (
 )
 
 // Catalog is a loaded and validated component catalog together with its
-// version-compatibility rules.
+// version-compatibility rules and the base layer.
 type Catalog struct {
 	components []*Component // sorted by kind order, then name
+	base       *Component   // nil if the catalog has no base layer
 	rules      *compat.Rules
 }
 
@@ -62,6 +76,27 @@ type manifest struct {
 	Slots       map[string]slotManifest `yaml:"slots"`
 	Provides    map[string]string       `yaml:"provides"`
 	Requires    map[string][]string     `yaml:"requires"`
+	Scaffold    *scaffoldManifest       `yaml:"scaffold"`
+}
+
+type scaffoldManifest struct {
+	With     string   `yaml:"with"`
+	Template string   `yaml:"template"`
+	Dir      string   `yaml:"dir"`
+	Remove   []string `yaml:"remove"`
+}
+
+// kindManifest mirrors the YAML layout of kind.yaml, the optional manifest
+// of a kind directory.
+type kindManifest struct {
+	Contributions map[string]string `yaml:"contributions"`
+}
+
+// baseManifest mirrors the YAML layout of base.yaml.
+type baseManifest struct {
+	Title         string            `yaml:"title"`
+	Description   string            `yaml:"description"`
+	Contributions map[string]string `yaml:"contributions"`
 }
 
 type slotManifest struct {
@@ -71,15 +106,17 @@ type slotManifest struct {
 	Required bool   `yaml:"required"`
 }
 
-// Load reads a catalog from fsys, whose root holds versions.yaml and one
-// directory per kind (architecture/, framework/, database/, data/), each
-// with one directory per component.
+// Load reads a catalog from fsys, whose root holds versions.yaml, one
+// directory per kind (architecture/, framework/, database/, data/,
+// frontend/), each with one directory per component, and optionally the base
+// layer in base/.
 //
 // Load validates every manifest, enforces that every file other than
 // component.yaml, versions.yaml, and embed.go ends in .tmpl and that no
 // file or directory name starts with ".", parses the rules file, and checks
-// that every component referenced by the rules exists. It reports every
-// problem found, joined with errors.Join.
+// that every component referenced by the rules exists and that every
+// contribution names a point the base layer or a kind declares. It
+// reports every problem found, joined with errors.Join.
 func Load(fsys fs.FS) (*Catalog, error) {
 	var errs []error
 	cat := &Catalog{}
@@ -93,6 +130,10 @@ func Load(fsys fs.FS) (*Catalog, error) {
 		switch {
 		case !e.IsDir() && (name == RulesFile || name == embedFile):
 		case e.IsDir() && Kind(name).valid():
+		case e.IsDir() && name == BaseDir:
+			base, berrs := loadBase(fsys)
+			cat.base = base
+			errs = append(errs, berrs...)
 		case e.IsDir():
 			errs = append(errs, fmt.Errorf("%s: unknown component kind; want one of %s", name, kindList()))
 		default:
@@ -105,6 +146,7 @@ func Load(fsys fs.FS) (*Catalog, error) {
 		cat.components = append(cat.components, comps...)
 		errs = append(errs, kerrs...)
 	}
+	errs = append(errs, checkContributions(cat.components, cat.base)...)
 
 	data, err := fs.ReadFile(fsys, RulesFile)
 	if err != nil {
@@ -120,6 +162,16 @@ func Load(fsys fs.FS) (*Catalog, error) {
 		if err := rules.CheckComponents(exists); err != nil {
 			errs = append(errs, fmt.Errorf("%s: %w", RulesFile, err))
 		}
+		provided := func(trait string) bool {
+			return slices.ContainsFunc(cat.components, func(c *Component) bool {
+				_, ok := c.Provides[trait]
+				return ok
+			})
+		}
+		if err := rules.CheckTraits(provided); err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", RulesFile, err))
+		}
+		errs = append(errs, checkScaffolders(cat.components, rules)...)
 		cat.rules = rules
 	}
 
@@ -129,8 +181,10 @@ func Load(fsys fs.FS) (*Catalog, error) {
 	return cat, nil
 }
 
-// loadKind loads every component directory of one kind. A missing kind
-// directory means the catalog has no components of that kind.
+// loadKind loads every component directory of one kind, and the kind's
+// contribution points from its optional kind.yaml, which every component of
+// the kind gets as its Points. A missing kind directory means the catalog
+// has no components of that kind.
 func loadKind(fsys fs.FS, kind Kind) ([]*Component, []error) {
 	entries, err := fs.ReadDir(fsys, string(kind))
 	if errors.Is(err, fs.ErrNotExist) {
@@ -140,11 +194,18 @@ func loadKind(fsys fs.FS, kind Kind) ([]*Component, []error) {
 		return nil, []error{fmt.Errorf("%s: %w", kind, err)}
 	}
 	var (
-		comps []*Component
-		errs  []error
+		comps  []*Component
+		errs   []error
+		points []Point
 	)
 	for _, e := range entries {
 		dir := path.Join(string(kind), e.Name())
+		if e.Name() == KindManifestFile && !e.IsDir() {
+			p, perrs := loadKindManifest(fsys, dir)
+			points = p
+			errs = append(errs, perrs...)
+			continue
+		}
 		if !e.IsDir() {
 			errs = append(errs, fmt.Errorf("%s: unexpected file; components are directories", dir))
 			continue
@@ -156,7 +217,30 @@ func loadKind(fsys fs.FS, kind Kind) ([]*Component, []error) {
 		}
 		comps = append(comps, c)
 	}
+	for _, c := range comps {
+		c.Points = slices.Clone(points)
+	}
 	return comps, errs
+}
+
+// loadKindManifest reads the kind.yaml at name and returns the points it
+// declares.
+func loadKindManifest(fsys fs.FS, name string) ([]Point, []error) {
+	data, err := fs.ReadFile(fsys, name)
+	if err != nil {
+		return nil, []error{err}
+	}
+	var m kindManifest
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true)
+	if err := dec.Decode(&m); err != nil && !errors.Is(err, io.EOF) {
+		return nil, []error{fmt.Errorf("%s: %w", name, err)}
+	}
+	points, perrs := parsePoints(m.Contributions)
+	for i, err := range perrs {
+		perrs[i] = fmt.Errorf("%s: %w", name, err)
+	}
+	return points, perrs
 }
 
 // loadComponent loads and validates the component in dir.
@@ -185,8 +269,12 @@ func loadComponent(fsys fs.FS, kind Kind, dir string) (*Component, []error) {
 			files, ferrs := loadFiles(fsys, path.Join(dir, filesDir))
 			c.Files = files
 			errs = append(errs, ferrs...)
+		case name == ContribDir && e.IsDir():
+			contribs, cerrs := loadContributions(fsys, path.Join(dir, ContribDir))
+			c.Contributions = contribs
+			errs = append(errs, cerrs...)
 		default:
-			fail("unexpected entry %q; a component holds only %s, %s, and %s/", name, ManifestFile, NotesFile, filesDir)
+			fail("unexpected entry %q; a component holds only %s, %s, %s/, and %s/", name, ManifestFile, NotesFile, filesDir, ContribDir)
 		}
 	}
 
@@ -202,6 +290,9 @@ func loadComponent(fsys fs.FS, kind Kind, dir string) (*Component, []error) {
 	}
 	if !namePattern.MatchString(c.Name) {
 		fail("name %q must match %s", c.Name, namePattern)
+	}
+	if kind.Optional() && c.Name == None {
+		fail("name %q is reserved: it selects no %s component", None, kind)
 	}
 	if strings.TrimSpace(m.Title) == "" {
 		fail("title is required")
@@ -220,6 +311,22 @@ func loadComponent(fsys fs.FS, kind Kind, dir string) (*Component, []error) {
 		}
 		if len(m.Requires[k]) == 0 {
 			fail("requires: trait %s lists no accepted values", k)
+		}
+	}
+
+	if m.Scaffold != nil {
+		sc := m.Scaffold
+		c.Scaffold = &Scaffold{With: sc.With, Template: sc.Template, Dir: sc.Dir, Remove: sc.Remove}
+		if !namePattern.MatchString(sc.Template) {
+			fail("scaffold: template %q must match %s", sc.Template, namePattern)
+		}
+		if !isCleanLocal(sc.Dir) {
+			fail("scaffold: dir %q must be a clean relative path inside the project", sc.Dir)
+		}
+		for _, r := range sc.Remove {
+			if !isCleanLocal(r) {
+				fail("scaffold: remove %q must be a clean relative path inside dir", r)
+			}
 		}
 	}
 
@@ -247,6 +354,191 @@ func loadComponent(fsys fs.FS, kind Kind, dir string) (*Component, []error) {
 		return nil, errs
 	}
 	return c, nil
+}
+
+// loadBase loads and validates the base layer in BaseDir: base.yaml, an
+// optional notes.md.tmpl, and templates under files/root/ only.
+func loadBase(fsys fs.FS) (*Component, []error) {
+	var errs []error
+	fail := func(format string, args ...any) {
+		errs = append(errs, fmt.Errorf("%s: "+format, append([]any{BaseDir}, args...)...))
+	}
+	c := &Component{Name: BaseID}
+
+	entries, err := fs.ReadDir(fsys, BaseDir)
+	if err != nil {
+		return nil, []error{fmt.Errorf("%s: %w", BaseDir, err)}
+	}
+	for _, e := range entries {
+		switch name := e.Name(); {
+		case name == BaseManifestFile && !e.IsDir():
+		case name == NotesFile && !e.IsDir():
+			notes, err := readTemplate(fsys, path.Join(BaseDir, name))
+			if err != nil {
+				fail("%w", err)
+			}
+			c.Notes = notes
+		case name == filesDir && e.IsDir():
+			files, ferrs := loadFiles(fsys, path.Join(BaseDir, filesDir))
+			errs = append(errs, ferrs...)
+			for _, f := range files {
+				if f.Slot != RootSlot {
+					fail("%s: the base layer has no slots; its templates belong in %s/%s/", f.Source, filesDir, RootSlot)
+				}
+			}
+			c.Files = files
+		default:
+			fail("unexpected entry %q; the base layer holds only %s, %s, and %s/%s/", name, BaseManifestFile, NotesFile, filesDir, RootSlot)
+		}
+	}
+
+	var m baseManifest
+	data, err := fs.ReadFile(fsys, path.Join(BaseDir, BaseManifestFile))
+	if err == nil {
+		dec := yaml.NewDecoder(bytes.NewReader(data))
+		dec.KnownFields(true)
+		if err = dec.Decode(&m); err != nil {
+			err = fmt.Errorf("%s: %w", BaseManifestFile, err)
+		}
+	}
+	if err != nil {
+		fail("%w", err)
+		return nil, errs
+	}
+	c.Title, c.Description = m.Title, m.Description
+	if strings.TrimSpace(m.Title) == "" {
+		fail("title is required")
+	}
+	points, perrs := parsePoints(m.Contributions)
+	c.Points = points
+	for _, err := range perrs {
+		fail("%w", err)
+	}
+	if len(errs) > 0 {
+		return nil, errs
+	}
+	return c, nil
+}
+
+// loadContributions loads the <point>.tmpl files in dir, a component's
+// contrib/ directory.
+func loadContributions(fsys fs.FS, dir string) (map[string]string, []error) {
+	var errs []error
+	entries, err := fs.ReadDir(fsys, dir)
+	if err != nil {
+		return nil, []error{err}
+	}
+	out := make(map[string]string, len(entries))
+	for _, e := range entries {
+		p := path.Join(dir, e.Name())
+		point, ok := strings.CutSuffix(e.Name(), TemplateSuffix)
+		switch {
+		case e.IsDir() || !ok:
+			errs = append(errs, fmt.Errorf("%s: %s/ holds only <point>%s files", p, ContribDir, TemplateSuffix))
+			continue
+		case !namePattern.MatchString(point):
+			errs = append(errs, fmt.Errorf("%s: point name %q must match %s", p, point, namePattern))
+			continue
+		}
+		text, err := readTemplate(fsys, p)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		out[point] = text
+	}
+	return out, errs
+}
+
+// parsePoints converts the contributions: mapping of base.yaml or
+// component.yaml into points sorted by name.
+func parsePoints(decl map[string]string) ([]Point, []error) {
+	var (
+		points []Point
+		errs   []error
+	)
+	for _, name := range sortedKeys(decl) {
+		if !namePattern.MatchString(name) {
+			errs = append(errs, fmt.Errorf("contributions: point name %q must match %s", name, namePattern))
+		}
+		if strings.TrimSpace(decl[name]) == "" {
+			errs = append(errs, fmt.Errorf("contributions: point %s needs a description", name))
+		}
+		points = append(points, Point{Name: name, Description: strings.TrimSpace(decl[name])})
+	}
+	return points, errs
+}
+
+// checkContributions reports every point a kind declares that the base
+// layer or another kind also declares, and every contribution to a point
+// that neither the base layer nor any kind declares.
+func checkContributions(comps []*Component, base *Component) []error {
+	var errs []error
+	declared := make(map[string]string) // point -> BaseID or the declaring kind
+	if base != nil {
+		for _, p := range base.Points {
+			declared[p.Name] = BaseID
+		}
+	}
+	for _, kind := range Kinds() {
+		i := slices.IndexFunc(comps, func(c *Component) bool { return c.Kind == kind })
+		if i < 0 {
+			continue
+		}
+		for _, p := range comps[i].Points {
+			source := path.Join(string(kind), KindManifestFile)
+			switch by, ok := declared[p.Name]; {
+			case ok && by == BaseID:
+				errs = append(errs, fmt.Errorf("%s: contributions: point %q is declared by the base layer; choose another name", source, p.Name))
+			case ok:
+				errs = append(errs, fmt.Errorf("%s: contributions: point %q is also declared by the %s kind; choose another name", source, p.Name, by))
+			default:
+				declared[p.Name] = string(kind)
+			}
+		}
+	}
+	names := slices.Sorted(maps.Keys(declared))
+	for _, c := range comps {
+		for _, point := range sortedKeys(c.Contributions) {
+			if _, ok := declared[point]; ok {
+				continue
+			}
+			if len(names) == 0 {
+				errs = append(errs, fmt.Errorf("%s/%s/%s%s: the catalog has no base layer (%s/) and no kind declares a point to contribute to",
+					c.ID(), ContribDir, point, TemplateSuffix, BaseDir))
+				continue
+			}
+			errs = append(errs, fmt.Errorf("%s/%s/%s%s: neither the base layer nor any kind declares the contribution point %q; declared points: %s",
+				c.ID(), ContribDir, point, TemplateSuffix, point, strings.Join(names, ", ")))
+		}
+	}
+	return errs
+}
+
+// checkScaffolders reports every scaffold declaration whose scaffolder is
+// not an npm scaffolder of the rules that lists the component.
+func checkScaffolders(comps []*Component, rules *compat.Rules) []error {
+	var errs []error
+	for _, c := range comps {
+		if c.Scaffold == nil {
+			continue
+		}
+		p, ok := rules.NPMPackage(c.Scaffold.With)
+		switch {
+		case !ok || p.Role != compat.NPMScaffolder:
+			errs = append(errs, fmt.Errorf("%s: scaffold: %q is not a scaffolder in %s", c.ID(), c.Scaffold.With, RulesFile))
+		case !slices.Contains(p.Components, c.ID()):
+			errs = append(errs, fmt.Errorf("%s: scaffold: %s does not list %s among its components in %s", c.ID(), p.Name, c.ID(), RulesFile))
+		}
+	}
+	return errs
+}
+
+// isCleanLocal reports whether p is a clean, relative, slash-separated
+// path that stays inside its base directory.
+func isCleanLocal(p string) bool {
+	return p != "" && p != "." && !strings.Contains(p, `\`) && !path.IsAbs(p) &&
+		path.Clean(p) == p && p != ".." && !strings.HasPrefix(p, "../")
 }
 
 func readManifest(fsys fs.FS, name string) (manifest, error) {
@@ -381,6 +673,12 @@ func kindList() string {
 	return strings.Join(names, ", ")
 }
 
+// Base returns the base layer, which is composed into every selection, or
+// nil if the catalog has none.
+func (c *Catalog) Base() *Component {
+	return c.base
+}
+
 // Rules returns the catalog's version-compatibility rules.
 func (c *Catalog) Rules() *compat.Rules {
 	return c.rules
@@ -408,21 +706,34 @@ func (c *Catalog) Component(kind Kind, name string) (*Component, bool) {
 	return c.components[i], true
 }
 
-// Candidates returns every selection of one component per kind whose trait
-// requirements are met, in kind order and then by name. A candidate is
-// supported only if it also composes; compose.Supported checks that.
+// Candidates returns every selection of one component per required kind and
+// at most one per optional kind whose trait requirements are met, in kind
+// order and then by name, with "no component" before the components of an
+// optional kind. A candidate is supported only if it also composes;
+// compose.Supported checks that.
 func (c *Catalog) Candidates() []Selection {
-	var out []Selection
-	for _, a := range c.Components(KindArchitecture) {
-		for _, f := range c.Components(KindFramework) {
-			for _, db := range c.Components(KindDatabase) {
-				for _, d := range c.Components(KindData) {
-					s := Selection{Architecture: a, Framework: f, Database: db, Data: d}
-					if s.CheckTraits() == nil {
-						out = append(out, s)
-					}
+	sels := []Selection{{}}
+	for _, kind := range Kinds() {
+		choices := c.Components(kind)
+		if kind.Optional() {
+			choices = append([]*Component{nil}, choices...)
+		}
+		var next []Selection
+		for _, s := range sels {
+			for _, comp := range choices {
+				if comp == nil {
+					next = append(next, s)
+					continue
 				}
+				next = append(next, s.With(comp))
 			}
+		}
+		sels = next
+	}
+	var out []Selection
+	for _, s := range sels {
+		if s.CheckTraits() == nil {
+			out = append(out, s)
 		}
 	}
 	return out

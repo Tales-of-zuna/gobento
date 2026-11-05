@@ -8,7 +8,7 @@ import (
 )
 
 // Kind is a component kind. A selection contains exactly one component of
-// each kind.
+// each required kind and at most one of each optional kind.
 type Kind string
 
 // The component kinds, in the order used for listing, notes, and errors.
@@ -17,16 +17,31 @@ const (
 	KindFramework    Kind = "framework"
 	KindDatabase     Kind = "database"
 	KindData         Kind = "data"
+	// KindFrontend is optional: a project without a frontend is API-only.
+	KindFrontend Kind = "frontend"
+	// KindCSS is optional: a CSS framework that styles the frontend. Its
+	// components require the trait frontend-build, so they are supported
+	// only together with a frontend.
+	KindCSS Kind = "css"
 )
+
+// None is the name that selects no component of an optional kind, for
+// example --frontend none. No component of an optional kind may use it.
+const None = "none"
 
 // Kinds returns every component kind in canonical order.
 func Kinds() []Kind {
-	return []Kind{KindArchitecture, KindFramework, KindDatabase, KindData}
+	return []Kind{KindArchitecture, KindFramework, KindDatabase, KindData, KindFrontend, KindCSS}
 }
 
 // valid reports whether k is one of the known kinds.
 func (k Kind) valid() bool {
 	return slices.Contains(Kinds(), k)
+}
+
+// Optional reports whether a selection may leave out a component of kind k.
+func (k Kind) Optional() bool {
+	return k == KindFrontend || k == KindCSS
 }
 
 // RootSlot is the pseudo-slot for files placed at the project root. Its
@@ -56,12 +71,71 @@ type Component struct {
 	// Notes is the template of the component's notes.md.tmpl, or "" if it
 	// has none. Rendered notes are appended to the project README.
 	Notes string
+	// Contributions maps contribution points of the base layer to the
+	// component's template for that point, from contrib/<point>.tmpl.
+	Contributions map[string]string
+	// Points lists the contribution points that the component's templates
+	// may include, sorted by name: those of the base layer for the base
+	// layer, and those its kind declares in kind.yaml for a component.
+	Points []Point
+	// Scaffold describes the project directory an official scaffolder
+	// creates at generation time, or is nil.
+	Scaffold *Scaffold
 }
 
+// Scaffold is a project directory created at generation time by an npm
+// scaffolder of the rules file. The component's root templates under Dir
+// replace the scaffolded files of the same path.
+type Scaffold struct {
+	// With is the scaffolder's npm package in the rules file, for example
+	// create-vite.
+	With string
+	// Template is the scaffolder's template, for example react-ts.
+	Template string
+	// Dir is the directory the scaffolder creates, relative to the
+	// project root, for example frontend.
+	Dir string
+	// Remove lists scaffolded files or directories, relative to Dir, that
+	// generation deletes because the component's own files make them
+	// unused. Each must exist in the scaffolder's output.
+	Remove []string
+}
+
+// Point is a contribution point of the base layer or of a kind: a named
+// place in their files where the selected components' contributions are
+// inserted.
+type Point struct {
+	// Name identifies the point, for example ci-services. It is also the
+	// file name, without .tmpl, of a contribution in contrib/.
+	Name string
+	// Description says what the point accepts and where it ends up.
+	Description string
+}
+
+// BaseID is the ID of the base layer, which has no kind.
+const BaseID = "base"
+
 // ID returns the component's identifier, "<kind>/<name>", as used in the
-// rules file.
+// rules file, or BaseID for the base layer.
 func (c *Component) ID() string {
+	if c.Kind == "" {
+		return c.Name
+	}
 	return string(c.Kind) + "/" + c.Name
+}
+
+// IsBase reports whether c is the base layer.
+func (c *Component) IsBase() bool {
+	return c.Kind == "" && c.Name == BaseID
+}
+
+// Point returns the contribution point with the given name declared by c.
+func (c *Component) Point(name string) (Point, bool) {
+	i := slices.IndexFunc(c.Points, func(p Point) bool { return p.Name == name })
+	if i < 0 {
+		return Point{}, false
+	}
+	return c.Points[i], true
 }
 
 // Slot returns the slot with the given name declared by c.
@@ -120,19 +194,58 @@ type File struct {
 	Template string
 }
 
-// Selection is one component of each kind.
+// Selection is one component of each required kind and at most one of each
+// optional kind. A nil field of an optional kind selects no component.
 type Selection struct {
 	Architecture *Component
 	Framework    *Component
 	Database     *Component
 	Data         *Component
+	// Frontend is optional; nil means an API-only project.
+	Frontend *Component
+	// CSS is optional; nil keeps the frontend's own stylesheet.
+	CSS *Component
+}
+
+// all returns the fields of s in kind order, including nil ones.
+func (s Selection) all() []*Component {
+	return []*Component{s.Architecture, s.Framework, s.Database, s.Data, s.Frontend, s.CSS}
+}
+
+// Component returns the selected component of kind k, or nil if there is
+// none.
+func (s Selection) Component(k Kind) *Component {
+	i := slices.Index(Kinds(), k)
+	if i < 0 {
+		return nil
+	}
+	return s.all()[i]
+}
+
+// With returns s with c as its component of c's kind.
+func (s Selection) With(c *Component) Selection {
+	switch c.Kind {
+	case KindArchitecture:
+		s.Architecture = c
+	case KindFramework:
+		s.Framework = c
+	case KindDatabase:
+		s.Database = c
+	case KindData:
+		s.Data = c
+	case KindFrontend:
+		s.Frontend = c
+	case KindCSS:
+		s.CSS = c
+	}
+	return s
 }
 
 // Components returns the selected components in kind order, skipping kinds
 // that have no component.
 func (s Selection) Components() []*Component {
 	var out []*Component
-	for _, c := range []*Component{s.Architecture, s.Framework, s.Database, s.Data} {
+	for _, c := range s.all() {
 		if c != nil {
 			out = append(out, c)
 		}
@@ -141,15 +254,19 @@ func (s Selection) Components() []*Component {
 }
 
 // String returns the selection as names in kind order, for example
-// "mvc/nethttp/sqlite/sqlc".
+// "mvc/nethttp/sqlite/sqlc", "mvc/nethttp/sqlite/sqlc/htmx" with a
+// frontend, or "mvc/nethttp/sqlite/sqlc/htmx/tailwind" with a CSS framework
+// too. A missing required kind is shown as "-"; an optional kind
+// without a component is left out.
 func (s Selection) String() string {
-	names := make([]string, 0, 4)
-	for _, c := range []*Component{s.Architecture, s.Framework, s.Database, s.Data} {
-		if c == nil {
+	names := make([]string, 0, len(Kinds()))
+	for i, c := range s.all() {
+		switch {
+		case c != nil:
+			names = append(names, c.Name)
+		case !Kinds()[i].Optional():
 			names = append(names, "-")
-			continue
 		}
-		names = append(names, c.Name)
 	}
 	return strings.Join(names, "/")
 }

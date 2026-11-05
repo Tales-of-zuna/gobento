@@ -13,15 +13,18 @@ description: gobento composes a ready-to-build Go project from the stack you cho
 ## What gobento is
 
 gobento is a command-line tool that generates a new Go project from the stack
-you pick: an architecture, an HTTP framework, a database, and a data-access
-library.
+you pick: an architecture, an HTTP framework, a database, a data-access
+library, and optionally a frontend and a CSS framework.
 
 ```sh
-gobento new shop --module example.com/shop
+gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres --data sqlc
 ```
 
 The generated project builds, passes `go vet` and `gofmt`, and passes its own
-tests without any edits from you.
+tests without any edits from you. It comes with its
+[tooling](/docs/concepts/project-tooling): a Makefile, a multi-stage
+Dockerfile for a static, non-root image, a GitHub Actions workflow, and
+golangci-lint and Dependabot configuration.
 
 ## Why it exists
 
@@ -31,8 +34,9 @@ and every new option multiplies the work.
 
 gobento avoids both problems:
 
-- **Your stack, your choice.** You select one component of each kind. Flags
-  are only required when a kind has more than one option.
+- **Your stack, your choice.** You select one component of each kind, and a
+  frontend and a CSS framework only if you want them. Flags are only required
+  when a required kind has more than one option.
 - **Versions as data.** All supported Go and module versions live in one rules
   file. You can choose versions inside the supported ranges, and gobento
   rejects combinations that do not work instead of silently changing them.
@@ -42,29 +46,41 @@ gobento avoids both problems:
 - **Safe to run anywhere.** Every input problem is reported at once, before
   anything is written. gobento only fills a new or empty directory, and on any
   failure or Ctrl-C it leaves nothing behind.
-- **Proven builds.** Every supported combination is generated, built, and
-  tested in CI on Linux, macOS, and Windows.
+- **Proven builds.** Every supported backend combination is generated, built,
+  and tested in CI on Linux, macOS, and Windows, and the combinations with a
+  frontend or a CSS framework are covered pairwise.
 
 gobento is inspired by [go-blueprint](https://github.com/melkeydev/go-blueprint),
 which showed how much a good project generator helps Go developers get
 started.
 
-## The first slice
+## What you can choose today
 
-The first supported stack is:
+| Kind           | Components                                                                                              |
+| -------------- | ------------------------------------------------------------------------------------------------------- |
+| Architecture   | `mvc` (Model-View-Controller, by layer), `vertical-slice` (by feature), or `ddd` (domain-driven design) |
+| HTTP framework | `nethttp` (the standard library's `net/http`), `chi`, `gin`                                             |
+| Database       | `sqlite` (pure Go, no cgo), `postgres` (PostgreSQL through pgx, pure Go)                                |
+| Data access    | `sqlc` or `gorm` (GORM)                                                                                 |
+| Frontend       | none (API only, the default), `htmx` (htmx + templ pages), or `react`, `vue`, `svelte` (Vite apps)      |
+| CSS framework  | none (the frontend's own CSS, the default) or `tailwind` (Tailwind CSS, with a frontend)                |
 
-| Kind           | Component                                     |
-| -------------- | --------------------------------------------- |
-| Architecture   | `mvc` (Model-View-Controller)                 |
-| HTTP framework | `nethttp` (the standard library's `net/http`) |
-| Database       | `sqlite` (pure Go, no cgo)                    |
-| Data access    | `sqlc`                                        |
-
-It generates a project with a health endpoint and one example resource,
-`/items`, stored in SQLite. More
-frameworks, databases, and architectures are on the roadmap; the
+Every architecture uses the same framework, database, and data-access
+components, arranged in a different layout, and every framework serves
+exactly the same API. Every combination generates a project with a health
+endpoint and one example resource, `/items`, stored in the database you
+chose. With a frontend, it also serves a page at `/` that lists and adds
+items, and the API moves under `/api`: `htmx` renders the page on the server
+with templ, while `react`, `vue`, and `svelte` are TypeScript single-page
+apps that Vite's official scaffolder creates in `frontend/` and that the Go
+binary embeds once built (they need
+[Node.js](/docs/getting-started/installation#nodejs-for-react-vue-and-svelte)).
+`--css tailwind` styles any frontend with Tailwind CSS: htmx through the
+standalone Tailwind CLI, without Node.js, and the Vite apps through
+Tailwind's Vite plugin. The
 [Components](/docs/components) reference always lists exactly what the
-catalog supports.
+catalog supports, and [`gobento list`](/docs/cli/list) shows the same from the
+command line.
 
 ## Where to go next
 

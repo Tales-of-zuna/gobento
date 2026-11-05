@@ -1,0 +1,13 @@
+# Build output
+/shop
+/shop.exe
+/bin/
+
+# Local database
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Test output
+coverage.out

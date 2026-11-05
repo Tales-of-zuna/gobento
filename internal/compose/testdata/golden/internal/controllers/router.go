@@ -13,6 +13,8 @@ import (
 //	GET  /health  reports that the server is up
 //	GET  /items   lists all items
 //	POST /items   creates an item from {"name": "..."}
+//
+// GET routes also answer HEAD.
 func NewRouter(items models.ItemStore) http.Handler {
 	h := &itemHandler{items: items}
 	mux := http.NewServeMux()

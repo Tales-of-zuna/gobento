@@ -3,7 +3,8 @@ import { expect, test } from '@playwright/test';
 
 import { releaseStatus, waitForAnimationsToSettle } from './helpers';
 
-const QUICK_START = 'gobento new shop --module example.com/shop';
+const QUICK_START =
+  'gobento new shop --module example.com/shop --arch mvc --framework chi --db postgres --data sqlc';
 const release = releaseStatus();
 
 test.describe('home page', () => {
@@ -111,12 +112,51 @@ test.describe('home page', () => {
   }) => {
     await page.goto('./');
     const belt = page.getByRole('list', { name: 'Components' });
-    for (const name of ['MVC', 'net/http', 'SQLite', 'sqlc']) {
+    for (const name of [
+      'DDD',
+      'MVC',
+      'VS',
+      'chi',
+      'Gin',
+      'net/http',
+      'SQLite',
+      'PostgreSQL',
+      'GORM',
+      'sqlc',
+      'htmx + templ',
+      'Tailwind CSS',
+      'React',
+      'Vue',
+      'Svelte',
+    ]) {
       await expect(belt.getByText(name, { exact: true }).first()).toBeAttached();
     }
+    // Tailwind CSS ships: a ready plate, not a roadmap one.
+    await expect(
+      belt.locator('li', { hasText: 'Tailwind CSS' }).first().getByText('ready', { exact: true }),
+    ).toBeAttached();
     await expect(
       page.getByText('modernc.org/sqlite v1.61.1 needs Go 1.26 or newer'),
     ).toBeAttached();
+    // The optional frontend kind has its own compartment: the shipped
+    // frontends as options, and nothing they ship on its roadmap.
+    const roadmap = page.getByRole('list', { name: 'Frontend roadmap' });
+    await expect(roadmap).toContainText('more later');
+    const stack = page.getByRole('region', { name: 'One choice per compartment.' });
+    for (const name of ['htmx + templ', 'React', 'Vue', 'Svelte']) {
+      await expect(stack.getByText(name, { exact: true })).toBeAttached();
+      await expect(roadmap.getByText(name, { exact: true })).toHaveCount(0);
+    }
+    await expect(roadmap.getByText('Tailwind CSS', { exact: true })).toHaveCount(0);
+    // The optional CSS framework kind has its own compartment with Tailwind CSS.
+    const css = page.getByRole('heading', { level: 3, name: /^CSS framework/ });
+    await expect(css).toContainText('optional');
+    await expect(page.getByRole('list', { name: 'CSS framework roadmap' })).toContainText(
+      'more later',
+    );
+    await expect(page.getByRole('list', { name: 'Component kinds' })).toContainText(
+      'CSS framework',
+    );
   });
 
   test.describe('mobile', () => {

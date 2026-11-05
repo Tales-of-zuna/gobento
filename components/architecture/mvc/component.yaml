@@ -7,3 +7,4 @@ slots:
   handlers: { dir: internal/controllers,    filled_by: framework, required: true }
   database: { dir: internal/database,       filled_by: database,  required: true }
   store:    { dir: internal/store,          filled_by: data,      required: true }
+  web:      { dir: internal/views,          filled_by: frontend }

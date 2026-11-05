@@ -17,8 +17,37 @@ each release's notes list what changed.
 - **Network access to the Go module proxy.** Generation downloads the selected
   module versions. Your `GOPROXY`, `GONOSUMDB`, and `GOPRIVATE` settings are
   respected.
-- **No C compiler.** gobento and the first supported stack (including SQLite)
+- **No C compiler.** gobento and every supported stack (including SQLite)
   are pure Go, so cgo is not needed on Linux, macOS, or Windows.
+- **Node.js only for React, Vue, and Svelte.** API-only projects and the
+  htmx frontend need no Node.js: htmx ships htmx and the Go code templ
+  generates, so neither Node.js nor the templ command is needed to generate,
+  build, or run them. With htmx and Tailwind CSS, the compiled stylesheet is
+  shipped too; rebuilding it after a change downloads the standalone
+  Tailwind CLI, which needs no Node.js either. The React, Vue, and Svelte
+  frontends do need it, with or without Tailwind CSS; see [Node.js for React, Vue, and Svelte](#nodejs-for-react-vue-and-svelte).
+
+### Node.js for React, Vue, and Svelte
+
+`--frontend react`, `vue`, and `svelte` create `frontend/` with Vite's
+official scaffolder, `npm create vite`, during generation. For these
+frontends only, gobento also needs:
+
+- **Node.js v22.12.0 or newer, and npm.** npm comes with Node.js; install
+  both from [nodejs.org](https://nodejs.org/). The `node` and `npm` commands
+  must be on your `PATH`. The generated CI workflow and Dockerfile use
+  Node.js 26.
+- **Network access to the npm registry.** The scaffolder is downloaded, and
+  npm resolves the frontend's dependencies into `frontend/package-lock.json`
+  (with `--css tailwind`, also `tailwindcss` and `@tailwindcss/vite`, which
+  it adds to `frontend/package.json`). It does not install them: there is no `node_modules` until you run
+  `npm --prefix frontend ci`.
+
+gobento checks `node` and `npm` before it writes anything, and stops with a
+problem when one is missing or Node.js is too old (see
+[Environment](/docs/cli/new#environment)). `--dry-run` needs neither. The
+generated project still builds and passes `go test ./...` without Node.js;
+you need it to build the frontend itself.
 
 ## Install the CLI
 

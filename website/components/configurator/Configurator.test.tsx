@@ -3,6 +3,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { catalogWith, moduleOf } from '@/lib/test/catalog';
 import { Configurator } from './Configurator';
 
+// The mascot stands in for the 3D scene: counting its renders shows whether
+// an edit reaches the scene.
+const mascotRenders = vi.hoisted(() => ({ count: 0 }));
+vi.mock('@/components/mascot/MascotHero', () => ({
+  MascotHero: () => {
+    mascotRenders.count++;
+    return null;
+  },
+}));
+
 beforeEach(() => {
   window.history.replaceState(null, '', '/configurator/');
   vi.stubGlobal(
@@ -19,15 +29,75 @@ beforeEach(() => {
 const command = () => screen.getAllByText((_, el) => el?.hasAttribute('data-command') ?? false)[0];
 
 describe('Configurator', () => {
-  it('shows the default command and updates it live', () => {
+  it('asks for an architecture and data access, then shows the command and updates it live', () => {
     render(<Configurator catalog={catalogWith()} />);
-    expect(command()).toHaveTextContent(/^gobento new myapp$/);
+    expect(screen.getAllByText(/No command yet. Fix the architecture choice/)[0]).toBeVisible();
+    fireEvent.click(screen.getByRole('radio', { name: 'Model-View-Controller' }));
+    expect(screen.getAllByText(/No command yet. Fix the data access choice/)[0]).toBeVisible();
+    fireEvent.click(screen.getByRole('radio', { name: 'sqlc' }));
+    expect(command()).toHaveTextContent(/^gobento new myapp --arch mvc --data sqlc$/);
     fireEvent.change(screen.getByLabelText('Project name'), { target: { value: 'shop' } });
     fireEvent.change(screen.getByLabelText('Module path'), {
       target: { value: 'example.com/shop' },
     });
-    expect(command()).toHaveTextContent(/^gobento new shop --module example\.com\/shop$/);
-    expect(window.location.search).toBe('?name=shop&module=example.com%2Fshop');
+    expect(command()).toHaveTextContent(
+      /^gobento new shop --module example\.com\/shop --arch mvc --data sqlc$/,
+    );
+    expect(window.location.search).toBe('?name=shop&module=example.com%2Fshop&arch=mvc&data=sqlc');
+  });
+
+  it('adds --frontend htmx for htmx and removes it again for None (spec: Choosing a frontend)', () => {
+    window.history.replaceState(null, '', '/configurator/?arch=mvc&data=sqlc');
+    render(<Configurator catalog={catalogWith()} />);
+    const none = screen.getByRole('radio', { name: 'None (API only)' });
+    expect(none).toBeChecked();
+    fireEvent.click(screen.getByRole('radio', { name: 'htmx + templ' }));
+    expect(command()).toHaveTextContent(
+      /^gobento new myapp --arch mvc --data sqlc --frontend htmx$/,
+    );
+    expect(window.location.search).toBe('?arch=mvc&data=sqlc&frontend=htmx');
+    fireEvent.click(screen.getByRole('button', { name: /Advanced/ }));
+    expect(screen.getByLabelText('github.com/a-h/templ')).toHaveValue('v0.3.1100');
+    expect(screen.getByText(/htmx\.org \(htmx \+ templ\)/)).toBeInTheDocument();
+    expect(screen.getByText('Vendored')).toBeInTheDocument();
+    fireEvent.click(none);
+    expect(command()).toHaveTextContent(/^gobento new myapp --arch mvc --data sqlc$/);
+    expect(window.location.search).toBe('?arch=mvc&data=sqlc');
+    expect(screen.queryByText('Vendored')).toBeNull();
+  });
+
+  it('offers Tailwind CSS only with a frontend and adds --css tailwind (spec: CSS framework with a frontend)', () => {
+    window.history.replaceState(null, '', '/configurator/?arch=mvc&data=sqlc');
+    render(<Configurator catalog={catalogWith()} />);
+    const plain = screen.getByRole('radio', { name: 'None (plain CSS)' });
+    const tailwind = screen.getByRole('radio', { name: 'Tailwind CSS' });
+    expect(plain).toBeChecked();
+    expect(tailwind).toBeDisabled();
+    expect(tailwind).toHaveAccessibleDescription(
+      /requires a frontend that provides frontend-build go or vite, such as htmx \+ templ/,
+    );
+    fireEvent.click(screen.getByRole('radio', { name: 'htmx + templ' }));
+    expect(tailwind).toBeEnabled();
+    fireEvent.click(tailwind);
+    expect(command()).toHaveTextContent(
+      /^gobento new myapp --arch mvc --data sqlc --frontend htmx --css tailwind$/,
+    );
+    expect(window.location.search).toBe('?arch=mvc&data=sqlc&frontend=htmx&css=tailwind');
+    const tray = screen.getByRole('list', { name: 'Bento: chosen parts' });
+    expect(within(tray).getAllByRole('listitem')).toHaveLength(6);
+    expect(within(tray).getByText('Tailwind CSS')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Advanced/ }));
+    expect(screen.getByText(/tailwindcss \(Tailwind CSS\)/)).toBeInTheDocument();
+    expect(screen.getByText('On demand')).toBeInTheDocument();
+
+    // Removing the frontend keeps the CSS choice, which is now incompatible.
+    fireEvent.click(screen.getByRole('radio', { name: 'None (API only)' }));
+    expect(tailwind).toBeChecked();
+    expect(screen.getAllByText(/No command yet. Fix the CSS framework choice/)[0]).toBeVisible();
+    expect(window.location.search).toBe('?arch=mvc&data=sqlc&css=tailwind');
+    fireEvent.click(plain);
+    expect(command()).toHaveTextContent(/^gobento new myapp --arch mvc --data sqlc$/);
+    expect(window.location.search).toBe('?arch=mvc&data=sqlc');
   });
 
   it('explains an invalid name next to the field and offers no command', () => {
@@ -41,9 +111,13 @@ describe('Configurator', () => {
   });
 
   it('restores a shared link and reports unknown values', () => {
-    window.history.replaceState(null, '', '/configurator/?name=blog&framework=fiber');
+    window.history.replaceState(
+      null,
+      '',
+      '/configurator/?name=blog&arch=mvc&data=sqlc&framework=fiber',
+    );
     render(<Configurator catalog={catalogWith()} />);
-    expect(command()).toHaveTextContent(/^gobento new blog$/);
+    expect(command()).toHaveTextContent(/^gobento new blog --arch mvc --data sqlc$/);
     const notice = screen.getByRole('status');
     expect(within(notice).getByText(/framework "fiber"/)).toBeInTheDocument();
     fireEvent.click(within(notice).getByRole('button', { name: 'Dismiss' }));
@@ -59,7 +133,9 @@ describe('Configurator', () => {
         requires: { target: 'go', range: '>=1.27' },
       });
     });
+    window.history.replaceState(null, '', '/configurator/?arch=mvc');
     render(<Configurator catalog={strict} />);
+    fireEvent.click(screen.getByRole('radio', { name: 'sqlc' }));
     fireEvent.click(screen.getByRole('button', { name: /Advanced/ }));
     await act(async () => {
       fireEvent.change(screen.getByLabelText('modernc.org/sqlite'), {
@@ -78,5 +154,19 @@ describe('Configurator', () => {
     unmount();
     render(<Configurator catalog={catalogWith()} released />);
     expect(screen.queryByText('Early development · not released yet')).toBeNull();
+  });
+
+  it('leaves the packing stage and its 3D scene alone while the visitor types', () => {
+    render(<Configurator catalog={catalogWith()} />);
+    fireEvent.click(screen.getByRole('radio', { name: 'Model-View-Controller' }));
+    const before = mascotRenders.count;
+    fireEvent.change(screen.getByLabelText('Project name'), { target: { value: 'shop' } });
+    fireEvent.change(screen.getByLabelText('Module path'), {
+      target: { value: 'example.com/shop' },
+    });
+    expect(mascotRenders.count).toBe(before);
+    fireEvent.click(screen.getByRole('radio', { name: 'sqlc' }));
+    expect(mascotRenders.count).toBeGreaterThan(before);
+    expect(command()).toHaveTextContent(/^gobento new shop --module example\.com\/shop/);
   });
 });

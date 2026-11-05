@@ -1,0 +1,7 @@
+name: htmx
+title: htmx + templ
+description: Server-rendered pages written as templ components, made interactive with htmx, and served by the Go binary with no build step.
+provides:
+  # The Go toolchain builds every asset: the templ code and the static
+  # files are committed and embedded, so a CSS framework ships them ready.
+  frontend-build: go

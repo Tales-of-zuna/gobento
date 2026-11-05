@@ -12,6 +12,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { prefersReducedMotion } from '@/components/mascot/support';
 import { SiteMotion } from '@/components/motion/SiteMotion';
 import { PrereleaseNotice } from '@/components/site/PrereleaseNotice';
+import { KIND_IDS } from '@/lib/catalog/kinds';
 import type { Catalog, KindId } from '@/lib/catalog/schema';
 import { buildCommand, type ConfigState } from '@/lib/command/build';
 import { decodeState, defaultState, encodeState } from '@/lib/command/url-state';
@@ -27,6 +28,7 @@ import {
   kindGroups,
   moduleFields,
   trayCells,
+  withChoice,
   withPin,
 } from './view-model';
 
@@ -45,6 +47,11 @@ interface Toast {
 
 const TOAST_MS = 2000;
 const PACK_STEP_MS = 320;
+/**
+ * Tray compartments, one per kind, packed one after another; the mascot's box
+ * has food for the first four only.
+ */
+const KIND_COUNT = KIND_IDS.length;
 
 async function copyText(text: string): Promise<boolean> {
   try {
@@ -62,7 +69,7 @@ export function Configurator({ catalog, released = false }: ConfiguratorProps) {
   const [loaded, setLoaded] = useState(false);
   const [advanced, setAdvanced] = useState(false);
   const [toast, setToast] = useState<Toast | undefined>();
-  const [packCount, setPackCount] = useState(4);
+  const [packCount, setPackCount] = useState<number>(KIND_COUNT);
   const toastTimer = useRef<number | undefined>(undefined);
   const packTimers = useRef<number[]>([]);
 
@@ -89,11 +96,11 @@ export function Configurator({ catalog, released = false }: ConfiguratorProps) {
     packTimers.current.forEach((timer) => window.clearTimeout(timer));
     packTimers.current = [];
     if (prefersReducedMotion(window.matchMedia?.bind(window))) {
-      setPackCount(4);
+      setPackCount(KIND_COUNT);
       return;
     }
     setPackCount(0);
-    for (let n = 1; n <= 4; n++) {
+    for (let n = 1; n <= KIND_COUNT; n++) {
       packTimers.current.push(window.setTimeout(() => setPackCount(n), 250 + n * PACK_STEP_MS));
     }
   }, []);
@@ -121,23 +128,24 @@ export function Configurator({ catalog, released = false }: ConfiguratorProps) {
   const groups = useMemo(() => kindGroups(catalog, state, errors), [catalog, state, errors]);
   const goCards = useMemo(() => goOptions(catalog, state), [catalog, state]);
   const modules = useMemo(() => moduleFields(catalog, state, errors), [catalog, state, errors]);
-  const cells = useMemo(() => trayCells(catalog, state), [catalog, state]);
+  // Keyed on the chosen components only, so typing a name or module path
+  // leaves the packing stage and its 3D scene untouched.
+  const { components } = state;
+  const cells = useMemo(() => trayCells(catalog, { components }), [catalog, components]);
   const nameError = errors.get('name');
   const moduleError = errors.get('module');
   const tree = fileTree(catalog, state, nameError === undefined);
   const command = result.ok ? result.command : undefined;
   const blocked = blockedMessage(catalog, result);
 
-  const packed = [0, 1, 2, 3].map((i) => i < packCount && cells[i]?.value !== undefined) as [
-    boolean,
-    boolean,
-    boolean,
-    boolean,
-  ];
+  const packed = useMemo(
+    () => cells.map((cell, i) => i < packCount && cell.value !== undefined),
+    [packCount, cells],
+  );
 
   const update = (patch: Partial<ConfigState>) => setState((s) => ({ ...s, ...patch }));
-  const choose = (kind: KindId, name: string) =>
-    setState((s) => ({ ...s, components: { ...s.components, [kind]: name } }));
+  const choose = (kind: KindId, value: string) =>
+    setState((s) => ({ ...s, components: withChoice(catalog, s.components, kind, value) }));
 
   const copyCommand = async () => {
     if (command === undefined) return;
@@ -298,7 +306,7 @@ export function Configurator({ catalog, released = false }: ConfiguratorProps) {
                         aria-describedby={`${id}-mod-${i}-hint`}
                       >
                         <span>{module.value}</span>
-                        <span className={styles.tag}>Fixed</span>
+                        <span className={styles.tag}>{module.tag}</span>
                       </div>
                       <p id={`${id}-mod-${i}-hint`} className={styles.hint}>
                         {module.hint}
@@ -373,6 +381,12 @@ export function Configurator({ catalog, released = false }: ConfiguratorProps) {
                 {tree.map((line, i) => (
                   <li key={i} data-depth={line.depth} data-dir={line.dir}>
                     {line.label}
+                    {line.note && (
+                      <>
+                        {' '}
+                        <span className={styles.treeNote}>{line.note}</span>
+                      </>
+                    )}
                   </li>
                 ))}
               </ul>

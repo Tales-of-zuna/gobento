@@ -1,0 +1,47 @@
+// Package domain is the domain layer: the Item entity, the
+// rules every item follows, and the ItemStore port through which items are
+// stored and listed.
+//
+// The package imports no other package of the project. The application
+// service in package app implements ItemStore for the HTTP
+// adapter, package httpapi, and stores items through the
+// ItemStore of the persistence adapter, package persistence.
+package domain
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+)
+
+// Item is an example entity.
+type Item struct {
+	ID        int64     `json:"id"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// ItemStore is the port for storing and listing items.
+type ItemStore interface {
+	// List returns every item, oldest first.
+	List(ctx context.Context) ([]Item, error)
+	// Create stores a new item with the given name and returns it.
+	Create(ctx context.Context, name string) (Item, error)
+}
+
+// ErrInvalidName is wrapped by the errors of ValidateName.
+var ErrInvalidName = errors.New("invalid item name")
+
+// ValidateName checks the rule every item name follows: it is not empty and
+// has no leading or trailing white space.
+func ValidateName(name string) error {
+	switch {
+	case strings.TrimSpace(name) == "":
+		return fmt.Errorf("%w: the name is empty", ErrInvalidName)
+	case strings.TrimSpace(name) != name:
+		return fmt.Errorf("%w: %q has leading or trailing white space", ErrInvalidName, name)
+	}
+	return nil
+}

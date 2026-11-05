@@ -1,0 +1,59 @@
+# Spec Delta
+
+## ADDED Requirements
+
+### Requirement: Domain-driven design architecture
+gobento SHALL ship an architecture `ddd` with a domain layer (the example
+`Item` entity, its rules, and the store port), an application layer (a
+service that runs the item use cases on the domain), and adapter packages for
+the HTTP handlers, the data access, and the database connection. It SHALL use
+the same framework, database, and data-access components as every other
+architecture.
+
+#### Scenario: Layered layout
+- **WHEN** the user runs `gobento new shop --module example.com/shop --arch ddd --framework nethttp --db sqlite --data sqlc`
+- **THEN** the project contains `cmd/shop/main.go`, the package `domain` in `internal/domain`, the package `app` in `internal/app`, the handlers package `httpapi` in `internal/adapters/httpapi`, the store package `persistence` in `internal/adapters/persistence`, and the database package in `internal/adapters/database`
+- **AND** it contains no `internal/models`, `internal/controllers`, `internal/store`, or `internal/items` directory
+
+#### Scenario: Requests go through the application service
+- **WHEN** a `ddd` project is running and receives `POST /items`
+- **THEN** the handlers reach the store only through the application service, which checks the domain rule for item names before storing the item
+
+#### Scenario: Shipped components are reused unchanged in ddd
+- **WHEN** a framework, database, or data-access component is selected with `ddd`
+- **THEN** gobento uses the same component templates it uses with `mvc`, placed in the `ddd` directories with the matching package names and import paths
+
+### Requirement: Domain layers depend inward
+In a `ddd` project, the domain package SHALL import no other package of the
+project, the application package SHALL import only the domain package, and the
+adapter packages SHALL not import the application package; only the entry
+point SHALL connect the adapters to the application service. The handlers
+package SHALL import neither the store nor the database package.
+
+#### Scenario: Domain stays independent
+- **WHEN** a `ddd` project is generated for any supported selection
+- **THEN** the domain package imports no other package of the project, directly or transitively, and the project builds
+
+#### Scenario: Handlers stay independent of storage in ddd
+- **WHEN** a `ddd` project is generated for any supported selection
+- **THEN** the handlers package imports neither the store package nor the database package, directly or transitively
+
+## MODIFIED Requirements
+
+### Requirement: Generated README explains the layout
+The README of a project generated with an architecture SHALL describe the
+directories of that architecture and what each one contains. For
+`vertical-slice` it SHALL also explain how to add another feature. For `ddd`
+it SHALL also explain the direction of dependencies between the layers and how
+to add another aggregate.
+
+#### Scenario: Vertical slice README
+- **WHEN** a project is generated with `--arch vertical-slice`
+- **THEN** its `README.md` lists `internal/items`, `internal/items/itemshttp`, `internal/items/itemsstore`, and `internal/platform/database` with their contents
+- **AND** it describes the steps to add a second feature next to `internal/items`
+
+#### Scenario: DDD README
+- **WHEN** a project is generated with `--arch ddd`
+- **THEN** its `README.md` lists `internal/domain`, `internal/app`, `internal/adapters/httpapi`, `internal/adapters/persistence`, and `internal/adapters/database` with their contents
+- **AND** it states that the adapters and the application layer depend on the domain, and the domain depends on no other layer
+- **AND** it describes the steps to add a second aggregate next to `Item`

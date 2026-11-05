@@ -1,0 +1,14 @@
+## Data access with GORM
+
+The store in `{{.Slots.store.Dir}}` uses [GORM](https://gorm.io/) on the
+connection opened by `{{.Slots.database.Dir}}`. The tables are defined only in
+`{{.Slots.database.Dir}}/{{index .Traits "sql-schema"}}`; the store does not
+call `AutoMigrate`, so the schema file stays the single source of truth. When
+you add a column, add it to the schema and to the struct in
+`{{.Slots.store.Dir}}/store.go`.
+{{- if eq (index .Traits "sql-dialect") "sqlite"}}
+
+GORM talks to SQLite through
+[github.com/libtnb/sqlite](https://github.com/libtnb/sqlite), a pure-Go dialect
+on the same modernc.org/sqlite driver, so the project still builds without cgo.
+{{- end}}

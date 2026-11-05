@@ -1,4 +1,4 @@
 {
   "title": "Concepts",
-  "pages": ["components", "slots-and-contracts", "traits", "version-rules"]
+  "pages": ["components", "slots-and-contracts", "traits", "version-rules", "project-tooling"]
 }

@@ -1,0 +1,8 @@
+- name: Check that the Tailwind CSS is current
+  run: |
+    go run ./internal/tools/tailwindcss --input tailwind.css --output internal/views/static/styles.css --minify
+    if [ -n "$(git status --porcelain -- internal/views/static/styles.css)" ]; then
+      git diff --stat -- internal/views/static/styles.css
+      echo "::error::internal/views/static/styles.css is stale; run make generate and commit the result"
+      exit 1
+    fi

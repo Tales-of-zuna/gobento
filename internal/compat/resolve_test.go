@@ -207,3 +207,107 @@ func TestResolveConstraintOnUnselectedModuleDoesNotApply(t *testing.T) {
 		t.Errorf("example.com/lib = %s, want v1.2.0", v)
 	}
 }
+
+// traitRules has one data component whose drivers depend on the dialect.
+const traitRules = `
+go: { range: ">=1.26 <1.28", default: "1.27" }
+modules:
+  example.com/orm:
+    components: [data/orm]
+    role: library
+    range: ">=v1.0.0 <v2.0.0"
+    default: v1.1.0
+  example.com/litedriver:
+    components: [data/orm]
+    traits: { sql-dialect: [sqlite] }
+    role: library
+    range: ">=v1.0.0 <v2.0.0"
+    default: v1.0.0
+  example.com/pgdriver:
+    components: [data/orm]
+    traits: { sql-dialect: [postgresql] }
+    role: library
+    range: ">=v1.0.0 <v2.0.0"
+    default: v1.2.0
+    constraints:
+      - when: ">=v1.2.0"
+        require: { example.com/orm: ">=v1.1.0" }
+`
+
+// TestResolveTraitConditions covers spec "Modules conditioned on traits".
+func TestResolveTraitConditions(t *testing.T) {
+	t.Parallel()
+
+	rules := mustParseRules(t, traitRules)
+	orm := []string{"data/orm"}
+	tests := []struct {
+		name   string
+		traits map[string]string
+		want   map[string]string
+	}{
+		{
+			// Spec: Dialect-specific driver left out.
+			name:   "sqlite",
+			traits: map[string]string{"sql-dialect": "sqlite", "conn": "database/sql"},
+			want:   map[string]string{"example.com/orm": "v1.1.0", "example.com/litedriver": "v1.0.0"},
+		},
+		{
+			name:   "postgresql",
+			traits: map[string]string{"sql-dialect": "postgresql"},
+			want:   map[string]string{"example.com/orm": "v1.1.0", "example.com/pgdriver": "v1.2.0"},
+		},
+		{
+			name:   "trait not provided",
+			traits: map[string]string{},
+			want:   map[string]string{"example.com/orm": "v1.1.0"},
+		},
+		{
+			name:   "traits not known yet",
+			traits: nil,
+			want: map[string]string{
+				"example.com/orm": "v1.1.0", "example.com/litedriver": "v1.0.0", "example.com/pgdriver": "v1.2.0",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := rules.Resolve(Request{Components: orm, Traits: tt.traits})
+			if err != nil {
+				t.Fatalf("Resolve() error = %v", err)
+			}
+			if v := got.Versions(); !maps.Equal(v, tt.want) {
+				t.Errorf("Versions() = %v, want %v", v, tt.want)
+			}
+		})
+	}
+
+	t.Run("pin of a module whose condition is not met", func(t *testing.T) {
+		t.Parallel()
+
+		// Spec: Pin for a module whose trait condition is not met.
+		_, err := rules.Resolve(Request{
+			Components: orm,
+			Traits:     map[string]string{"sql-dialect": "sqlite"},
+			Pins:       map[string]string{"example.com/pgdriver": "v1.0.0"},
+		})
+		want := "cannot pin example.com/pgdriver, it is only used with sql-dialect postgresql"
+		if !errors.Is(err, ErrNotSelected) || !strings.Contains(err.Error(), want) {
+			t.Errorf("Resolve() error = %v, want ErrNotSelected containing %q", err, want)
+		}
+	})
+
+	t.Run("constraints of unused modules do not apply", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := rules.Resolve(Request{
+			Components: orm,
+			Traits:     map[string]string{"sql-dialect": "sqlite"},
+			Pins:       map[string]string{"example.com/orm": "v1.0.0"},
+		})
+		if err != nil {
+			t.Errorf("Resolve() error = %v, want nil", err)
+		}
+	})
+}

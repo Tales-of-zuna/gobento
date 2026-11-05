@@ -5,6 +5,7 @@ playwright-report/
 test-results/
 pnpm-lock.yaml
 pnpm-workspace.yaml
-# Written by the catalog exporter (internal/tools/catalogexport, `make catalog`).
+# Written by the catalog exporter (internal/tools/catalogexport with
+# internal/catalogjson, `make catalog`).
 src/generated/
 .lighthouseci/

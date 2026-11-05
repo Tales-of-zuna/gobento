@@ -22,19 +22,40 @@ export function prefersReducedMotion(matchMedia: MatchMedia | undefined): boolea
 export type CanvasFactory = () => Pick<HTMLCanvasElement, 'getContext'>;
 
 /**
- * Whether the browser can create a WebGL context (WebGL 2, else WebGL 1).
- * The probe context is released straight away so it does not count against
- * the browser's context limit. Any exception means no.
+ * What the WebGL probe found: no context at all, a context drawn by a
+ * software rasterizer, or one backed by a GPU (or whose renderer is hidden).
  */
-export function supportsWebGL(createCanvas: CanvasFactory): boolean {
+export type WebGLSupport = 'none' | 'software' | 'hardware';
+
+/**
+ * Renderer names of software rasterizers: Chromium's SwiftShader, Mesa's
+ * llvmpipe and softpipe, Windows' Microsoft Basic Render Driver, and any
+ * renderer calling itself software (such as Apple Software Renderer).
+ */
+const SOFTWARE_RENDERER = /swiftshader|llvmpipe|softpipe|basic render driver|\bsoftware\b/i;
+
+/** Whether a WebGL renderer name is a software rasterizer. */
+export function isSoftwareRenderer(renderer: string): boolean {
+  return SOFTWARE_RENDERER.test(renderer);
+}
+
+/**
+ * Probes WebGL (WebGL 2, else WebGL 1) and classifies its renderer from the
+ * unmasked renderer name; a browser that hides the name counts as hardware.
+ * The probe context is released straight away so it does not count against
+ * the browser's context limit. Any exception means none.
+ */
+export function probeWebGL(createCanvas: CanvasFactory): WebGLSupport {
   try {
     const canvas = createCanvas();
     const context = canvas.getContext('webgl2') ?? canvas.getContext('webgl');
-    if (!context) return false;
+    if (!context) return 'none';
+    const debug = context.getExtension('WEBGL_debug_renderer_info');
+    const renderer: unknown = debug ? context.getParameter(debug.UNMASKED_RENDERER_WEBGL) : '';
     context.getExtension('WEBGL_lose_context')?.loseContext();
-    return true;
+    return typeof renderer === 'string' && isSoftwareRenderer(renderer) ? 'software' : 'hardware';
   } catch {
-    return false;
+    return 'none';
   }
 }
 

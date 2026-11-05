@@ -19,18 +19,22 @@ page, skim [Slots and contracts](/docs/concepts/slots-and-contracts) and
   [CONTRIBUTING.md](https://github.com/Tales-of-zuna/gobento/blob/main/CONTRIBUTING.md).
 </Callout>
 
-gobento builds a project from four components, one of each kind:
+gobento builds a project from four components, one of each required kind,
+and at most one frontend, which is optional:
 
-| Kind           | Fills                                                 | First option |
-| -------------- | ----------------------------------------------------- | ------------ |
-| `architecture` | the entry point, the shared types, and the layout     | `mvc`        |
-| `framework`    | the HTTP handlers                                     | `nethttp`    |
-| `database`     | the database connection and schema                    | `sqlite`     |
-| `data`         | the data access that implements the shared interfaces | `sqlc`       |
+| Kind           | Fills                                                 | Example         |
+| -------------- | ----------------------------------------------------- | --------------- |
+| `architecture` | the entry point, the shared types, and the layout     | `mvc`           |
+| `framework`    | the HTTP handlers                                     | `nethttp`       |
+| `database`     | the database connection and schema                    | `sqlite`        |
+| `data`         | the data access that implements the shared interfaces | `sqlc`          |
+| `frontend`     | the web pages, served next to the API (optional)      | `htmx`, `react` |
 
 There is no template per combination. An architecture declares _slots_, each
 of the other components fills a slot, and _traits_ say which components fit
-together.
+together. gobento's _base layer_ adds the [project tooling](/docs/concepts/project-tooling)
+to every selection, and components extend it through
+[contribution points](#contributing-to-the-tooling).
 
 ## Directory layout
 
@@ -42,9 +46,13 @@ only:
     <File name="versions.yaml" />
     <File name="embed.go" />
     <Folder name="<kind>" defaultOpen>
+      <File name="kind.yaml" />
       <Folder name="<name>" defaultOpen>
         <File name="component.yaml" />
         <File name="notes.md.tmpl" />
+        <Folder name="contrib" defaultOpen>
+          <File name="<point>.tmpl" />
+        </Folder>
         <Folder name="files" defaultOpen>
           <Folder name="<slot>" defaultOpen>
             <File name="<file>.tmpl" />
@@ -62,14 +70,26 @@ only:
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `versions.yaml`            | The [version rules](#versions) for every generated project.                                                          |
 | `embed.go`                 | Embeds the catalog into the gobento binary. The only Go file under `components/`.                                    |
+| `kind.yaml`                | Optional, per kind: [contribution points](#points-of-a-kind) that the kind's components include in their templates.  |
 | `component.yaml`           | The [manifest](#the-manifest). The loader validates it.                                                              |
 | `files/<slot>/<file>.tmpl` | Rendered into that slot's directory, for example `files/store/` for the store slot.                                  |
 | `files/root/<file>.tmpl`   | Rendered into the project root, for example `sqlc.yaml`. Root paths are checked for conflicts with other components. |
 | `notes.md.tmpl`            | Optional notes appended to the generated README.                                                                     |
+| `contrib/<point>.tmpl`     | Optional [contributions](#contributing-to-the-tooling) to the points of the base layer or of a kind, one per point.  |
+
+A [scaffolded component](#scaffolded-components) has the same layout; its
+`files/root/<dir>/` holds only the files it lays over the scaffolder's
+output.
+
+The base layer lives next to the kinds, in `components/base/`: `base.yaml`
+(its title and contribution points), `notes.md.tmpl` (the README's
+Development section), and `files/root/` (the tooling files). It has no other
+files and no slots.
 
 For example, `components/framework/nethttp/files/handlers/router.go.tmpl`
 becomes `internal/controllers/router.go`, because `mvc` puts the `handlers`
-slot in `internal/controllers`.
+slot in `internal/controllers`, `internal/items/itemshttp/router.go` with
+`vertical-slice`, and `internal/adapters/httpapi/router.go` with `ddd`.
 
 ### The `.tmpl` rule
 
@@ -97,14 +117,15 @@ catalog, so a mistake fails `make test`.
 `component.yaml` has exactly these keys. Unknown keys are rejected, so a typo
 fails loading instead of being ignored.
 
-| Key           | Kinds             | Meaning                                                                        |
-| ------------- | ----------------- | ------------------------------------------------------------------------------ |
-| `name`        | all               | Must equal the directory name and match `^[a-z][a-z0-9-]*$`.                   |
-| `title`       | all               | Required. A short display name, such as `SQLite`.                              |
-| `description` | all               | Optional. One sentence, shown in the [Components reference](/docs/components). |
-| `slots`       | architecture only | The slots the architecture declares (at least one).                            |
-| `provides`    | all               | Traits this component provides: trait → value.                                 |
-| `requires`    | all               | Traits this component needs: trait → list of accepted values.                  |
+| Key           | Kinds             | Meaning                                                                                                                            |
+| ------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `name`        | all               | Must equal the directory name and match `^[a-z][a-z0-9-]*$`. A frontend may not be called `none`.                                  |
+| `title`       | all               | Required. A short display name, such as `SQLite`.                                                                                  |
+| `description` | all               | Optional. One sentence, shown in the [Components reference](/docs/components).                                                     |
+| `slots`       | architecture only | The slots the architecture declares (at least one).                                                                                |
+| `provides`    | all               | Traits this component provides: trait → value.                                                                                     |
+| `requires`    | all               | Traits this component needs: trait → list of accepted values.                                                                      |
+| `scaffold`    | all               | Optional. An official scaffolder that creates a directory at generation time; see [Scaffolded components](#scaffolded-components). |
 
 Each slot has these keys:
 
@@ -112,8 +133,8 @@ Each slot has these keys:
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `dir`       | Required. The slot's directory, relative to the project root. It is a template over `.Project`, for example `cmd/{{.Project.Name}}`.                                              |
 | `package`   | Optional. The Go package name. It defaults to the last element of the rendered `dir`; set it when that is not a valid package name, as the entry point does with `package: main`. |
-| `filled_by` | Required. The kind that fills the slot: `architecture`, `framework`, `database`, or `data`.                                                                                       |
-| `required`  | Optional, default `false`. The selection must fill the slot.                                                                                                                      |
+| `filled_by` | Required. The kind that fills the slot: `architecture`, `framework`, `database`, `data`, `frontend`, or `css`.                                                                    |
+| `required`  | Optional, default `false`. The selection must fill the slot. A slot of an optional kind, such as `web`, is not required.                                                          |
 
 Slot names match `^[a-z][a-z0-9_]*$`, because templates use them as field
 names (`.Slots.handlers`), and `root` is reserved.
@@ -133,6 +154,7 @@ slots:
   handlers: { dir: internal/controllers, filled_by: framework, required: true }
   database: { dir: internal/database, filled_by: database, required: true }
   store: { dir: internal/store, filled_by: data, required: true }
+  web: { dir: internal/views, filled_by: frontend }
 ```
 
 A component does not list the slots it fills. They follow from its layout: a
@@ -155,7 +177,7 @@ and `sqlc` accepts it with:
 
 ```yaml title="components/data/sqlc/component.yaml"
 requires:
-  sql-dialect: [sqlite]
+  sql-dialect: [sqlite, postgresql]
   conn: [database/sql]
   sql-schema: [schema.sql]
 ```
@@ -164,8 +186,18 @@ A selection is refused if a required trait is missing or has a value the
 component does not accept, or if two components provide different values for
 the same trait. Traits also carry the few facts one component needs about
 another's files: `sqlc.yaml` finds the schema at
-`{{.Slots.database.Dir}}/{{index .Traits "sql-schema"}}`. See
-[Traits](/docs/concepts/traits).
+`{{.Slots.database.Dir}}/{{index .Traits "sql-schema"}}`. A component that
+accepts several values of a trait may branch on the value, as sqlc does for
+its query placeholder with `{{if eq (index .Traits "sql-dialect") "postgresql"}}`,
+but never on another component's name. See [Traits](/docs/concepts/traits).
+
+A component may accept several values of a trait and choose its code from the
+value, never from the name of another component. `gorm` requires
+`sql-dialect: [sqlite, postgresql]` and picks its GORM dialect in
+`store.go.tmpl` with `{{if eq (index .Traits "sql-dialect") "postgresql"}}`,
+so a new database that provides one of those values works with it unchanged.
+Test every branch: `internal/compose` composes `gorm` with a test-only
+PostgreSQL database, and the integration test builds that project too.
 
 ## Slots and contracts
 
@@ -173,7 +205,11 @@ Each slot is one directory, which means one Go package, and it has exactly one
 owner. Two components can therefore never write into the same package or the
 same file, and their identifiers cannot clash. The owner may put its own
 subpackages below the slot directory; sqlc's generated code lives in
-`internal/store/sqlcgen`, for example. Other slots never import them.
+`internal/store/sqlcgen`, for example. Other slots never import them, unless
+the contract names them: every database component provides a `dbtest`
+subpackage whose `Open(t)` gives a test an empty database (and skips it when
+the database needs a server that is not configured), so data-access
+components test against whichever database is selected.
 
 The architecture owns the entry point and the contract: the shared types and
 the functions each slot must provide. For `mvc`, see the
@@ -182,21 +218,51 @@ The Go compiler checks the contract in every generated project, and gobento's
 integration test checks that the handlers package does not depend on the
 database or store packages.
 
+All framework components serve the same API. Each one ships the same
+`files/handlers/router_test.go.tmpl`, which tests the API only through
+`NewRouter` and `net/http/httptest`, so it works with any router. Copy it
+unchanged from an existing framework: a unit test fails if the copies differ.
+To change the API, change every framework and the shared test together.
+
 ## Templates
 
 Templates use Go's [`text/template`](https://pkg.go.dev/text/template). Every
 template, including slot directories and notes, receives the same data:
 
-| Field                   | Example                                    | Meaning                                      |
-| ----------------------- | ------------------------------------------ | -------------------------------------------- |
-| `.Project.Name`         | `shop`                                     | The project name                             |
-| `.Project.Module`       | `example.com/shop`                         | The module path                              |
-| `.Project.GoVersion`    | `1.27.0`                                   | The `go` directive of the generated `go.mod` |
-| `.Slots.<name>.Dir`     | `internal/controllers`                     | The slot's directory                         |
-| `.Slots.<name>.Package` | `controllers`                              | The slot's package name                      |
-| `.Slots.<name>.Import`  | `example.com/shop/internal/controllers`    | The slot's import path                       |
-| `.Traits`               | `{{index .Traits "sql-dialect"}}`          | The traits of the selection                  |
-| `.Versions`             | `{{index .Versions "modernc.org/sqlite"}}` | The chosen version of each module            |
+| Field                   | Example                                    | Meaning                                                                                                                                                      |
+| ----------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `.Project.Name`         | `shop`                                     | The project name                                                                                                                                             |
+| `.Project.Module`       | `example.com/shop`                         | The module path                                                                                                                                              |
+| `.Project.GoVersion`    | `1.27.0`                                   | The `go` directive of the generated `go.mod`                                                                                                                 |
+| `.Slots.<name>.Dir`     | `internal/controllers`                     | The slot's directory                                                                                                                                         |
+| `.Slots.<name>.Package` | `controllers`                              | The slot's package name                                                                                                                                      |
+| `.Slots.<name>.Import`  | `example.com/shop/internal/controllers`    | The slot's import path                                                                                                                                       |
+| `.Slots.<name>.Filled`  | `{{if .Slots.web.Filled}}`                 | Whether a selected component fills the slot                                                                                                                  |
+| `.APIPrefix`            | `/api`                                     | Where the API router is served: `""` without a frontend, `/api` with one                                                                                     |
+| `.Traits`               | `{{index .Traits "sql-dialect"}}`          | The traits of the selection                                                                                                                                  |
+| `.Versions`             | `{{index .Versions "modernc.org/sqlite"}}` | The chosen version of each module                                                                                                                            |
+| `.Assets`               | `{{index .Assets "htmx.org"}}`             | The version of each [vendored asset](/docs/concepts/version-rules#vendored-assets) of the selection                                                          |
+| `.Binaries`             | `{{.Binaries.tailwindcss.Version}}`        | Each [downloaded binary](/docs/concepts/version-rules#downloaded-binaries) of the selection: `.Version` and `.Platforms` (`.OS`, `.Arch`, `.URL`, `.SHA256`) |
+| `.Node`                 | `{{.Node}}`                                | The Node.js release line of the generated tooling, such as `26`; see [Node.js and npm](/docs/concepts/version-rules#nodejs-and-npm)                          |
+| `.NPM`                  | `{{index .NPM "create-vite"}}`             | The version of each npm package the selected components use                                                                                                  |
+| `.Images`               | `{{.Images.postgres}}`                     | Container images, as `image:tag[@digest]`                                                                                                                    |
+| `.Actions`              | `{{index .Actions "actions/checkout"}}`    | GitHub Actions, as `owner/repo@<sha> # <version>`                                                                                                            |
+| `.Tools`                | `{{index .Tools "golangci-lint"}}`         | Tool versions                                                                                                                                                |
+
+`.Images`, `.Actions`, and `.Tools` come from the
+[tooling section](/docs/concepts/version-rules#tooling-versions) of the rules
+file. Every template may also use two functions: `indent N TEXT` puts `N`
+spaces before every non-empty line, and `prefix P TEXT` puts `P` there (for
+example `"\t"`). The templates and notes of the base layer and of every
+component, but not contribution templates, may also include
+[contribution points](#contributing-to-the-tooling) with `contrib` and
+`contribs`.
+
+A file template that renders to nothing but whitespace produces **no file**.
+Use it for a file that only some selections need, guarded by a trait:
+`css/tailwind` wraps `tailwind.css.tmpl` in
+`{{if eq (index .Traits "frontend-build") "go"}}...{{end}}`, so a Vite
+frontend, whose build compiles Tailwind itself, gets no such file.
 
 This data shape is the contributor API, and the golden test covers it. Use
 `index` for keys that contain `-`, `.`, or `/`. A missing key is an error, not
@@ -220,8 +286,14 @@ go run github.com/sqlc-dev/sqlc/cmd/sqlc@{{index .Versions "github.com/sqlc-dev/
 
 ### Rules for templates
 
-- **No version numbers.** Versions come from `.Versions` and the rules file,
-  never from a template.
+- **No version numbers.** Versions come from `.Versions`, `.Assets`,
+  `.Binaries`, `.NPM`, `.Node`, and the rules file, never from a template. A
+  vendored file, such as htmx, contains its own version, which is fine: it is
+  shipped unmodified. So does generated output that a component ships, such
+  as sqlc's code or the compiled Tailwind stylesheet, which CI regenerates
+  with the pinned version.
+- **Write API paths with `.APIPrefix`.** In notes and READMEs, write
+  `{{.APIPrefix}}/items`, so the paths are right with and without a frontend.
 - **Implement your slot's contract.** Provide exactly the functions and types
   the architecture expects for your slot (see the
   [contract table](/docs/concepts/slots-and-contracts#architecture-owned-contracts)).
@@ -229,6 +301,10 @@ go run github.com/sqlc-dev/sqlc/cmd/sqlc@{{index .Versions "github.com/sqlc-dev/
   not import the database or store packages, directly or transitively.
 - **Use slot data, not directories.** Write `.Slots.store.Import`, never a
   hard-coded path, so your component works with any architecture.
+- **Do not reuse package names as local names.** The contract package may be
+  called `models` or `items`, depending on the architecture, so a variable
+  named `items` would shadow it. Name local identifiers after their role,
+  such as `list`, `got`, or `store`.
 - **Produce valid, formatted Go.** Every `.go` output is run through
   `go/format`. A failure is reported as a composition error naming your
   component and the file. Generated files must also have no unused imports.
@@ -239,14 +315,115 @@ go run github.com/sqlc-dev/sqlc/cmd/sqlc@{{index .Versions "github.com/sqlc-dev/
 
 If users need to know something about your component, add `notes.md.tmpl`.
 Every component's rendered notes are appended to the root `README.md`, in kind
-order. `nethttp` documents the API and its error responses, `sqlite` explains
-how the schema is applied, and `sqlc` shows how to regenerate its code.
+order. `nethttp` documents the API and its error responses, each database
+starts with a `## Database` section (the architecture's README links to it)
+that explains the default `DATABASE_URL`, the tests, and how the schema is
+applied, `sqlc` shows how to regenerate its code, and `gorm` explains that the
+schema file, not `AutoMigrate`, defines the tables.
+
+### Contributing to the tooling
+
+The base layer owns the tooling files (`Makefile`, `Dockerfile`,
+`.dockerignore`, `.github/workflows/ci.yml`, `.github/dependabot.yml`, and
+`.golangci.yml`); a component that produces one of them is rejected like any
+other path conflict. When your component needs something in them, write a
+contribution for one of the points that `components/base/base.yaml` declares:
+
+| Point            | Inserted                                                                      | Format                                                |
+| ---------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `make`           | In the `Makefile`, after the variables                                        | Make lines, for example `DOCKER_RUN_FLAGS += ...`     |
+| `make-build`     | In the recipe of `make build`, before `go build`                              | One command per line, without the tab                 |
+| `make-generate`  | As the recipe of `make generate` (the target exists only with one)            | One command per line, without the tab                 |
+| `ci-services`    | Under `services:` of the CI job                                               | YAML mapping entries                                  |
+| `ci-env`         | Under `env:` of the CI job                                                    | YAML mapping entries                                  |
+| `ci-steps`       | In the CI job, after Go is set up, before the tidy check and build            | YAML sequence entries (`- name: ...`)                 |
+| `docker-stages`  | In the Dockerfile, before the Go build stage                                  | Whole stages, each starting with `FROM ... AS <name>` |
+| `docker-build`   | In the Dockerfile's build stage, after the sources are copied                 | Dockerfile instructions                               |
+| `docker-runtime` | In the runtime stage, before `USER` (no shell there, so no `RUN`)             | Dockerfile instructions                               |
+| `dockerignore`   | At the end of `.dockerignore`                                                 | Patterns                                              |
+| `dependabot`     | In the `updates:` list of `.github/dependabot.yml`                            | YAML sequence entries (`- package-ecosystem: ...`)    |
+| `gitignore`      | At the end of the root `.gitignore` (the architecture's template includes it) | Patterns                                              |
+| `readme-docker`  | In the README's Docker section                                                | Markdown                                              |
+
+Write the contribution at column zero; the base templates indent it. It is
+rendered with the same data as every template, trimmed of leading and trailing
+newlines, and joined with the other components' contributions to that point in
+kind order. Like templates, it may depend on traits, never on which other
+component is selected. PostgreSQL, for example, adds its CI service:
+
+```yaml title="components/database/postgres/contrib/ci-services.tmpl"
+postgres:
+  image: { { .Images.postgres } }
+  env:
+    POSTGRES_PASSWORD: postgres
+  ports:
+    - 5432:5432
+```
+
+A contribution to a point that neither `base.yaml` nor a `kind.yaml`
+declares fails when the catalog loads, listing the declared points. When no
+point fits (a new kind might need, say, a step in a job of its own), add one:
+an entry with a description in `base.yaml` and one `{{contrib "<point>"}}` in
+the base template where it belongs. Other components need no change.
+
+A contribution that renders to whitespace counts as none, so guard a
+contribution that only some selections need with a trait. A non-empty
+contribution must reach a template: composition fails when no part of the
+selection declares its point, or when no rendered template includes it.
+
+`{{contrib "<point>"}}` returns the contributions to the point joined with
+newlines, or `""` when no selected component contributes, so wrap it in
+`{{with contrib "<point>"}}...{{end}}` to add the surrounding text only when
+there is some. `{{contribs "<point>"}}` returns them as a list, one entry
+per contributing component, for example to separate Markdown paragraphs
+with blank lines: the base layer's README notes render `readme-docker` with
+`{{range contribs "readme-docker"}}`. Both functions name a declared point;
+an undeclared one is a composition error. Contribution templates cannot use
+them, so a contribution never includes another.
+
+#### Points of a kind
+
+A kind can declare points too, for the templates of its components, in
+`components/<kind>/kind.yaml` (same format as `base.yaml`'s
+`contributions:`). Components of other kinds contribute to them like to the
+base layer's. No two kinds, and no kind and the base layer, may declare the
+same point.
+
+### Contribution points in component files
+
+The point is usually in a base template, but a component's own files and
+notes may include one too, so that one component can extend a file another
+component owns without producing it. A component's templates and notes may
+include the points of the base layer and of its own kind (its
+`kind.yaml`); naming another kind's point fails composition, and the base
+layer's templates include only its own points.
+
+The frontend kind declares the points a
+[CSS framework](/docs/concepts/slots-and-contracts#css-frameworks) fills,
+one set per build system (the [trait](/docs/concepts/traits)
+`frontend-build`):
+
+| Point                 | Build  | Inserted                                                                                               | Format                                                              |
+| --------------------- | ------ | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| `stylesheet`          | `go`   | As htmx's `static/styles.css`, in place of its plain CSS                                               | The complete stylesheet                                             |
+| `vite-config-imports` | `vite` | In `frontend/vite.config.ts`, after the frontend's own imports                                         | Import lines, such as `import tailwindcss from '@tailwindcss/vite'` |
+| `vite-plugins`        | `vite` | In the `plugins` array of `frontend/vite.config.ts`, after the framework's plugin                      | One entry per line with a trailing comma, such as `tailwindcss(),`  |
+| `css-imports`         | `vite` | At the top of the stylesheet the entry imports (`index.css`, `style.css`, `app.css`), before its rules | CSS, such as `@import "tailwindcss";`                               |
+
+A CSS framework requires `frontend-build` with every build it supports
+(Tailwind CSS: `[go, vite]`) and guards each contribution with the same
+trait, so a contribution to a point of the other build renders empty and is
+ignored. The npm packages it needs in a Vite frontend are not a point: list
+them in the rules file with the role `dev-dependency` (see
+[Scaffolded components](#scaffolded-components)), and generation installs
+them into the scaffolded frontend.
 
 ### Composition errors
 
 Composition reports every problem at once: unknown or unfilled slots, slots
 with two owners or an owner of the wrong kind, two slots in one directory,
-file conflicts, root files inside a slot directory, components that produce
+file conflicts, root files inside a slot directory, files written into a
+slot nested inside their own slot's directory, components that produce
 `go.mod` or `go.sum`, unmet traits, and templates that fail to render. See
 [When composition fails](/docs/concepts/slots-and-contracts#when-composition-fails).
 
@@ -275,6 +452,13 @@ are in the [Components reference](/docs/components).
 
 - **`components`** lists every component that uses the module, as
   `<kind>/<name>`.
+- **`traits`** (optional) limits the module to selections that provide one of
+  the listed values for each listed trait, such as
+  `traits: { sql-dialect: [postgresql] }` for a driver only one dialect needs.
+  Otherwise the module is left out of `go.mod` and cannot be pinned. Prefer
+  this over listing a module that some selections never import: gobento fails
+  a generation in which a chosen library is not imported. See
+  [Trait conditions](/docs/concepts/version-rules#trait-conditions).
 - **`role`** is `library` for modules required in the generated `go.mod`;
   users may choose any version inside the range with `--pin`. It is `tool`
   for tools, such as sqlc, that are run with `go run` and never added to
@@ -287,6 +471,28 @@ are in the [Components reference](/docs/components).
   and then require `go` or another module to be inside a range, such as a
   minimum Go version.
 
+A file that your component ships unmodified from an upstream release, such as
+a JavaScript library, is not a module: record it under `assets` with its
+`version`, the release archive as `source`, the file's `path` in it, and its
+`sha256`. See [Vendored assets](/docs/concepts/version-rules#vendored-assets).
+Asset versions are fixed per gobento release, and the tests compare the
+checksum with your file and with the upstream one.
+
+A program that generated projects download on demand, one file per platform,
+such as the standalone Tailwind CLI, goes under `binaries`, with its
+`version`, the release's `checksums` file, and a `url` and `sha256` per
+`GOOS/GOARCH` platform. See
+[Downloaded binaries](/docs/concepts/version-rules#downloaded-binaries). Take
+every checksum from the release's checksum file; the tests compare them with
+it.
+
+An npm package your component uses, such as a scaffolder or a package a CSS
+framework adds to a Vite frontend, goes under `npm` with its `components`,
+its `role` (`scaffolder`, `dependency`, or `dev-dependency`), and one exact
+`version`; see
+[Scaffolded components](#scaffolded-components) and
+[Node.js and npm](/docs/concepts/version-rules#nodejs-and-npm).
+
 gobento rejects the generation if `go mod tidy` would raise any chosen version
 or the `go` directive, and reports the missing constraint. See
 [Version rules](/docs/concepts/version-rules) for the full format.
@@ -296,8 +502,9 @@ or the `go` directive, and reports the missing constraint. See
 1. Change `default` (and `range`, if needed) in `versions.yaml`.
 2. Run `make catalog` so the website shows the new values (`go test` fails
    until you do), then `make test` and
-   `go test ./internal/generate -run TestIntegration` (it needs network
-   access). The integration test generates every supported selection with the
+   `go test -timeout 60m ./internal/generate -run TestIntegration` (it needs network
+   access). The integration test generates every supported selection without
+   a frontend, and a pairwise covering set of those with one, with the
    defaults and with the range floors.
 3. If a template's output changes, update the golden files with
    `go test ./internal/compose -run TestGolden -update` and review the diff.
@@ -343,7 +550,9 @@ use files close them in `t.Cleanup`, because Windows cannot remove open files.
 
 ### Add its versions
 
-Add the modules it uses to `versions.yaml`, with `components` naming it.
+Add the modules it uses to `versions.yaml`, with `components` naming it, and
+`traits` for modules that only some trait values need. A scaffolder or
+another npm package goes under `npm`.
 
 </Step>
 <Step>
@@ -351,8 +560,11 @@ Add the modules it uses to `versions.yaml`, with `components` naming it.
 ### Regenerate the website catalog and test
 
 Run `make catalog`, then `make lint test` and the integration test. Every
-supported selection containing the new component is generated, built,
-vetted, and tested.
+supported selection without a frontend that contains the new component is
+generated, built, vetted, and tested; a new frontend is built with every
+architecture, framework, database, and data access, and every pair of them.
+`go run ./cmd/gobento list` shows the new component and its selections without
+any change to the CLI.
 
 </Step>
 </Steps>
@@ -380,10 +592,23 @@ make test
 
 ### Golden test
 
-The golden test composes the reference selection and compares the result
-with `internal/compose/testdata/golden/`. If you changed the reference
-selection's output on purpose, regenerate the golden files and review the
-diff:
+The golden tests compose the reference selection of each architecture and
+compare the whole project with `internal/compose/testdata/golden/` (`mvc`),
+`internal/compose/testdata/golden-vertical-slice/` (`vertical-slice`), and
+`internal/compose/testdata/golden-ddd/` (`ddd`), and the `mvc` one again with
+htmx in `internal/compose/testdata/golden-htmx/`, which shows how the
+architecture mounts a frontend, and with React in
+`internal/compose/testdata/golden-react/`, which shows the frontend tooling
+(the scaffolder's files are not part of it: composition does not run it). They also compose, for every component, the
+first supported selection that contains it (with `mvc`, unless the component
+is an architecture), and compare the files that component contributes with
+`internal/compose/testdata/golden-components/<kind>/<name>/`; its
+contributions to the tooling are there too, as `contrib/<point>` files. The
+base layer's own files are part of every full golden. Another test
+checks that every framework's files are the same under every architecture
+apart from package names and import paths. A new component needs its golden
+files, and an intended output change needs them refreshed. Regenerate them
+and review the diff:
 
 ```sh
 go test ./internal/compose -run TestGolden -update
@@ -394,19 +619,48 @@ go test ./internal/compose -run TestGolden -update
 
 ### Integration test
 
-The integration test in `internal/generate` generates every supported
-selection twice, once with the default versions and once with the range
-floors. For each project it runs `go build`, `go vet`, `go test`, `gofmt -l`,
-and `go mod verify`, checks the `go.mod` pins, and checks with `go list -deps`
-that the handlers package does not import the database or store packages.
+The integration test in `internal/generate` generates the selections that
+`compose.Coverage` returns twice, once with the default versions and once
+with the range floors: every supported selection without a frontend, and of
+those with a frontend, a set in which every pair of components that can
+appear together with a frontend appears together at least once. Backend
+combinations are thus all proven, and the frontend part grows with the
+largest pair product instead of multiplying the matrix. For each project it
+runs `go build`, `go vet`, `go test`, `gofmt -l`, `go mod verify`, and
+`go build` again with `CGO_ENABLED=0` (generated projects must build without
+a C compiler), checks the `go.mod` pins, and checks with `go list -deps` that
+the handlers package, and the web package when there is one, do not import
+the database or store packages, and that the web package imports no
+framework module. With the default versions it also checks the tooling: it
+runs actionlint on `.github/workflows/ci.yml` and golangci-lint with the
+generated `.golangci.yml`, and, where `make` is installed, `make`,
+`make build`, and `make lint`; with htmx (`frontend-build: go`), it also
+runs `go generate` in the web package and checks that the shipped templ code
+is unchanged. With a scaffolded frontend, it checks that gobento's files
+survived the scaffolder and that `frontend/` has `package.json` and
+`package-lock.json` but no `node_modules`; with the default versions, it then
+runs what the generated CI workflow runs (`npm ci`,
+`npm run --if-present lint`, `npm run --if-present check`, and
+`npm run build`) and checks that the build is in the web package's
+`dist/app/` before the Go checks. The floors variant leaves the frontend
+unbuilt, so the placeholder page is built and tested too.
+`TestIntegrationDocker` builds the images of one SQLite and one PostgreSQL
+project and of a SQLite project with htmx, and runs the SQLite ones; it is
+skipped without a Docker daemon that runs Linux containers.
 
-It needs network access and is skipped with `-short`. Run it with:
+It needs network access and is skipped with `-short`. The React, Vue, and
+Svelte selections also need Node.js v22.12.0 or newer, npm, and access to the
+npm registry. Run it with:
 
 ```sh
 make test-all
 ```
 
-CI runs it on Linux, macOS, and Windows.
+CI runs it on Linux, macOS, and Windows, with Node.js 26 on Linux and
+Windows and the floor of the Node.js range, 22.12.0, on macOS. On Linux it also runs a PostgreSQL
+service and sets `TEST_DATABASE_URL`, so tests that use a database server run
+for real there instead of being skipped; see `CONTRIBUTING.md` to do the same
+locally.
 
 </Step>
 </Steps>
@@ -418,8 +672,237 @@ during generation. After changing `queries.sql` or the schema, regenerate it
 in a generated project with the pinned sqlc version (the command is in the
 generated README), copy the files in `internal/store/sqlcgen/` back to
 `components/data/sqlc/files/store/sqlcgen/` with the `.tmpl` suffix, and
-update the golden files. CI regenerates the code with the pinned sqlc inside a
-reference project and fails if any file changes.
+update the golden files. The output differs between dialects only where the
+templates branch on `sql-dialect` (the placeholder), so regenerate in one
+project per database (`--db sqlite` and `--db postgres`) and keep those
+branches in sync. CI's `sqlc-fresh` job does the same for each database and
+fails if any file changes.
+
+### Generated code: templ
+
+The `htmx` frontend ships the Go code templ generates from `pages.templ`
+(`pages_templ.go`). After changing `pages.templ.tmpl`, generate a project with
+`--frontend htmx`, run `go generate ./...` in it (the `//go:generate` line in
+the web package runs the pinned templ), and copy `pages_templ.go` back to
+`components/frontend/htmx/files/web/pages_templ.go.tmpl`, replacing the
+package name, the models import and package, and `/api` with their template
+fields (`{{.Slots.web.Package}}`, `{{.Slots.models.Import}}`,
+`{{.Slots.models.Package}}`, `{{.APIPrefix}}`). The page title is the Go
+constant `title` in `handler.go`, not text in `pages.templ`, so that Tailwind,
+which scans the `.templ` files for class names, never sees the project name. Keep template fields off lines with templ expressions, so
+the line and column numbers templ records stay right. Then update the golden
+files. CI's `templ-fresh` job regenerates the code in a reference project and
+fails if any file changes. When you bump templ in `versions.yaml`, regenerate
+in the same way.
+
+The markup is the same with and without a CSS framework, so a change to
+`pages.templ` also changes what Tailwind compiles: regenerate the Tailwind
+output too (next section).
+
+### Generated code: Tailwind CSS
+
+`css/tailwind` ships, as its `stylesheet` contribution
+(`contrib/stylesheet.tmpl`), the stylesheet the pinned Tailwind CLI compiles
+from `tailwind.css.tmpl` and htmx's `pages.templ`. After changing either, or
+the Tailwind version in `versions.yaml` (`binaries.tailwindcss`, which moves
+together with the `npm` entries `tailwindcss` and `@tailwindcss/vite`),
+generate a project with
+`--frontend htmx --css tailwind`, run
+`go run ./internal/tools/tailwindcss --input tailwind.css --output internal/views/static/styles.css --minify`
+in it, and copy `internal/views/static/styles.css` into
+`contrib/stylesheet.tmpl`, between the `{{if eq (index .Traits "frontend-build") "go"}}`
+line and the `{{end}}` line. The output must not contain `{{`. It is the same
+for every architecture and project name, because `tailwind.css` makes
+Tailwind scan only the web slot's `.templ` files. CI's `templ-fresh` job
+(its `tailwind` leg) and the integration test regenerate it and fail if
+anything changes.
+
+To update htmx, replace `files/web/static/htmx.min.js.tmpl` with
+`dist/htmx.min.js` of the new release, and change `version`, `source`, and
+`sha256` of the `htmx.org` asset. The file is rendered as a template, so it
+must not contain `{{`; the checksum test fails otherwise.
+
+## Supporting frontends in an architecture
+
+A frontend fills the `web` slot, so an architecture supports frontends by
+declaring that slot and wiring it. Without these steps, selections with a
+frontend are simply not supported with it. Every shipped architecture does the
+following; copy them:
+
+1. **Declare the slot.** Add an optional slot filled by the frontend kind,
+   for example `web: { dir: internal/web, filled_by: frontend }`. Put it
+   where pages and static files belong in your layout, outside any feature
+   directory if the pages are shared.
+2. **Build the handler in `newHandler`.** In the entry point, pass
+   `newHandler(store.New(db))` to the server, and define it with
+   `{{if .Slots.web.Filled}}`: with a frontend, an `http.ServeMux` that sends
+   `{{.APIPrefix}}/` to
+   `http.StripPrefix("{{.APIPrefix}}", handlers.NewRouter(itemStore))` and
+   `/` to `web.NewHandler(itemStore)`; without one, `NewRouter(itemStore)`.
+   Import the web package only inside the same condition. With an
+   application layer, as in `ddd`, pass the application service instead
+   (`newHandler(app.NewItemService(store.New(db)))`), so that the web pages
+   go through the same use cases as the API.
+3. **Ship the routing test.** Add `files/entry/main_test.go.tmpl`, which calls
+   `newHandler` with an in-memory `ItemStore` and checks
+   `{{.APIPrefix}}/health` and `{{.APIPrefix}}/items`, plus `/` returning HTML
+   when the slot is filled. Copy it from `mvc` (or from `ddd`, which runs it
+   through the application service).
+4. **Document it.** In the README template, add the web directory to the
+   layout when the slot is filled, tell the reader to open
+   `http://localhost:8080/`, and write the `curl` paths as
+   `localhost:8080{{.APIPrefix}}/items`.
+5. **Keep the contract.** The web slot's contract is
+   `func NewHandler(items models.ItemStore) http.Handler`, with the same
+   `models` package as the handlers. If your architecture's contract package
+   differs, the frontend still only needs an `ItemStore` and an `Item` with
+   `ID`, `Name`, and `CreatedAt`.
+
+Then run `go test ./internal/compose -run TestGolden -update`; the
+frontend's golden test and `TestShippedFrontendMount` check the wiring.
+
+## Adding a frontend
+
+A frontend fills the `web` slot and provides
+`func NewHandler(items models.ItemStore) http.Handler`, serving `/` and every
+other path outside `{{.APIPrefix}}/`. Use only the standard library's
+`net/http` for routing, so it works with every framework, and reach the data
+only through `ItemStore`. Serve its static files from the binary with
+`//go:embed`, so the project works offline, and record any vendored file as an
+[asset](#versions). Ship `*_test.go.tmpl` tests against a fake `ItemStore`, as
+`htmx` does.
+
+Every frontend provides the trait `frontend-build`: `go` when the Go
+toolchain alone builds its assets, as with htmx, or `vite` when Vite builds
+it from Node.js sources. CSS frameworks require it, so they are offered with
+your frontend only if it provides a value they support, and they contribute
+only to the points of that build system. Include the points of
+`components/frontend/kind.yaml` for your build where they belong: a `go`
+frontend serves the `stylesheet` contribution as its stylesheet, or its own
+CSS when there is none; a `vite` frontend inserts `vite-config-imports` at
+the top of its Vite configuration, `vite-plugins` in its `plugins` array,
+and `css-imports` at the top of its main stylesheet. A frontend that leaves
+out a point makes the CSS framework's selections with it unsupported,
+because a contribution that reaches no template fails composition.
+
+`TestViteHook` in `internal/compose` checks what Tailwind CSS contributes to
+the shipped React, Vue, and Svelte frontends, and `TestViteHookWithoutPoints`
+that a Vite frontend without the points fails composition with Tailwind CSS.
+
+### A Vite frontend
+
+The React, Vue, and Svelte frontends are [scaffolded](#scaffolded-components)
+by `create-vite` into `frontend/` and built with Vite. To add another
+framework that `create-vite` has a TypeScript template for, copy one of them
+and change only what is the framework's:
+
+- **The manifest**: `title`, `description`, `provides: { frontend-build: vite }`,
+  and `scaffold` with `with: create-vite`, `template: <name>-ts`,
+  `dir: frontend`, and the demo files the page leaves unused in `remove`.
+  Add the component to `components` of `create-vite` in `versions.yaml`.
+- **The page** in `files/root/frontend/src/` (`App.tsx`, `App.vue`,
+  `App.svelte`): it lists the items from `GET {{.APIPrefix}}/items`, adds one
+  with `POST {{.APIPrefix}}/items` without a reload, clears the field, and
+  shows an API error as a message. Overlays are Go templates, so write no
+  `{{` outside template actions (Vue uses `v-text` instead of `{{ }}`).
+- **The stylesheet** keeps the name the scaffolded entry imports
+  (`index.css`, `style.css`, `app.css`), so the entry and `index.html` stay
+  the scaffolder's. Its content is the same in every Vite frontend.
+- **`vite.config.ts`** differs only in the framework plugin's import and
+  call. It writes the build to `../{{.Slots.web.Dir}}/dist/app` with
+  `emptyOutDir: true`, proxies `{{.APIPrefix}}` to `http://localhost:8080`,
+  and includes the `vite-config-imports` and `vite-plugins` points. The
+  stylesheet includes `css-imports` at its top.
+
+Everything else is the same text in every Vite frontend: `src/api.ts`, the
+web package (`files/web/handler.go.tmpl`, its test, and
+`files/web/dist/dot-gitignore.tmpl`), `notes.md.tmpl`, and every
+contribution (`make`, `make-build`, `ci-steps`, `docker-stages`,
+`docker-build`, `dockerignore`, `dependabot`, `readme-docker`).
+`TestViteFrontendsAlike` in `internal/catalog` keeps them alike: it fails
+when a shared file or contribution differs from React's, when the
+stylesheets differ, or when a frontend owns a different set of files. The
+web package is described in
+[Serving a Vite build](/docs/concepts/slots-and-contracts#serving-a-vite-build).
+
+## Adding a CSS framework
+
+A CSS framework (kind `css`) has no slot. It requires `frontend-build` with
+the build systems it supports, provides `css: <name>`, and reaches the
+frontend only through the frontend kind's points, guarded by
+`{{if eq (index .Traits "frontend-build") "go"}}` (or `"vite"`). Files that
+only one build needs, such as `tailwind.css` and the Tailwind runner, are
+root files wrapped in the same condition, so they render empty, and are left
+out, for the other one. Like every component, it may contribute to the base
+layer's points, for example a `make generate` command and a CI step that
+checks its generated output. Tailwind CSS does both only for htmx; with a
+Vite frontend, it contributes the plugin and the stylesheet's import, and
+its npm packages `tailwindcss` and `@tailwindcss/vite` are `dev-dependency`
+entries in `versions.yaml`, at the version of the standalone CLI in
+`binaries` (`TestTailwindReleasedTogether` keeps the three equal).
+
+## Scaffolded components
+
+When a framework has an official scaffolder, gobento runs it at generation
+time instead of keeping its templates. A component declares it in its
+manifest:
+
+```yaml title="components/frontend/react/component.yaml"
+name: react
+title: React
+description: A React single-page app in TypeScript, scaffolded with create-vite, built with Vite, and embedded in the Go binary.
+provides:
+  frontend-build: vite
+scaffold:
+  with: create-vite
+  template: react-ts
+  dir: frontend
+  remove: [src/App.css, src/assets]
+```
+
+| Key        | Meaning                                                                                                                                                                                       |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `with`     | Required. An npm package of the rules file with the role `scaffolder` that lists this component                                                                                               |
+| `template` | Required. The template passed with `--template`; it matches `^[a-z][a-z0-9-]*$`                                                                                                               |
+| `dir`      | Required. The directory the scaffolder creates, relative to the project root: a clean relative path inside the project                                                                        |
+| `remove`   | Optional. Scaffolded files or directories, relative to `dir`, that the component's own files leave unused. Each must exist in the output, so a scaffolder release that renames one is noticed |
+
+The version is not in the manifest: it is data in `versions.yaml`, under
+`npm`:
+
+```yaml title="components/versions.yaml"
+npm:
+  create-vite:
+    components: [frontend/react, frontend/svelte, frontend/vue]
+    role: scaffolder
+    version: 9.3.3
+```
+
+Loading the catalog fails when `with` names a package that is not a
+scaffolder or does not list the component, or when `dir` or a `remove` entry
+is not a safe path. During generation, after gobento's files are written to
+the temporary directory, the scaffold step:
+
+1. runs `npm create <name without create->@<version> <dir> -- --no-interactive --no-immediate --template <template>`
+   in a staging directory, with no standard input;
+2. removes the `remove` entries;
+3. moves the scaffolded files into the project, except where the component
+   wrote the same path: the component's root templates under `dir`, its
+   **overlays**, win;
+4. runs `npm install --package-lock-only`, adding the npm packages with the
+   role `dependency` or `dev-dependency` that the selection uses to
+   `<dir>/package.json` (`--save-prod` or `--save-dev`), to write
+   `<dir>/package-lock.json` without `node_modules`. With
+   `--css tailwind`, that adds `tailwindcss` and `@tailwindcss/vite`. A
+   selection without a scaffolded component installs nothing.
+
+So keep the overlays few: only what must be gobento's. Preflight checks
+`node`, `npm`, and the Node.js range only for selections with a scaffolded
+component, and `--dry-run` lists the overlays and names the scaffolder
+instead of its files. The dependencies the scaffolder chooses are recorded
+in the lock file, not in the rules file. To bump the scaffolder, change its
+`version`, then run the integration test, which scaffolds and builds every
+covered selection with it, and update the golden files.
 
 ## Documentation
 

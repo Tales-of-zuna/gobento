@@ -1,0 +1,38 @@
+// Package dbtest provides databases for tests. Each test gets a SQLite file
+// of its own in a temporary directory, with the schema applied, which is
+// removed when the test ends.
+package dbtest
+
+import (
+	"database/sql"
+	"path/filepath"
+	"testing"
+
+	"example.com/shop/internal/platform/database"
+)
+
+// URL returns the connection string of a new, empty database for the test,
+// removed when the test ends. The schema is applied when it is opened with
+// database.Open.
+func URL(t testing.TB) string {
+	t.Helper()
+	return filepath.Join(t.TempDir(), "test.db")
+}
+
+// Open opens a new, empty database for the test with the schema applied,
+// and closes it when the test ends.
+func Open(t testing.TB) *sql.DB {
+	t.Helper()
+	// URL registers the removal of the directory first, so the database is
+	// closed before it: Windows cannot remove open files.
+	db, err := database.Open(t.Context(), URL(t))
+	if err != nil {
+		t.Fatalf("open test database: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close test database: %v", err)
+		}
+	})
+	return db
+}

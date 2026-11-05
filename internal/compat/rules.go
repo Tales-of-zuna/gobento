@@ -4,8 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"maps"
+	"net/url"
+	"path"
+	"regexp"
 	"slices"
 	"sort"
+	"strings"
 
 	"go.yaml.in/yaml/v3"
 	"golang.org/x/mod/module"
@@ -34,6 +39,39 @@ type Rules struct {
 	Go GoRule
 	// Modules lists every module used by some component, sorted by path.
 	Modules []Module
+	// Assets lists every vendored asset, sorted by name.
+	Assets []Asset
+	// Binaries lists every platform binary, sorted by name.
+	Binaries []Binary
+	// Tooling lists the versions of the project tooling that are not Go
+	// modules: container images, GitHub Actions, and tools.
+	Tooling Tooling
+	// Node describes the Node.js versions that scaffolding needs and the
+	// release line of the generated tooling. It is zero without npm
+	// packages.
+	Node NodeRule
+	// NPM lists every npm package components use, sorted by name.
+	NPM []NPMPackage
+}
+
+// Asset is a file that components ship unmodified from an upstream release,
+// such as a JavaScript library served by the generated project. Its version
+// is fixed per gobento release, like a tool's, and cannot be pinned.
+type Asset struct {
+	// Name identifies the asset, for example htmx.org (its npm package).
+	Name string
+	// Components lists the components that ship the asset, as
+	// "<kind>/<name>" identifiers.
+	Components []string
+	// Version is the upstream release, for example 2.0.11.
+	Version string
+	// Source is the https URL of the upstream release archive (a .tgz).
+	Source string
+	// Path is the asset's path inside the archive, for example
+	// package/dist/htmx.min.js.
+	Path string
+	// SHA256 is the asset file's SHA-256 checksum in lowercase hex.
+	SHA256 string
 }
 
 // GoRule describes the supported Go versions for generated projects.
@@ -52,6 +90,10 @@ type Module struct {
 	// Components lists the components that use the module, as
 	// "<kind>/<name>" identifiers such as database/sqlite.
 	Components []string
+	// Traits optionally restricts the module to selections whose traits
+	// have one of the listed values, for example sql-dialect: [postgresql]
+	// for a dialect-specific driver. Empty means no restriction.
+	Traits map[string][]string
 	// Role says whether the module is a library or a tool.
 	Role Role
 	// Range is the supported range of versions.
@@ -81,14 +123,57 @@ type Requirement struct {
 	Range Range
 }
 
-// usedBy reports whether any of the selected component identifiers uses m.
-func (m Module) usedBy(components []string) bool {
-	for _, c := range m.Components {
-		if slices.Contains(components, c) {
-			return true
+// usedBy reports whether a selection with the given component identifiers
+// and traits uses m: one of its components is selected and every trait
+// condition holds. Nil traits mean the traits are not known yet, and the
+// conditions are not checked.
+func (m Module) usedBy(components []string, traits map[string]string) bool {
+	return usedBy(m.Components, m.Traits, components, traits)
+}
+
+// traitCondition describes the module's trait conditions, for example
+// "sql-dialect postgresql" or "sql-dialect sqlite or postgresql".
+func (m Module) traitCondition() string {
+	var parts []string
+	for _, trait := range slices.Sorted(maps.Keys(m.Traits)) {
+		parts = append(parts, trait+" "+strings.Join(m.Traits[trait], " or "))
+	}
+	return strings.Join(parts, " and ")
+}
+
+// usedBy reports whether a selection with the given component identifiers
+// and traits uses an entry of the rules file listed for owners with the
+// trait conditions conds: one of the owners is selected and every condition
+// holds. Nil traits mean the traits are not known yet, and the conditions
+// are not checked.
+func usedBy(owners []string, conds map[string][]string, components []string, traits map[string]string) bool {
+	if !slices.ContainsFunc(owners, func(c string) bool { return slices.Contains(components, c) }) {
+		return false
+	}
+	if traits == nil {
+		return true
+	}
+	for trait, allowed := range conds {
+		v, ok := traits[trait]
+		if !ok || !slices.Contains(allowed, v) {
+			return false
 		}
 	}
-	return false
+	return true
+}
+
+// checkTraitConditions reports malformed trait conditions with fail.
+func checkTraitConditions(conds map[string][]string, fail func(format string, args ...any)) {
+	for _, trait := range slices.Sorted(maps.Keys(conds)) {
+		switch values := conds[trait]; {
+		case trait == "":
+			fail("traits: empty trait name")
+		case len(values) == 0:
+			fail("traits: %s lists no values", trait)
+		case slices.Contains(values, ""):
+			fail("traits: %s lists an empty value", trait)
+		}
+	}
 }
 
 // rulesFile mirrors the YAML layout of the rules file.
@@ -97,15 +182,29 @@ type rulesFile struct {
 		Range   string `yaml:"range"`
 		Default string `yaml:"default"`
 	} `yaml:"go"`
-	Modules map[string]moduleFile `yaml:"modules"`
+	Modules  map[string]moduleFile `yaml:"modules"`
+	Assets   map[string]assetFile  `yaml:"assets"`
+	Binaries map[string]binaryFile `yaml:"binaries"`
+	Tooling  toolingFile           `yaml:"tooling"`
+	Node     nodeFile              `yaml:"node"`
+	NPM      map[string]npmFile    `yaml:"npm"`
+}
+
+type assetFile struct {
+	Components []string `yaml:"components"`
+	Version    string   `yaml:"version"`
+	Source     string   `yaml:"source"`
+	Path       string   `yaml:"path"`
+	SHA256     string   `yaml:"sha256"`
 }
 
 type moduleFile struct {
-	Components  []string         `yaml:"components"`
-	Role        Role             `yaml:"role"`
-	Range       string           `yaml:"range"`
-	Default     string           `yaml:"default"`
-	Constraints []constraintFile `yaml:"constraints"`
+	Components  []string            `yaml:"components"`
+	Traits      map[string][]string `yaml:"traits"`
+	Role        Role                `yaml:"role"`
+	Range       string              `yaml:"range"`
+	Default     string              `yaml:"default"`
+	Constraints []constraintFile    `yaml:"constraints"`
 }
 
 type constraintFile struct {
@@ -116,9 +215,12 @@ type constraintFile struct {
 // ParseRules parses and validates a rules file. It reports every problem it
 // finds, joined with errors.Join: unknown fields, malformed ranges or
 // versions, defaults outside their range, tool modules without an exact
-// range, and constraints that refer to unknown targets. References to
-// components are checked separately with CheckComponents, because the
-// component catalog is loaded elsewhere.
+// range, constraints that refer to unknown targets, assets without
+// components or with a malformed version, source, path, or checksum,
+// binaries without components or platforms or with a malformed version,
+// platform, URL, or checksum, and malformed tooling entries. References to components are checked
+// separately with CheckComponents, because the component catalog is loaded
+// elsewhere.
 func ParseRules(data []byte) (*Rules, error) {
 	var file rulesFile
 	dec := yaml.NewDecoder(bytes.NewReader(data))
@@ -153,6 +255,43 @@ func ParseRules(data []byte) (*Rules, error) {
 		errs = append(errs, merrs...)
 	}
 
+	for _, name := range slices.Sorted(maps.Keys(file.Assets)) {
+		a, aerrs := parseAsset(name, file.Assets[name])
+		rules.Assets = append(rules.Assets, a)
+		errs = append(errs, aerrs...)
+		if _, ok := file.Modules[name]; ok {
+			errs = append(errs, fmt.Errorf("asset %s: the name is also a module; use another one", name))
+		}
+	}
+
+	for _, name := range slices.Sorted(maps.Keys(file.Binaries)) {
+		b, berrs := parseBinary(name, file.Binaries[name])
+		rules.Binaries = append(rules.Binaries, b)
+		errs = append(errs, berrs...)
+		_, isModule := file.Modules[name]
+		_, isAsset := file.Assets[name]
+		if isModule || isAsset {
+			errs = append(errs, fmt.Errorf("binary %s: the name is also a module or an asset; use another one", name))
+		}
+	}
+	npm, nerrs := parseNPM(file.NPM)
+	rules.NPM = npm
+	errs = append(errs, nerrs...)
+	node, nodeErrs := parseNode(file.Node, len(npm) > 0)
+	rules.Node = node
+	errs = append(errs, nodeErrs...)
+
+	tooling, terrs := parseTooling(file.Tooling)
+	rules.Tooling = tooling
+	errs = append(errs, terrs...)
+	if node.IsZero() {
+		for _, key := range slices.Sorted(maps.Keys(tooling.Images)) {
+			if strings.Contains(tooling.Images[key].Tag, NodePlaceholder) {
+				errs = append(errs, fmt.Errorf("tooling: image %s: the tag uses %s, but the rules have no node section", key, NodePlaceholder))
+			}
+		}
+	}
+
 	if err := errors.Join(errs...); err != nil {
 		return nil, fmt.Errorf("invalid rules: %w", err)
 	}
@@ -177,7 +316,8 @@ func parseModule(path string, mf moduleFile, known map[string]moduleFile) (Modul
 		fail("role %q must be %q or %q", mf.Role, RoleLibrary, RoleTool)
 	}
 
-	m := Module{Path: path, Components: mf.Components, Role: mf.Role, Default: mf.Default}
+	m := Module{Path: path, Components: mf.Components, Traits: mf.Traits, Role: mf.Role, Default: mf.Default}
+	checkTraitConditions(mf.Traits, fail)
 
 	rng, rangeErr := ParseRange(mf.Range)
 	if rangeErr != nil {
@@ -205,6 +345,41 @@ func parseModule(path string, mf moduleFile, known map[string]moduleFile) (Modul
 		m.Constraints = append(m.Constraints, c)
 	}
 	return m, errs
+}
+
+var (
+	// assetVersionPattern matches an asset version such as 2.0.11, as
+	// upstream projects outside Go write it.
+	assetVersionPattern = regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$`)
+	// sha256Pattern matches a SHA-256 checksum in lowercase hex.
+	sha256Pattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
+)
+
+// parseAsset converts and validates one asset entry.
+func parseAsset(name string, af assetFile) (Asset, []error) {
+	var errs []error
+	fail := func(format string, args ...any) {
+		errs = append(errs, fmt.Errorf("asset %s: "+format, append([]any{name}, args...)...))
+	}
+	if strings.TrimSpace(name) == "" {
+		fail("empty name")
+	}
+	if len(af.Components) == 0 {
+		fail("no components listed")
+	}
+	if !assetVersionPattern.MatchString(af.Version) {
+		fail("version %q must be a release such as 2.0.11", af.Version)
+	}
+	if u, err := url.Parse(af.Source); err != nil || u.Scheme != "https" || u.Host == "" {
+		fail("source %q must be an https URL of the release archive", af.Source)
+	}
+	if af.Path == "" || path.IsAbs(af.Path) || path.Clean(af.Path) != af.Path || strings.HasPrefix(af.Path, "../") {
+		fail("path %q must be a clean relative path inside the source archive", af.Path)
+	}
+	if !sha256Pattern.MatchString(af.SHA256) {
+		fail("sha256 %q must be 64 lowercase hexadecimal digits", af.SHA256)
+	}
+	return Asset{Name: name, Components: af.Components, Version: af.Version, Source: af.Source, Path: af.Path, SHA256: af.SHA256}, errs
 }
 
 func parseConstraint(cf constraintFile, known map[string]moduleFile) (Constraint, []error) {
@@ -248,7 +423,8 @@ func parseConstraint(cf constraintFile, known map[string]moduleFile) (Constraint
 }
 
 // CheckComponents reports every component reference in the rules for which
-// exists returns false, naming the module and the component.
+// exists returns false, naming the module, asset, or binary and the
+// component.
 func (r *Rules) CheckComponents(exists func(id string) bool) error {
 	var errs []error
 	for _, m := range r.Modules {
@@ -257,6 +433,60 @@ func (r *Rules) CheckComponents(exists func(id string) bool) error {
 				errs = append(errs, fmt.Errorf("module %s: unknown component %q", m.Path, c))
 			}
 		}
+	}
+	for _, a := range r.Assets {
+		for _, c := range a.Components {
+			if !exists(c) {
+				errs = append(errs, fmt.Errorf("asset %s: unknown component %q", a.Name, c))
+			}
+		}
+	}
+	for _, b := range r.Binaries {
+		for _, c := range b.Components {
+			if !exists(c) {
+				errs = append(errs, fmt.Errorf("binary %s: unknown component %q", b.Name, c))
+			}
+		}
+	}
+	for _, p := range r.NPM {
+		for _, c := range p.Components {
+			if !exists(c) {
+				errs = append(errs, fmt.Errorf("npm %s: unknown component %q", p.Name, c))
+			}
+		}
+	}
+	return errors.Join(errs...)
+}
+
+// Asset returns the asset with the given name.
+func (r *Rules) Asset(name string) (Asset, bool) {
+	i := slices.IndexFunc(r.Assets, func(a Asset) bool { return a.Name == name })
+	if i < 0 {
+		return Asset{}, false
+	}
+	return r.Assets[i], true
+}
+
+// CheckTraits reports every trait named in the trait conditions of a
+// module, a binary, or an npm package for which known returns false,
+// naming the entry and the trait.
+func (r *Rules) CheckTraits(known func(trait string) bool) error {
+	var errs []error
+	check := func(entry string, conds map[string][]string) {
+		for _, trait := range slices.Sorted(maps.Keys(conds)) {
+			if !known(trait) {
+				errs = append(errs, fmt.Errorf("%s: trait condition on %q, which no component provides", entry, trait))
+			}
+		}
+	}
+	for _, m := range r.Modules {
+		check("module "+m.Path, m.Traits)
+	}
+	for _, b := range r.Binaries {
+		check("binary "+b.Name, b.Traits)
+	}
+	for _, p := range r.NPM {
+		check("npm "+p.Name, p.Traits)
 	}
 	return errors.Join(errs...)
 }

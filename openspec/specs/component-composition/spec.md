@@ -8,13 +8,20 @@ data-access layers fill those slots, so options grow without per-combination tem
 ## Requirements
 
 ### Requirement: Component kinds
-gobento SHALL organize components into four kinds: architecture, framework,
-database, and data access. A selection SHALL contain exactly one component of
-each kind.
+gobento SHALL organize components into six kinds: architecture, framework,
+database, data access, frontend, and CSS framework. The frontend and CSS
+framework kinds are optional; the others are required. A selection SHALL
+contain exactly one component of each required kind and at most one
+component of each optional kind. No component of an optional kind SHALL be
+named `none`, which stands for selecting no component of that kind.
 
 #### Scenario: One component per kind
 - **WHEN** a selection is resolved
-- **THEN** it contains exactly one architecture, one framework, one database, and one data-access component
+- **THEN** it contains exactly one architecture, one framework, one database, and one data-access component, either one frontend or none, and either one CSS framework or none
+
+#### Scenario: Component named none
+- **WHEN** the catalog contains a frontend or CSS framework component named `none`
+- **THEN** loading the catalog fails with an error naming the component and explaining that `none` is reserved
 
 ### Requirement: Architectures declare slots
 Each architecture SHALL declare named slots. Each slot is a directory that is
@@ -27,11 +34,17 @@ slot and which slots are required.
 
 ### Requirement: One owner per slot
 Each slot SHALL be filled by exactly one component, so no two components ever
-write into the same Go package or the same file.
+write into the same Go package or the same file. A slot directory MAY lie
+inside another slot's directory; the outer slot's owner SHALL NOT write files
+into the inner slot's directory or below it.
 
 #### Scenario: Two components target one slot
 - **WHEN** two selected components both fill the slot `store`
 - **THEN** gobento exits non-zero naming both components and the slot, and writes nothing
+
+#### Scenario: File inside a nested slot
+- **WHEN** an architecture places the slot `handlers` inside the directory of the slot `models`, and the owner of `models` has a template that would be written into the `handlers` directory
+- **THEN** gobento exits non-zero naming the component, the file, and the slot `handlers`, and writes nothing
 
 ### Requirement: Components meet at architecture-owned Go contracts
 The architecture SHALL own the entry point and the shared types and function
@@ -69,13 +82,19 @@ reporting every problem found.
 - **THEN** gobento exits non-zero naming the slot, and writes nothing
 
 ### Requirement: Supported combinations
-A selection SHALL be supported exactly when it has one component per kind, all
-required traits are met, and it passes composition. The set of supported
-selections SHALL be derivable from the component catalog alone.
+A selection SHALL be supported exactly when it has one component per required
+kind and at most one per optional kind, all required traits are met, and it
+passes composition. Leaving out an optional kind is a separate selection,
+supported under the same conditions. The set of supported selections SHALL be
+derivable from the component catalog alone.
 
 #### Scenario: Trait mismatch is not supported
 - **WHEN** the catalog contains a data-access component whose required dialect no database provides
 - **THEN** no selection containing it is listed as supported
+
+#### Scenario: Optional kind left out
+- **WHEN** the catalog contains a frontend component
+- **THEN** the supported selections include, for every supported combination of the required kinds, the same combination without a frontend
 
 ### Requirement: Generated Go code is formatted
 Every generated Go source file SHALL be gofmt-formatted and SHALL contain no
@@ -84,3 +103,218 @@ unused imports.
 #### Scenario: Formatting check
 - **WHEN** `gofmt -l .` runs in a freshly generated project
 - **THEN** it lists no files
+
+### Requirement: Framework components serve one API contract
+Every framework component SHALL serve the same HTTP API for the
+architecture's contract: the same routes, methods, status codes, response
+media type, JSON error bodies, and request limits. Each framework component
+SHALL ship the same framework-independent API test, and gobento SHALL fail
+its own tests when the copies differ.
+
+#### Scenario: Same requests, same responses
+- **WHEN** two projects differ only in the selected framework and receive the same sequence of requests
+- **THEN** they return the same status codes, an `application/json` media type, and equal JSON bodies
+
+#### Scenario: Unsupported method on a known route
+- **WHEN** a client sends `DELETE /items` to a project generated with any framework
+- **THEN** the response status is `405`
+
+#### Scenario: API test copies drift
+- **WHEN** one framework component's API test differs from another's
+- **THEN** gobento's test suite fails naming both components
+
+### Requirement: Databases provide the default connection string
+Every database component SHALL provide, as part of the database slot's
+contract, the connection string a generated application uses when the user
+configures none, so that the entry point and its documentation never name a
+particular database.
+
+#### Scenario: SQLite default
+- **WHEN** a project named `shop` is generated with the SQLite database and started without `DATABASE_URL`
+- **THEN** it stores its data in the file `shop.db` in the working directory
+
+#### Scenario: PostgreSQL default
+- **WHEN** a project named `shop` is generated with the PostgreSQL database and started without `DATABASE_URL`
+- **THEN** it connects to the database `shop` of a PostgreSQL server on `localhost:5432` as the user `postgres` with the password `postgres`, the settings of the server command in the generated README
+
+#### Scenario: Entry point is the same for every database
+- **WHEN** the selected database component is replaced by another one
+- **THEN** the Go files contributed by the architecture and the framework are generated byte-for-byte identically
+
+### Requirement: Databases provide isolated test databases
+Every database component SHALL provide test support that gives a test of any
+slot an empty database of its own with the schema applied, removed when the
+test ends. When the database needs a server, the test support SHALL use the
+server named by `TEST_DATABASE_URL` and SHALL skip the test when it is unset.
+
+#### Scenario: File database
+- **WHEN** a generated SQLite project runs `go test ./...`
+- **THEN** every database and data-access test runs, each against its own temporary database file
+
+#### Scenario: Server database without a test server
+- **WHEN** a generated PostgreSQL project runs `go test ./...` with `TEST_DATABASE_URL` unset
+- **THEN** the tests that need the server are skipped with a message naming `TEST_DATABASE_URL`, and `go test ./...` succeeds
+
+#### Scenario: Server database with a test server
+- **WHEN** a generated PostgreSQL project runs `go test ./...` with `TEST_DATABASE_URL` set to a reachable server
+- **THEN** each test that needs the server runs in a separate namespace on it, so packages tested in parallel do not see each other's data, and nothing a test created remains on the server afterwards
+
+### Requirement: One data-access component serves several dialects
+A data-access component SHALL be able to accept several values of a trait,
+such as several SQL dialects, and SHALL then adapt its generated files to the
+value the selection provides, using only that trait value and never the name
+of the selected component.
+
+#### Scenario: sqlc on PostgreSQL
+- **WHEN** a project is generated with the PostgreSQL database and sqlc
+- **THEN** its `sqlc.yaml` uses the `postgresql` engine, and the shipped generated code is exactly what the pinned sqlc generates for it
+
+#### Scenario: sqlc on SQLite
+- **WHEN** a project is generated with the SQLite database and sqlc
+- **THEN** its `sqlc.yaml` uses the `sqlite` engine, and the shipped generated code is exactly what the pinned sqlc generates for it
+
+### Requirement: The database schema is the single source of truth
+A data-access component SHALL read and write the tables defined by the schema
+that the selected database component provides (trait `sql-schema`), and SHALL
+NOT create, alter, or migrate tables itself. It SHALL use the connection the
+database slot opens instead of opening its own.
+
+#### Scenario: GORM uses the database schema
+- **WHEN** a project is generated with `--db sqlite --data gorm` and the application starts on an empty database
+- **THEN** the `items` table is created only by the database component's `schema.sql`
+- **AND** an item created through the store gets its `id` and `created_at` from the database, as defined in that schema
+
+#### Scenario: GORM wraps the opened connection
+- **WHEN** the entry point passes the connection returned by the database slot to the store
+- **THEN** the store issues its queries over that connection and opens no other database connection
+
+### Requirement: Dialect-specific code is chosen from traits
+A component that supports several values of a trait SHALL choose its
+value-specific code (for example, a SQL dialect's driver) from the trait value
+the selection provides, not from which other component is selected, so a newly
+added component providing a supported value works without changes to it.
+
+#### Scenario: SQLite dialect
+- **WHEN** a project is generated with `--data gorm` and a database providing `sql-dialect: sqlite`
+- **THEN** the store uses a pure-Go SQLite dialect for GORM and contains no PostgreSQL code
+
+#### Scenario: PostgreSQL dialect
+- **WHEN** a project is generated with `--data gorm` and a database providing `sql-dialect: postgresql` and `conn: database/sql`
+- **THEN** the store uses GORM's PostgreSQL dialect over the same `*sql.DB`, and the project builds and passes `go vet`
+
+### Requirement: Templates see slot state and the API base path
+Templates SHALL be able to test whether a slot declared by the architecture is
+filled by a selected component, and SHALL see the path prefix under which the
+API router is served: empty without a frontend and `/api` with one. A
+template of an optional slot's neighbors SHALL use this instead of naming a
+particular component.
+
+#### Scenario: Entry point adapts to a filled slot
+- **WHEN** a selection fills the architecture's optional `web` slot
+- **THEN** the architecture's templates see that slot as filled and the API base path as `/api`, and render the entry point that mounts both handlers
+
+#### Scenario: Optional slot left empty
+- **WHEN** a selection leaves the optional `web` slot unfilled
+- **THEN** the architecture's templates see the slot as not filled and the API base path as empty, and no file is written into the slot's directory
+
+### Requirement: Base layer in every selection
+gobento SHALL compose a base layer that it owns into every selection, next to
+the selected components. The base layer SHALL produce only files at the
+project root (and below it, outside every slot directory), SHALL NOT be a
+component kind or be selectable, and SHALL be the same for every selection
+apart from the template data. A component that produces a root file the base
+layer also produces SHALL make the selection fail like any other path
+conflict.
+
+#### Scenario: Every selection gets the base layer
+- **WHEN** a project is generated from any supported selection
+- **THEN** the files of the base layer are part of the project, rendered with the selection's slots, traits, and versions
+
+#### Scenario: Component writes a base layer file
+- **WHEN** a selected component has a template for a root file that the base layer produces, such as `Makefile`
+- **THEN** gobento exits non-zero naming the file, the base layer, and the component, and writes nothing
+
+### Requirement: Components contribute through declared points
+The base layer and any component kind MAY declare named contribution points,
+each once. A component of any kind MAY contribute to a declared point with one
+template per point. Every template MAY include the base layer's points, and a
+component's templates also its own kind's; there the selected components'
+contributions SHALL appear in kind order. A contribution SHALL depend only on
+traits and the template data, never on which other component is selected.
+
+#### Scenario: Database contributes a CI service
+- **WHEN** a project is generated with a database that contributes to the point for CI service containers
+- **THEN** the generated workflow contains that service, and a project generated with another database that does not contribute contains no service
+
+#### Scenario: New kinds contribute without base layer changes
+- **WHEN** a component of a kind added later contributes to an existing point, such as the build stage of the Dockerfile
+- **THEN** its contribution appears in the generated file without any change to the base layer's templates
+
+#### Scenario: Frontend point filled by a CSS framework
+- **WHEN** the frontend kind declares a point for the stylesheet, the selected frontend includes it, and the selected CSS framework contributes to it
+- **THEN** the frontend's stylesheet is the contribution, and without a contribution it is the frontend's own
+
+#### Scenario: Component template includes a base point
+- **WHEN** an architecture's `.gitignore` template includes the base layer's point `gitignore` and a selected component contributes to it
+- **THEN** the generated `.gitignore` contains the contribution
+
+### Requirement: Undeclared contribution points are rejected
+A catalog with a contribution to a point that neither the base layer nor any
+kind declares, or with a kind that redeclares a point of the base layer or of
+another kind, SHALL be rejected. Composition SHALL fail for a template naming
+a point that neither the base layer nor its own kind declares, and for a
+non-empty contribution to a point of an unselected kind or that no rendered
+template includes.
+
+#### Scenario: Unknown contribution point
+- **WHEN** a component in the catalog has a contribution template for a point that neither the base layer nor any kind declares
+- **THEN** loading the catalog fails with an error naming the component and the point, and listing the declared points
+
+#### Scenario: Base template names an unknown point
+- **WHEN** a base layer template asks for the contributions to a point that `base.yaml` does not declare
+- **THEN** composition fails with an error naming the template and the point, and gobento writes nothing
+
+#### Scenario: Component template names a point of another kind
+- **WHEN** a database component's template asks for the contributions to a point that only the data kind declares
+- **THEN** composition fails with an error naming the template, the component, and the point
+
+#### Scenario: Point of an unselected kind
+- **WHEN** a selected component's contribution renders non-empty for a point of a kind of which no component is selected
+- **THEN** composition fails naming the contribution and the point, and a contribution that renders empty for the selection is ignored
+
+#### Scenario: Contribution that no template includes
+- **WHEN** a selected component's contribution renders non-empty for a point of the selected frontend's kind, but no template of that frontend includes the point
+- **THEN** composition fails naming the contribution, the point, and the frontend, so the selection is not supported
+
+### Requirement: Templates that render empty produce no file
+A file template whose output for a selection is empty or whitespace only
+SHALL produce no file, so a component MAY leave out files based on the
+selection's traits.
+
+#### Scenario: File for one build system only
+- **WHEN** a component's root file template renders only when the trait `frontend-build` is `go` and the selection provides `vite`
+- **THEN** the planned files and the generated project contain no such file
+
+### Requirement: Components include contribution points
+Besides the base layer's templates, the templates of a selected component
+SHALL be able to include the contributions to a point of the base layer or
+of the component's own kind, so one component can extend a file another
+component owns, such as a CSS component adding a Vite plugin to a
+frontend's Vite configuration through a point of the frontend kind.
+Contribution templates themselves SHALL NOT include points.
+
+#### Scenario: CSS contribution to a Vite frontend
+- **WHEN** a selected component contributes to the frontend kind's point `vite-plugins` and a Vite frontend is selected
+- **THEN** the contribution appears in the plugins of `frontend/vite.config.ts`, and without a Vite frontend it appears nowhere
+
+### Requirement: Scaffolded components
+A component MAY declare in its manifest a scaffolder from the rules file,
+the template to pass it, the project directory it creates, and scaffolded
+files to remove. Its own root templates under that directory SHALL replace
+the scaffolded files of the same path. The catalog check SHALL reject a
+scaffold declaration that names an unknown scaffolder or one not listed for
+the component, or that has an unsafe directory or path.
+
+#### Scenario: Unknown scaffolder
+- **WHEN** a component's manifest names a scaffolder the rules file does not list for it
+- **THEN** loading the catalog fails naming the component and the scaffolder

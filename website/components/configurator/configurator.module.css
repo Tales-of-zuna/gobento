@@ -214,6 +214,14 @@
   --k: var(--matcha);
   --k-soft: var(--kind-data);
 }
+.root [data-kind='frontend'] {
+  --k: var(--hisui);
+  --k-soft: var(--kind-frontend);
+}
+.root [data-kind='css'] {
+  --k: var(--fuji);
+  --k-soft: var(--kind-css);
+}
 .root [data-kind='go'] {
   --k: var(--sakura);
   --k-soft: var(--sakura-soft);
@@ -515,6 +523,12 @@
   transition: background-color 0.25s ease;
 }
 
+/* an odd last compartment spans the tray (one per kind, two per row) */
+.cell:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+  min-height: 84px;
+}
+
 .cell[data-filled='true'] {
   background: var(--k-soft);
   outline: 0;
@@ -574,6 +588,24 @@
   height: 26px;
   border-radius: 999px;
   background: var(--matcha);
+}
+.piece[data-piece='kappa'] {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--hisui);
+  box-shadow: inset 0 0 0 7px var(--nori);
+}
+/* shibazuke: a heap of purple pickle slices */
+.piece[data-piece='shiba'] {
+  width: 56px;
+  height: 30px;
+  border-radius: 16px 16px 8px 8px;
+  background: repeating-linear-gradient(
+    100deg,
+    var(--fuji) 0 9px,
+    color-mix(in oklab, var(--fuji) 70%, black) 9px 12px
+  );
 }
 
 .stageRow {
@@ -806,6 +838,16 @@
 }
 .tree li[data-dir='true'] {
   color: var(--ink-2);
+}
+/* A directory a scaffolder completes at generation time: a frontend-colored chip. */
+.treeNote {
+  display: inline-block;
+  margin: 2px 0 0 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--kind-frontend);
+  color: var(--ink);
+  font: 600 var(--t-xs) / 1.2 var(--cf-body);
 }
 
 .toastSlot {

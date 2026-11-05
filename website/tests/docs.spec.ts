@@ -16,6 +16,11 @@ const pages = [
     source: 'getting-started/quick-start.mdx',
   },
   {
+    path: 'docs/getting-started/choose-your-stack/',
+    title: 'Choose your stack',
+    source: 'getting-started/choose-your-stack.mdx',
+  },
+  {
     path: 'docs/concepts/components/',
     title: 'Components',
     source: 'concepts/components.mdx',
@@ -31,7 +36,13 @@ const pages = [
     title: 'Version rules',
     source: 'concepts/version-rules.mdx',
   },
+  {
+    path: 'docs/concepts/project-tooling/',
+    title: 'Project tooling',
+    source: 'concepts/project-tooling.mdx',
+  },
   { path: 'docs/cli/new/', title: 'gobento new', source: 'cli/new.mdx' },
+  { path: 'docs/cli/list/', title: 'gobento list', source: 'cli/list.mdx' },
   { path: 'docs/components/', title: 'Component reference', source: 'components.mdx' },
   {
     path: 'docs/contributing/adding-a-component/',
@@ -158,6 +169,23 @@ test('the Components reference is generated from the catalog', async ({ page }) 
   await expect(page.getByRole('table', { name: 'Modules of sqlite' })).toContainText(
     'modernc.org/sqlite',
   );
+  // Spec "Vendored asset": htmx.org is listed under the htmx frontend, marked as vendored.
+  await expect(page.getByRole('heading', { level: 2, name: /^Frontend/ })).toContainText(
+    'optional',
+  );
+  const assets = page.getByRole('table', { name: 'Vendored assets of htmx' });
+  await expect(assets).toContainText('htmx.org');
+  await expect(assets).toContainText('vendored');
+  await expect(page.getByRole('table', { name: 'Modules of htmx' })).toContainText(
+    'github.com/a-h/templ',
+  );
+  // Spec "Platform binary": the Tailwind CLI is listed under Tailwind CSS, downloaded on demand.
+  await expect(page.getByRole('heading', { level: 2, name: /^CSS framework/ })).toContainText(
+    'optional',
+  );
+  const binaries = page.getByRole('table', { name: 'Binaries of tailwind' });
+  await expect(binaries).toContainText('tailwindcss');
+  await expect(binaries).toContainText('downloaded on demand');
 });
 
 test('the accessibility audit covers every docs page', () => {

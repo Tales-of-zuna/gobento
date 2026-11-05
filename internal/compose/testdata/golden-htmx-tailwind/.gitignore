@@ -1,0 +1,16 @@
+# Build output
+/shop
+/shop.exe
+/bin/
+
+# Local database
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Test output
+coverage.out
+
+# Written by templ generate --watch for live reload
+*_templ.txt

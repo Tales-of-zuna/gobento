@@ -1,0 +1,112 @@
+// Package {{.Slots.web.Package}} serves the single-page app in frontend/: Vite builds it
+// into dist/app (npm run build in frontend/), and the build is embedded in
+// the binary. Until the frontend is built, every page explains how to build
+// it, so the project builds and tests without Node.js.
+package {{.Slots.web.Package}}
+
+import (
+	"bytes"
+	"embed"
+	"io/fs"
+	"net/http"
+	"path"
+	"strings"
+	"time"
+
+	"{{.Slots.models.Import}}"
+)
+
+// dist holds the frontend build in dist/app. The committed dist/.gitignore
+// keeps the directory, and so the embed pattern, valid before a build.
+//
+//go:embed all:dist
+var dist embed.FS
+
+// apiPrefix is the path the API is served under; the app never answers it.
+const apiPrefix = "{{.APIPrefix}}"
+
+// NewHandler returns the HTTP handler for the app:
+//
+//	GET /assets/...  the build's content-hashed files, cached for a year
+//	GET /<file>      other files of the build, such as favicon.svg
+//	GET /...         index.html for every other path without a file
+//	                 extension, so client-side routes survive a reload
+//
+// GET routes also answer HEAD. A missing file with an extension, and every
+// path under {{.APIPrefix}}/, is 404. The app reads and writes items through the API,
+// so the handler does not use the store.
+func NewHandler(_ {{.Slots.models.Package}}.ItemStore) http.Handler {
+	app, err := fs.Sub(dist, "dist/app")
+	if err != nil {
+		panic(err) // fs.Sub fails only for an invalid path
+	}
+	return newHandler(app)
+}
+
+// newHandler serves the build in app.
+func newHandler(app fs.FS) http.Handler {
+	files := http.FileServerFS(app)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			w.Header().Set("Allow", "GET, HEAD")
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if r.URL.Path == apiPrefix || strings.HasPrefix(r.URL.Path, apiPrefix+"/") {
+			http.NotFound(w, r)
+			return
+		}
+		name := strings.TrimPrefix(path.Clean("/"+r.URL.Path), "/")
+		if name != "" && name != "index.html" && isFile(app, name) {
+			if strings.HasPrefix(name, "assets/") {
+				w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+			}
+			files.ServeHTTP(w, r)
+			return
+		}
+		if path.Ext(name) != "" && name != "index.html" {
+			http.NotFound(w, r)
+			return
+		}
+		serveIndex(w, r, app)
+	})
+}
+
+// isFile reports whether name is a regular file in app.
+func isFile(app fs.FS, name string) bool {
+	info, err := fs.Stat(app, name)
+	return err == nil && !info.IsDir()
+}
+
+// serveIndex serves the app's index.html, or the placeholder page before
+// the frontend is built. Browsers revalidate it, so a new build is picked up
+// at once.
+func serveIndex(w http.ResponseWriter, r *http.Request, app fs.FS) {
+	page, err := fs.ReadFile(app, "index.html")
+	if err != nil {
+		page = []byte(placeholder)
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	http.ServeContent(w, r, "index.html", time.Time{}, bytes.NewReader(page))
+}
+
+// placeholder is the page served before the frontend is built.
+const placeholder = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Project.Name}}: frontend not built</title>
+</head>
+<body>
+<h1>The frontend is not built yet</h1>
+<p>Build it, then rebuild and restart the server:</p>
+<pre>make build</pre>
+<p>Without make:</p>
+<pre>npm --prefix frontend ci
+npm --prefix frontend run build</pre>
+<p>The JSON API is already served under <a href="{{.APIPrefix}}/items">{{.APIPrefix}}/</a>.</p>
+</body>
+</html>
+`

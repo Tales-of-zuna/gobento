@@ -14,18 +14,28 @@ of a list of values.
 
 Both are keys of `component.yaml`. In the current catalog:
 
-| Component            | `provides`                                                            | `requires`                                                                  |
-| -------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `sqlite` (database)  | `sql-dialect: sqlite`, `conn: database/sql`, `sql-schema: schema.sql` | none                                                                        |
-| `sqlc` (data access) | none                                                                  | `sql-dialect: [sqlite]`, `conn: [database/sql]`, `sql-schema: [schema.sql]` |
+| Component                           | `provides`                                                                | `requires`                                                                              |
+| ----------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `postgres` (database)               | `sql-dialect: postgresql`, `conn: database/sql`, `sql-schema: schema.sql` | none                                                                                    |
+| `sqlite` (database)                 | `sql-dialect: sqlite`, `conn: database/sql`, `sql-schema: schema.sql`     | none                                                                                    |
+| `gorm` (data access)                | none                                                                      | `sql-dialect: [sqlite, postgresql]`, `conn: [database/sql]`, `sql-schema: [schema.sql]` |
+| `sqlc` (data access)                | none                                                                      | `sql-dialect: [sqlite, postgresql]`, `conn: [database/sql]`, `sql-schema: [schema.sql]` |
+| `htmx` (frontend)                   | `frontend-build: go`                                                      | none                                                                                    |
+| `react`, `vue`, `svelte` (frontend) | `frontend-build: vite`                                                    | none                                                                                    |
 
 Trait names match `^[a-z][a-z0-9-]*$`. A provided value must not be empty,
 and a requirement lists at least one accepted value.
 
 ## The traits in use
 
-- **`sql-dialect`**: the SQL dialect the database speaks. A data-access
-  library that generates or runs SQL requires a dialect it supports.
+- **`sql-dialect`**: the SQL dialect the database speaks: `sqlite` or
+  `postgresql`, the engine names sqlc uses. A data-access library that
+  generates or runs SQL requires a dialect it supports. A component that
+  accepts several dialects adapts to the provided one through the trait value,
+  never through the database's name: sqlc's `sqlc.yaml` template says
+  `engine: {{index .Traits "sql-dialect"}}`, and its pre-generated code picks
+  the query placeholder (`?1` or `$1`) with
+  `{{if eq (index .Traits "sql-dialect") "postgresql"}}`.
 - **`conn`**: the Go type of the connection the database's `Open` returns,
   such as `database/sql`. The store's `New(db T)` must accept that type, so the
   data-access component requires a matching `conn`. See the
@@ -33,13 +43,47 @@ and a requirement lists at least one accepted value.
 - **`sql-schema`**: the file name of the schema inside the database slot,
   such as `schema.sql`. sqlc reads it to generate its code, so its
   `sqlc.yaml` template finds the schema at
-  `{{.Slots.database.Dir}}/{{index .Traits "sql-schema"}}`. Traits carry the
+  `{{.Slots.database.Dir}}/{{index .Traits "sql-schema"}}`. GORM uses the
+  same tables without reading the file: it never calls `AutoMigrate`, so the
+  schema stays the single source of truth. Traits carry the
   few facts one component needs about another's files, without naming the
   other component.
+- **`frontend-build`**: how a frontend's assets are built. `go` means the Go
+  toolchain alone builds them (htmx, whose templ code and static files are
+  committed and embedded); `vite` means Vite builds them from the Node.js
+  sources in `frontend/` (React, Vue, and Svelte). Every frontend provides it,
+  so a component that works with only some frontends requires this trait
+  instead of naming them, and a CSS framework requires it, which is why a CSS
+  framework is only supported together with a frontend. Tailwind CSS requires
+  `frontend-build: [go, vite]` and contributes different things for each
+  value: a Tailwind source, a compiled stylesheet, and a runner for the
+  standalone CLI for `go`; the `@tailwindcss/vite` plugin and the stylesheet's
+  `@import "tailwindcss";` for `vite`, through the frontend kind's
+  [contribution points](/docs/concepts/slots-and-contracts#css-frameworks).
+- **`css`**: the CSS framework, such as `tailwind`, provided by the CSS
+  framework component so that a frontend or a module of the rules file can
+  depend on its value.
 
-Future components declare their own values. For example, a pgx or GORM
-component would declare its own `conn` value, so an incompatible pair is
-rejected by data, without any code in gobento.
+Future components declare their own values. For example, a database that
+exposes pgx's native pool instead of `database/sql` would declare its own
+`conn` value, so an incompatible pair is rejected by data, without any code in
+gobento.
+
+## Code that depends on a trait value
+
+A component that accepts several values of a trait picks the matching code
+from `.Traits` in its templates. `gorm` accepts `sql-dialect: sqlite` and
+`postgresql`, and its store template chooses the GORM dialect accordingly:
+
+```go title="components/data/gorm/files/store/store.go.tmpl"
+{{if eq (index .Traits "sql-dialect") "postgresql"}}postgres.New(postgres.Config{Conn: db}){{else}}sqlite.New(sqlite.Config{Conn: db}){{end}}
+```
+
+Modules needed for only one value, such as each dialect's driver, carry a
+[trait condition](/docs/concepts/version-rules#trait-conditions) in the rules
+file, so a project's `go.mod` gets only the driver it uses. Because both the
+template and the rules name trait values rather than components, a new
+database that provides `sql-dialect: postgresql` works with `gorm` unchanged.
 
 ## When a trait is not met
 
@@ -61,10 +105,17 @@ provides, no selection containing it would be listed as supported. The
 website's configurator uses the same rules to disable incompatible options
 and explain why.
 
-Today the catalog has one supported selection:
+Today every database provides what both data-access components require,
+and no frontend requires anything, so all 180 candidate selections (3
+architectures × 3 frameworks × 2 databases × 2 data-access components × 5
+frontend choices: none, htmx, React, Vue, or Svelte) are supported, for
+example:
 
 ```text
+mvc + nethttp + postgres + gorm
 mvc + nethttp + sqlite + sqlc
+vertical-slice + nethttp + sqlite + sqlc + htmx
+ddd + gin + postgres + sqlc + react
 ```
 
 The [Components reference](/docs/components) lists the traits of every

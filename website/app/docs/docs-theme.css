@@ -880,6 +880,22 @@
   --gs: var(--kind-data);
   --gm: var(--matcha);
 }
+.docs-kind[data-kind='frontend'] {
+  --gs: var(--kind-frontend);
+  --gm: var(--hisui);
+}
+.docs-kind[data-kind='css'] {
+  --gs: var(--kind-css);
+  --gm: var(--fuji);
+}
+.docs-kind > h2 .docs-optional {
+  font: 600 var(--t-xs) / 1 var(--f-mono);
+  letter-spacing: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  color: var(--ink-2);
+}
 .docs-kind > h2 {
   display: flex;
   align-items: center;

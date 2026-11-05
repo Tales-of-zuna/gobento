@@ -10,13 +10,19 @@ describe('defaultState (spec: Defaults)', () => {
     expect(defaultState(fixture)).toEqual({
       name: 'myapp',
       module: '',
-      components: { architecture: 'mvc', framework: 'nethttp', database: 'sqlite', data: 'sqlc' },
+      components: { framework: 'nethttp', database: 'sqlite' },
       go: '1.27',
       pins: {},
     });
   });
 
+  it('sets an optional kind to none, even with a single option (spec: Frontend is optional)', () => {
+    expect(defaultState(fixture).components.frontend).toBeUndefined();
+  });
+
   it('leaves a kind with several options unchosen', () => {
+    expect(defaultState(fixture).components.architecture).toBeUndefined();
+    expect(defaultState(fixture).components.data).toBeUndefined();
     expect(defaultState(catalogWith(addPostgres)).components.database).toBeUndefined();
   });
 });
@@ -31,11 +37,12 @@ describe('encodeState', () => {
       ...defaultState(fixture),
       name: 'shop',
       module: 'example.com/shop',
+      components: { ...defaultState(fixture).components, architecture: 'vertical-slice' },
       go: '1.26',
       pins: { 'modernc.org/sqlite': 'v1.62.0' },
     };
     expect(encodeState(fixture, state)).toBe(
-      'name=shop&module=example.com%2Fshop&go=1.26&pin=modernc.org%2Fsqlite%3Dv1.62.0',
+      'name=shop&module=example.com%2Fshop&arch=vertical-slice&go=1.26&pin=modernc.org%2Fsqlite%3Dv1.62.0',
     );
   });
 });
@@ -46,7 +53,7 @@ describe('decodeState', () => {
     const chosen: ConfigState = {
       name: 'shop',
       module: 'example.com/shop',
-      components: { ...defaultState(catalog).components, database: 'sqlite' },
+      components: { ...defaultState(catalog).components, architecture: 'mvc', database: 'sqlite' },
       go: '1.26',
       pins: { 'modernc.org/sqlite': 'v1.62.0' },
     };
@@ -73,7 +80,7 @@ describe('decodeState', () => {
       name: 'component',
       query: 'framework=express',
       notice:
-        'The link names http framework "express", which is not available; the default is used.',
+        'The link names HTTP framework "express", which is not available; the default is used.',
       check: (s) => expect(s.components.framework).toBe('nethttp'),
     },
     {
@@ -123,5 +130,71 @@ describe('decodeState', () => {
     const { state, notices } = decodeState(fixture, 'name=My+App');
     expect(notices).toEqual([]);
     expect(buildCommand(fixture, state).ok).toBe(false);
+  });
+});
+
+describe('optional kinds in the URL', () => {
+  const htmx: ConfigState = {
+    ...defaultState(fixture),
+    components: {
+      ...defaultState(fixture).components,
+      architecture: 'mvc',
+      data: 'sqlc',
+      frontend: 'htmx',
+    },
+  };
+
+  it('encodes a chosen frontend and leaves none out', () => {
+    expect(encodeState(fixture, htmx)).toBe('arch=mvc&data=sqlc&frontend=htmx');
+    const rest = { ...htmx.components };
+    delete rest.frontend;
+    expect(encodeState(fixture, { ...htmx, components: rest })).toBe('arch=mvc&data=sqlc');
+  });
+
+  it('round-trips a chosen frontend', () => {
+    expect(decodeState(fixture, encodeState(fixture, htmx)).state).toEqual(htmx);
+  });
+
+  it('reads the CLI spelling none as no frontend, without a notice', () => {
+    const decoded = decodeState(fixture, 'frontend=none');
+    expect(decoded.state.components.frontend).toBeUndefined();
+    expect(decoded.notices).toEqual([]);
+  });
+
+  it('falls back to none for an unknown frontend, with a notice', () => {
+    const decoded = decodeState(fixture, 'frontend=react');
+    expect(decoded.state.components.frontend).toBeUndefined();
+    expect(decoded.notices).toEqual([
+      'The link names frontend "react", which is not available; none is used.',
+    ]);
+  });
+
+  const tailwind: ConfigState = {
+    ...htmx,
+    components: { ...htmx.components, css: 'tailwind' },
+  };
+
+  it('encodes a chosen CSS framework after the frontend and leaves none out', () => {
+    expect(defaultState(fixture).components.css).toBeUndefined();
+    expect(encodeState(fixture, tailwind)).toBe('arch=mvc&data=sqlc&frontend=htmx&css=tailwind');
+    expect(encodeState(fixture, htmx)).not.toContain('css');
+  });
+
+  it('round-trips a chosen CSS framework', () => {
+    const decoded = decodeState(fixture, encodeState(fixture, tailwind));
+    expect(decoded.state).toEqual(tailwind);
+    expect(decoded.notices).toEqual([]);
+  });
+
+  it('reads css=none as plain CSS and falls back to none for an unknown CSS framework', () => {
+    expect(decodeState(fixture, 'css=none')).toEqual({
+      state: defaultState(fixture),
+      notices: [],
+    });
+    const decoded = decodeState(fixture, 'frontend=htmx&css=bootstrap');
+    expect(decoded.state.components.css).toBeUndefined();
+    expect(decoded.notices).toEqual([
+      'The link names CSS framework "bootstrap", which is not available; none is used.',
+    ]);
   });
 });

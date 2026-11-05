@@ -4,9 +4,15 @@ import {
   goVersionReasons,
   moduleVersionReasons,
   resolvedVersions,
+  selectedAssets,
+  selectedBinaries,
+  selectedModules,
   selectionProblems,
   type Selection,
 } from './compat';
+import { catalog as realCatalog } from './data';
+import { KIND_IDS } from './kinds';
+import type { Catalog } from './schema';
 import { addPostgres, catalogWith, type CatalogData, moduleOf } from '@/lib/test/catalog';
 
 const SQLITE = 'modernc.org/sqlite';
@@ -90,10 +96,7 @@ describe('selectionProblems', () => {
       name: 'unmet trait (provided with another value)',
       edit: addPostgres,
       selection: { ...firstSlice, components: { ...firstSlice.components, database: 'postgres' } },
-      expected: [
-        'sqlc requires conn database/sql, but PostgreSQL provides pgx.',
-        'sqlc requires sql-dialect sqlite, but PostgreSQL provides postgresql.',
-      ],
+      expected: ['sqlc requires conn database/sql, but PostgreSQL provides pgx.'],
     },
     {
       name: 'unmet trait (no provider in a complete selection)',
@@ -101,7 +104,7 @@ describe('selectionProblems', () => {
       selection: firstSlice,
       expected: [
         'sqlc requires a component that provides conn database/sql.',
-        'sqlc requires a component that provides sql-dialect sqlite.',
+        'sqlc requires a component that provides sql-dialect sqlite or postgresql.',
         'sqlc requires a component that provides sql-schema schema.sql.',
       ],
     },
@@ -144,6 +147,27 @@ describe('resolvedVersions', () => {
   });
 });
 
+describe('selectedModules', () => {
+  const paths = (catalog: Catalog, selection: Selection) =>
+    selectedModules(catalog, selection).map((m) => m.path);
+  const gorm = (database: string): Selection => ({
+    ...firstSlice,
+    components: { ...firstSlice.components, database, data: 'gorm' },
+  });
+
+  it('includes modules whose trait conditions the selection meets', () => {
+    const selected = paths(catalogWith(), gorm('sqlite'));
+    expect(selected).toEqual(expect.arrayContaining(['github.com/libtnb/sqlite', 'gorm.io/gorm']));
+    expect(selected).not.toContain('gorm.io/driver/postgres');
+  });
+
+  it('follows the dialect the database provides', () => {
+    const selected = paths(catalogWith(addPostgres), gorm('postgres'));
+    expect(selected).toEqual(expect.arrayContaining(['gorm.io/driver/postgres', 'gorm.io/gorm']));
+    expect(selected).not.toContain('github.com/libtnb/sqlite');
+  });
+});
+
 describe('option reasons', () => {
   it('disables a module version that needs a newer Go and names it (spec: Version too new for Go)', () => {
     const catalog = catalogWith((d) => {
@@ -171,19 +195,135 @@ describe('option reasons', () => {
     const catalog = catalogWith(addPostgres);
     expect(componentReasons(catalog, firstSlice, 'database', 'postgres')).toEqual([
       'sqlc requires conn database/sql, but PostgreSQL provides pgx.',
-      'sqlc requires sql-dialect sqlite, but PostgreSQL provides postgresql.',
     ]);
     expect(componentReasons(catalog, firstSlice, 'database', 'sqlite')).toEqual([]);
     const onPostgres = {
       ...firstSlice,
       components: { ...firstSlice.components, database: 'postgres' },
     };
-    expect(componentReasons(catalog, onPostgres, 'data', 'sqlc')).toHaveLength(2);
+    expect(componentReasons(catalog, onPostgres, 'data', 'sqlc')).toEqual([
+      'sqlc requires conn database/sql, but PostgreSQL provides pgx.',
+    ]);
   });
 
   it('rejects a component the catalog does not contain', () => {
     expect(componentReasons(catalogWith(), firstSlice, 'framework', 'express')).toEqual([
       'No framework named "express" is supported.',
     ]);
+  });
+});
+
+describe('optional kinds', () => {
+  const fixture = catalogWith();
+  const base = {
+    components: { architecture: 'mvc', framework: 'nethttp', database: 'sqlite', data: 'sqlc' },
+    go: fixture.go.default,
+    pins: {},
+  } as const;
+
+  it('treats a selection without a frontend as complete', () => {
+    expect(selectionProblems(fixture, base)).toEqual([]);
+  });
+
+  it('adds the frontend modules and vendored assets when one is chosen', () => {
+    const htmx = { ...base, components: { ...base.components, frontend: 'htmx' } };
+    expect(selectedModules(fixture, htmx).map((m) => m.path)).toContain('github.com/a-h/templ');
+    expect(selectedModules(fixture, base).map((m) => m.path)).not.toContain('github.com/a-h/templ');
+    expect(selectedAssets(fixture, htmx).map((a) => [a.name, a.version])).toEqual([
+      ['htmx.org', '2.0.11'],
+    ]);
+    expect(selectedAssets(fixture, base)).toEqual([]);
+  });
+
+  it('reports a frontend that needs a trait no chosen component provides', () => {
+    const strict = catalogWith((data) => {
+      data.components.find((c) => c.id === 'frontend/htmx')!.requires = { web: ['yes'] };
+    });
+    const htmx = { ...base, components: { ...base.components, frontend: 'htmx' } };
+    expect(componentReasons(strict, base, 'frontend', 'htmx').join(' ')).toContain(
+      'requires a component that provides web yes',
+    );
+    expect(selectionProblems(strict, htmx)).not.toEqual([]);
+  });
+});
+
+describe('a CSS framework (spec: CSS framework needs a frontend)', () => {
+  const fixture = catalogWith();
+  const base = {
+    components: { architecture: 'mvc', framework: 'nethttp', database: 'sqlite', data: 'sqlc' },
+    go: fixture.go.default,
+    pins: {},
+  } as const;
+  const message =
+    'Tailwind CSS requires a frontend that provides frontend-build go or vite, such as htmx + templ.';
+
+  it('needs a frontend that provides frontend-build', () => {
+    expect(componentReasons(fixture, base, 'css', 'tailwind')).toEqual([message]);
+    const htmx = { ...base, components: { ...base.components, frontend: 'htmx' } };
+    expect(componentReasons(fixture, htmx, 'css', 'tailwind')).toEqual([]);
+    expect(
+      selectionProblems(fixture, { ...base, components: { ...base.components, css: 'tailwind' } }),
+    ).toEqual([{ field: 'css', message, involves: ['css/tailwind'] }]);
+  });
+
+  it('is disabled before the required kinds are chosen, since no frontend is (an optional kind left out)', () => {
+    expect(componentReasons(fixture, { ...base, components: {} }, 'css', 'tailwind')).toEqual([
+      message,
+    ]);
+  });
+
+  it('waits for a required kind that may still provide the trait', () => {
+    // A frontend-build provider among the unchosen architectures keeps the choice open.
+    const lenient = catalogWith((data) => {
+      data.components.find((c) => c.id === 'architecture/mvc')!.provides['frontend-build'] = 'go';
+    });
+    expect(componentReasons(lenient, { ...base, components: {} }, 'css', 'tailwind')).toEqual([]);
+  });
+
+  it('reports a frontend that provides another frontend-build', () => {
+    const vite = catalogWith((data) => {
+      data.components.find((c) => c.id === 'frontend/htmx')!.provides['frontend-build'] = 'webpack';
+    });
+    const htmx = { ...base, components: { ...base.components, frontend: 'htmx' } };
+    expect(componentReasons(vite, htmx, 'css', 'tailwind')).toEqual([
+      'Tailwind CSS requires frontend-build go or vite, but htmx + templ provides webpack.',
+    ]);
+  });
+
+  it('downloads the Tailwind CLI only with Tailwind CSS', () => {
+    const htmx = { ...base, components: { ...base.components, frontend: 'htmx' } };
+    const both = { ...htmx, components: { ...htmx.components, css: 'tailwind' } };
+    expect(selectedBinaries(fixture, both).map((b) => [b.name, b.version])).toEqual([
+      ['tailwindcss', '4.3.4'],
+    ]);
+    expect(selectedBinaries(fixture, htmx)).toEqual([]);
+  });
+});
+
+describe('the real catalog', () => {
+  // Compatibility comes from traits; it must agree with the CLI's list of
+  // supported selections, with and without a frontend.
+  it('accepts every supported selection and offers every option within it', () => {
+    for (const components of realCatalog.supported) {
+      const selection = { components, go: realCatalog.go.default, pins: {} };
+      expect(selectionProblems(realCatalog, selection), JSON.stringify(components)).toEqual([]);
+      for (const kind of KIND_IDS) {
+        const name = components[kind];
+        if (name === undefined) continue;
+        expect(componentReasons(realCatalog, selection, kind, name)).toEqual([]);
+      }
+    }
+  });
+
+  it('offers a CSS framework only with a frontend, as the supported selections do', () => {
+    const withoutFrontend = realCatalog.supported.filter((s) => s.frontend === undefined);
+    expect(withoutFrontend.length).toBeGreaterThan(0);
+    for (const components of withoutFrontend) {
+      expect(components.css).toBeUndefined();
+      const selection = { components, go: realCatalog.go.default, pins: {} };
+      for (const css of realCatalog.components.filter((c) => c.kind === 'css')) {
+        expect(componentReasons(realCatalog, selection, 'css', css.name)).not.toEqual([]);
+      }
+    }
   });
 });

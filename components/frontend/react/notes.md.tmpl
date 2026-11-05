@@ -1,0 +1,24 @@
+## Web app
+
+The web app is a [React](https://react.dev) single-page app in TypeScript in
+`frontend/`, created by `npm create vite@{{index .NPM "create-vite"}}` with
+the `react-ts` template and built with [Vite](https://vite.dev). Its example
+page lists the items of the JSON API under `{{.APIPrefix}}/` and adds new ones.
+It needs [Node.js](https://nodejs.org) {{.Node}} (the version CI and the image
+use) or another release that the scaffolded packages support.
+
+The Go binary embeds the build from `{{.Slots.web.Dir}}/dist/app` and serves it at
+`/`, with `index.html` for every path without a file extension, so
+client-side routes survive a reload. Until the frontend is built, `/` shows
+how to build it; `go build` and `go test` work without Node.js.
+
+| Command | What it does |
+|---|---|
+| `make build` | Installs (`npm ci`) and builds the frontend, then builds the binary |
+| `make dev` | Runs the Vite dev server on <http://localhost:5173>, which forwards `{{.APIPrefix}}` to the Go server; run `make run` next to it |
+| `npm --prefix frontend run build` | Builds the frontend only; then `go run ./{{.Slots.entry.Dir}}` serves it |
+
+The page is in `frontend/src/App.tsx`, its API client in `frontend/src/api.ts`,
+and its styles in `frontend/src/index.css`. `frontend/vite.config.ts` sets the
+build output and the dev server's proxy. `frontend/package-lock.json` pins
+every npm dependency; Dependabot keeps them current.

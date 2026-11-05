@@ -92,7 +92,7 @@ func TestLoadInvalidCatalogs(t *testing.T) {
 	}{
 		{"non-tmpl-file", []string{"framework/web/files/handlers/router.go", "must end in .tmpl"}},
 		{"dotfile", []string{"files/root/.gitignore.tmpl", `use the "dot-" prefix`}},
-		{"unknown-kind", []string{"frontend: unknown component kind"}},
+		{"unknown-kind", []string{"plugin: unknown component kind"}},
 		{"root-file", []string{"README.md: unexpected file at the catalog root"}},
 		{"name-mismatch", []string{"framework/web", `manifest name "http" must equal the directory name "web"`}},
 		{"unknown-field", []string{"framework/web", "field provide not found"}},
@@ -101,7 +101,7 @@ func TestLoadInvalidCatalogs(t *testing.T) {
 		{"slots-outside-architecture", []string{"framework/web: only architectures declare slots"}},
 		{"bad-slots", []string{
 			`slot root: "root" is reserved`,
-			`slot handlers: filled_by "frontend"`,
+			`slot handlers: filled_by "plugin"`,
 			"slot store: dir is required",
 			`slot models: package "Models"`,
 			"slot entry: dir:",
@@ -116,7 +116,10 @@ func TestLoadInvalidCatalogs(t *testing.T) {
 			"requires: trait sql-dialect lists no accepted values",
 		}},
 		{"unknown-rules-component", []string{"versions.yaml", `module example.com/lib: unknown component "database/missing"`}},
+		{"unknown-rules-trait", []string{"versions.yaml", `module example.com/lib: trait condition on "sql-dialekt", which no component provides`}},
 		{"missing-rules", []string{"versions.yaml"}},
+		{"reserved-none", []string{`frontend/none: name "none" is reserved`}},
+		{"unknown-asset-component", []string{"versions.yaml", `asset lib.js: unknown component "frontend/missing"`}},
 		{"several-problems", []string{"framework/web: title is required", `database/db: manifest name "other"`}},
 	}
 	for _, tt := range tests {

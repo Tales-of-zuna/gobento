@@ -45,6 +45,16 @@
   --ks: var(--kind-data);
   --ki: var(--matcha-ink);
 }
+.kFront {
+  --k: var(--hisui);
+  --ks: var(--kind-frontend);
+  --ki: var(--hisui-ink);
+}
+.kCss {
+  --k: var(--fuji);
+  --ks: var(--kind-css);
+  --ki: var(--fuji-ink);
+}
 
 /* ---------- layout ---------- */
 .in {
@@ -533,8 +543,9 @@
   border-radius: var(--r-xl);
   box-shadow: var(--toy-3);
 }
-.four {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+/* one compartment per kind; Stack sets --cols from the number of kinds */
+.kinds {
+  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
 }
 
 .cell {
@@ -586,6 +597,7 @@
   color: var(--ki);
 }
 .kind i {
+  flex: none;
   width: 14px;
   height: 14px;
   box-sizing: border-box;
@@ -631,6 +643,13 @@
   color: var(--danger-ink);
 }
 
+.optl {
+  margin-left: auto;
+  font: 500 var(--t-xs) / 1 var(--f-mono);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-2);
+}
 .soonl {
   margin: 4px 0 0;
   font: 500 var(--t-xs) / 1 var(--f-mono);
@@ -961,8 +980,11 @@
     min-height: 0;
     height: 400px;
   }
-  .tray.four {
+  .tray.kinds {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tray.kinds > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
   .split {
     grid-template-columns: minmax(0, 1fr);
@@ -1065,7 +1087,7 @@
     margin-bottom: 28px;
   }
   .tray,
-  .tray.four {
+  .tray.kinds {
     grid-template-columns: minmax(0, 1fr);
     gap: 10px;
     padding: 10px;

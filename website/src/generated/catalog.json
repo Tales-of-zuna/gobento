@@ -3,25 +3,50 @@
     {
       "id": "architecture",
       "title": "Architecture",
-      "description": "How the project's packages are laid out and wired together."
+      "description": "How the project's packages are laid out and wired together.",
+      "optional": false
     },
     {
       "id": "framework",
       "title": "HTTP framework",
-      "description": "Routes HTTP requests to handlers."
+      "description": "Routes HTTP requests to handlers.",
+      "optional": false
     },
     {
       "id": "database",
       "title": "Database",
-      "description": "Where the project stores its data."
+      "description": "Where the project stores its data.",
+      "optional": false
     },
     {
       "id": "data",
       "title": "Data access",
-      "description": "How the code reads and writes the database."
+      "description": "How the code reads and writes the database.",
+      "optional": false
+    },
+    {
+      "id": "frontend",
+      "title": "Frontend",
+      "description": "Web pages served next to the API, which then moves under /api.",
+      "optional": true
+    },
+    {
+      "id": "css",
+      "title": "CSS framework",
+      "description": "Styles the frontend's pages; offered with a frontend that supports it.",
+      "optional": true
     }
   ],
   "components": [
+    {
+      "id": "architecture/ddd",
+      "kind": "architecture",
+      "name": "ddd",
+      "title": "Domain-driven design",
+      "description": "A domain package, an application service for the use cases, and adapters for HTTP, data access, and the database, with dependencies pointing inward.",
+      "provides": {},
+      "requires": {}
+    },
     {
       "id": "architecture/mvc",
       "kind": "architecture",
@@ -32,12 +57,52 @@
       "requires": {}
     },
     {
+      "id": "architecture/vertical-slice",
+      "kind": "architecture",
+      "name": "vertical-slice",
+      "title": "Vertical slice",
+      "description": "One directory per feature, holding its types, HTTP handlers, and data access; shared infrastructure in internal/platform.",
+      "provides": {},
+      "requires": {}
+    },
+    {
+      "id": "framework/chi",
+      "kind": "framework",
+      "name": "chi",
+      "title": "chi",
+      "description": "The lightweight, idiomatic chi router, compatible with net/http handlers and middleware.",
+      "provides": {},
+      "requires": {}
+    },
+    {
+      "id": "framework/gin",
+      "kind": "framework",
+      "name": "gin",
+      "title": "Gin",
+      "description": "The Gin web framework, with its fast router and gin.Context handlers.",
+      "provides": {},
+      "requires": {}
+    },
+    {
       "id": "framework/nethttp",
       "kind": "framework",
       "name": "nethttp",
       "title": "net/http",
       "description": "The standard library HTTP server and its pattern-based ServeMux.",
       "provides": {},
+      "requires": {}
+    },
+    {
+      "id": "database/postgres",
+      "kind": "database",
+      "name": "postgres",
+      "title": "PostgreSQL",
+      "description": "PostgreSQL through pgx, a pure-Go driver, used with database/sql.",
+      "provides": {
+        "conn": "database/sql",
+        "sql-dialect": "postgresql",
+        "sql-schema": "schema.sql"
+      },
       "requires": {}
     },
     {
@@ -54,6 +119,26 @@
       "requires": {}
     },
     {
+      "id": "data/gorm",
+      "kind": "data",
+      "name": "gorm",
+      "title": "GORM",
+      "description": "Data access through the GORM ORM, on the database's own connection and schema.",
+      "provides": {},
+      "requires": {
+        "conn": [
+          "database/sql"
+        ],
+        "sql-dialect": [
+          "sqlite",
+          "postgresql"
+        ],
+        "sql-schema": [
+          "schema.sql"
+        ]
+      }
+    },
+    {
       "id": "data/sqlc",
       "kind": "data",
       "name": "sqlc",
@@ -65,10 +150,71 @@
           "database/sql"
         ],
         "sql-dialect": [
-          "sqlite"
+          "sqlite",
+          "postgresql"
         ],
         "sql-schema": [
           "schema.sql"
+        ]
+      }
+    },
+    {
+      "id": "frontend/htmx",
+      "kind": "frontend",
+      "name": "htmx",
+      "title": "htmx + templ",
+      "description": "Server-rendered pages written as templ components, made interactive with htmx, and served by the Go binary with no build step.",
+      "provides": {
+        "frontend-build": "go"
+      },
+      "requires": {}
+    },
+    {
+      "id": "frontend/react",
+      "kind": "frontend",
+      "name": "react",
+      "title": "React",
+      "description": "A React single-page app in TypeScript, scaffolded with create-vite, built with Vite, and embedded in the Go binary.",
+      "provides": {
+        "frontend-build": "vite"
+      },
+      "requires": {}
+    },
+    {
+      "id": "frontend/svelte",
+      "kind": "frontend",
+      "name": "svelte",
+      "title": "Svelte",
+      "description": "A Svelte single-page app in TypeScript, scaffolded with create-vite, built with Vite, and embedded in the Go binary.",
+      "provides": {
+        "frontend-build": "vite"
+      },
+      "requires": {}
+    },
+    {
+      "id": "frontend/vue",
+      "kind": "frontend",
+      "name": "vue",
+      "title": "Vue",
+      "description": "A Vue single-page app in TypeScript, scaffolded with create-vite, built with Vite, and embedded in the Go binary.",
+      "provides": {
+        "frontend-build": "vite"
+      },
+      "requires": {}
+    },
+    {
+      "id": "css/tailwind",
+      "kind": "css",
+      "name": "tailwind",
+      "title": "Tailwind CSS",
+      "description": "Utility-first CSS compiled by Tailwind CSS; for htmx with the standalone CLI and a committed stylesheet (no Node.js needed), for React, Vue, and Svelte with its Vite plugin.",
+      "provides": {
+        "css": "tailwind"
+      },
+      "requires": {
+        "frontend-build": [
+          "go",
+          "vite"
         ]
       }
     }
@@ -79,13 +225,115 @@
   },
   "modules": [
     {
+      "path": "github.com/a-h/templ",
+      "components": [
+        "frontend/htmx"
+      ],
+      "traits": {},
+      "role": "library",
+      "range": "=v0.3.1100",
+      "default": "v0.3.1100",
+      "constraints": []
+    },
+    {
+      "path": "github.com/gin-gonic/gin",
+      "components": [
+        "framework/gin"
+      ],
+      "traits": {},
+      "role": "library",
+      "range": ">=v1.11.0 <v2.0.0",
+      "default": "v1.12.0",
+      "constraints": []
+    },
+    {
+      "path": "github.com/go-chi/chi/v5",
+      "components": [
+        "framework/chi"
+      ],
+      "traits": {},
+      "role": "library",
+      "range": ">=v5.3.0 <v6.0.0",
+      "default": "v5.5.0",
+      "constraints": []
+    },
+    {
+      "path": "github.com/jackc/pgx/v5",
+      "components": [
+        "database/postgres"
+      ],
+      "traits": {},
+      "role": "library",
+      "range": ">=v5.12.0 <v6.0.0",
+      "default": "v5.12.0",
+      "constraints": []
+    },
+    {
+      "path": "github.com/libtnb/sqlite",
+      "components": [
+        "data/gorm"
+      ],
+      "traits": {
+        "sql-dialect": [
+          "sqlite"
+        ]
+      },
+      "role": "library",
+      "range": ">=v1.1.0 <v2.0.0",
+      "default": "v1.2.2",
+      "constraints": [
+        {
+          "when": ">=v1.2.0",
+          "requires": {
+            "target": "gorm.io/gorm",
+            "range": ">=v1.31.2"
+          }
+        }
+      ]
+    },
+    {
       "path": "github.com/sqlc-dev/sqlc",
       "components": [
         "data/sqlc"
       ],
+      "traits": {},
       "role": "tool",
       "range": "=v1.31.1",
       "default": "v1.31.1",
+      "constraints": []
+    },
+    {
+      "path": "gorm.io/driver/postgres",
+      "components": [
+        "data/gorm"
+      ],
+      "traits": {
+        "sql-dialect": [
+          "postgresql"
+        ]
+      },
+      "role": "library",
+      "range": ">=v1.6.1 <v2.0.0",
+      "default": "v1.6.3",
+      "constraints": [
+        {
+          "when": ">=v1.6.2",
+          "requires": {
+            "target": "gorm.io/gorm",
+            "range": ">=v1.31.2"
+          }
+        }
+      ]
+    },
+    {
+      "path": "gorm.io/gorm",
+      "components": [
+        "data/gorm"
+      ],
+      "traits": {},
+      "role": "library",
+      "range": ">=v1.31.1 <v2.0.0",
+      "default": "v1.31.2",
       "constraints": []
     },
     {
@@ -93,6 +341,7 @@
       "components": [
         "database/sqlite"
       ],
+      "traits": {},
       "role": "library",
       "range": ">=v1.61.0 <v2.0.0",
       "default": "v1.61.1",
@@ -107,12 +356,2513 @@
       ]
     }
   ],
+  "assets": [
+    {
+      "name": "htmx.org",
+      "components": [
+        "frontend/htmx"
+      ],
+      "version": "2.0.11",
+      "source": "https://registry.npmjs.org/htmx.org/-/htmx.org-2.0.11.tgz"
+    }
+  ],
+  "binaries": [
+    {
+      "name": "tailwindcss",
+      "components": [
+        "css/tailwind"
+      ],
+      "traits": {
+        "frontend-build": [
+          "go"
+        ]
+      },
+      "version": "4.3.4",
+      "platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "linux/arm64",
+        "windows/amd64",
+        "windows/arm64"
+      ]
+    }
+  ],
+  "tooling": {
+    "images": [
+      {
+        "key": "go",
+        "image": "golang",
+        "tag": "{go}",
+        "digest": ""
+      },
+      {
+        "key": "node",
+        "image": "node",
+        "tag": "{node}-alpine",
+        "digest": ""
+      },
+      {
+        "key": "postgres",
+        "image": "postgres",
+        "tag": "18-alpine",
+        "digest": ""
+      },
+      {
+        "key": "runtime",
+        "image": "gcr.io/distroless/static-debian13",
+        "tag": "nonroot",
+        "digest": "sha256:25ac8f0c3b2334a9eb05452266bd4697864a8c8ef0ef71e5e6480d7f92868329"
+      }
+    ],
+    "actions": [
+      {
+        "name": "actions/checkout",
+        "version": "v7.0.1",
+        "sha": "3d3c42e5aac5ba805825da76410c181273ba90b1"
+      },
+      {
+        "name": "actions/setup-go",
+        "version": "v7.0.0",
+        "sha": "b7ad1dad31e06c5925ef5d2fc7ad053ef454303e"
+      },
+      {
+        "name": "actions/setup-node",
+        "version": "v7.1.0",
+        "sha": "949feb2413d6458794dcd2491c4babbbce0c15c1"
+      },
+      {
+        "name": "golangci/golangci-lint-action",
+        "version": "v9.3.0",
+        "sha": "ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a"
+      }
+    ],
+    "tools": [
+      {
+        "name": "golangci-lint",
+        "version": "v2.15.0"
+      }
+    ]
+  },
+  "node": {
+    "range": ">=v22.12.0",
+    "default": "26"
+  },
+  "npm": [
+    {
+      "name": "@tailwindcss/vite",
+      "components": [
+        "css/tailwind"
+      ],
+      "traits": {
+        "frontend-build": [
+          "vite"
+        ]
+      },
+      "role": "dev-dependency",
+      "version": "4.3.4"
+    },
+    {
+      "name": "create-vite",
+      "components": [
+        "frontend/react",
+        "frontend/svelte",
+        "frontend/vue"
+      ],
+      "traits": {},
+      "role": "scaffolder",
+      "version": "9.3.3"
+    },
+    {
+      "name": "tailwindcss",
+      "components": [
+        "css/tailwind"
+      ],
+      "traits": {
+        "frontend-build": [
+          "vite"
+        ]
+      },
+      "role": "dev-dependency",
+      "version": "4.3.4"
+    }
+  ],
   "supported": [
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "ddd",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "ddd",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
     {
       "architecture": "mvc",
       "data": "sqlc",
       "database": "sqlite",
       "framework": "nethttp"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "mvc",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "chi",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "gin",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "postgres",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "react"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "svelte"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "vue"
+    },
+    {
+      "architecture": "vertical-slice",
+      "css": "tailwind",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "vue"
     }
   ],
   "rules": {

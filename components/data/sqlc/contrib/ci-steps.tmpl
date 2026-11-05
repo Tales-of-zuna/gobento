@@ -1,0 +1,2 @@
+- name: Check that the sqlc code is current
+  run: go run github.com/sqlc-dev/sqlc/cmd/sqlc@{{index .Versions "github.com/sqlc-dev/sqlc"}} diff

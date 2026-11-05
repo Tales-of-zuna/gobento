@@ -103,6 +103,34 @@ modules:
 			want: []string{"module example.com/lib", "range", "invalid range"},
 		},
 		{
+			name: "trait condition without values",
+			yaml: `
+go: { range: ">=1.26", default: "1.27" }
+modules:
+  example.com/lib:
+    components: [database/lib]
+    traits: { sql-dialect: [] }
+    role: library
+    range: ">=v1.0.0"
+    default: v1.0.0
+`,
+			want: []string{"module example.com/lib", "traits: sql-dialect lists no values"},
+		},
+		{
+			name: "trait condition with an empty value",
+			yaml: `
+go: { range: ">=1.26", default: "1.27" }
+modules:
+  example.com/lib:
+    components: [database/lib]
+    traits: { sql-dialect: [""] }
+    role: library
+    range: ">=v1.0.0"
+    default: v1.0.0
+`,
+			want: []string{"module example.com/lib", "traits: sql-dialect lists an empty value"},
+		},
+		{
 			name: "malformed go range",
 			yaml: `go: { range: ">=v1.26", default: "1.27" }`,
 			want: []string{"go: range", "invalid range"},
@@ -304,6 +332,26 @@ func TestCheckComponents(t *testing.T) {
 	} {
 		if !strings.Contains(err.Error(), w) {
 			t.Errorf("CheckComponents() error = %q, want it to contain %q", err, w)
+		}
+	}
+}
+
+// TestCheckTraits covers spec "Modules conditioned on traits" / Unknown
+// trait in a condition.
+func TestCheckTraits(t *testing.T) {
+	t.Parallel()
+
+	r := mustParseRules(t, traitRules)
+	if err := r.CheckTraits(func(string) bool { return true }); err != nil {
+		t.Errorf("CheckTraits(all known) error = %v, want nil", err)
+	}
+	err := r.CheckTraits(func(trait string) bool { return trait != "sql-dialect" })
+	if err == nil {
+		t.Fatal("CheckTraits() error = nil, want an unknown trait error")
+	}
+	for _, w := range []string{"module example.com/pgdriver", `"sql-dialect"`, "no component provides"} {
+		if !strings.Contains(err.Error(), w) {
+			t.Errorf("CheckTraits() error = %q, want it to contain %q", err, w)
 		}
 	}
 }

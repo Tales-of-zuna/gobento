@@ -1,0 +1,14 @@
+name: svelte
+title: Svelte
+description: A Svelte single-page app in TypeScript, scaffolded with create-vite, built with Vite, and embedded in the Go binary.
+provides:
+  # Built with Vite from the Node.js sources in frontend/.
+  frontend-build: vite
+scaffold:
+  # npm create vite@<version> frontend -- --template svelte-ts; the version
+  # is npm.create-vite in versions.yaml.
+  with: create-vite
+  template: svelte-ts
+  dir: frontend
+  # Demo files the example page (src/App.svelte, src/app.css) leaves unused.
+  remove: [src/lib, src/assets]

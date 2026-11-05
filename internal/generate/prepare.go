@@ -3,6 +3,7 @@ package generate
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"regexp"
 	"slices"
 	"strings"
@@ -65,6 +66,29 @@ func ReservedNames() []string {
 	return names
 }
 
+// CheckName reports whether name follows the project name rules, with an
+// error wrapping ErrInvalidName that explains the rule it breaks. Prepare
+// applies the same check.
+func CheckName(name string) error {
+	switch {
+	case !namePattern.MatchString(name):
+		return fmt.Errorf("%w %q: %s", ErrInvalidName, name, NameRule)
+	case isWindowsReserved(name):
+		return fmt.Errorf("%w %q: %s", ErrInvalidName, name, ReservedNameRule)
+	}
+	return nil
+}
+
+// CheckModule reports whether path is a valid module path, with an error
+// wrapping ErrInvalidModule that suggests a path built from the project
+// name. Prepare applies the same check.
+func CheckModule(path, name string) error {
+	if err := module.CheckImportPath(path); err != nil {
+		return fmt.Errorf("%w %q: %w; use a path such as example.com/%s", ErrInvalidModule, path, err, safeExample(name))
+	}
+	return nil
+}
+
 // Spec is the user's description of a project, before validation.
 type Spec struct {
 	// Name is the project name, for example shop.
@@ -72,7 +96,8 @@ type Spec struct {
 	// Module is the module path; "" means the project name.
 	Module string
 	// Components maps each kind to the chosen component name. A missing or
-	// empty entry selects the kind's only supported component.
+	// empty entry selects the kind's only supported component; for an
+	// optional kind, it selects no component, as catalog.None does.
 	Components map[catalog.Kind]string
 	// Go is the chosen Go version, or "" for the default.
 	Go string
@@ -92,6 +117,10 @@ type Prepared struct {
 	Versions compat.Resolved
 	// Plan is the composed project.
 	Plan *compose.Plan
+	// Scaffolds lists the scaffold steps of the selection, in kind order.
+	Scaffolds []Scaffold
+	// Node is the rules' Node.js rule.
+	Node compat.NodeRule
 }
 
 // Request returns the generation request for p in target.
@@ -102,6 +131,8 @@ func (p *Prepared) Request(target string) Request {
 		GoVersion: p.Versions.Go,
 		Modules:   p.Versions.Modules,
 		Target:    target,
+		Scaffolds: p.Scaffolds,
+		Node:      p.Node,
 	}
 }
 
@@ -121,10 +152,21 @@ func (e *SelectionError) Error() string {
 	if supported == "" {
 		supported = "none"
 	}
-	if e.Value == "" {
-		return fmt.Sprintf("choose a %s; supported: %s", e.Kind, supported)
+	noun := string(e.Kind)
+	switch e.Kind {
+	case catalog.KindData:
+		noun = "data-access library" // "a data" does not read
+	case catalog.KindCSS:
+		noun = "CSS framework"
 	}
-	return fmt.Sprintf("unknown %s %q; supported: %s", e.Kind, e.Value, supported)
+	if e.Value == "" {
+		article := "a"
+		if strings.ContainsRune("aeiou", rune(noun[0])) {
+			article = "an"
+		}
+		return fmt.Sprintf("choose %s %s; supported: %s", article, noun, supported)
+	}
+	return fmt.Sprintf("unknown %s %q; supported: %s", noun, e.Value, supported)
 }
 
 // Prepare validates spec against cat and composes the project, entirely in
@@ -138,22 +180,24 @@ func Prepare(cat *catalog.Catalog, spec Spec) (*Prepared, error) {
 		p.Module = spec.Name
 	}
 
-	switch {
-	case !namePattern.MatchString(spec.Name):
-		errs = append(errs, fmt.Errorf("%w %q: %s", ErrInvalidName, spec.Name, NameRule))
-	case isWindowsReserved(spec.Name):
-		errs = append(errs, fmt.Errorf("%w %q: %s", ErrInvalidName, spec.Name, ReservedNameRule))
+	if err := CheckName(spec.Name); err != nil {
+		errs = append(errs, err)
 	}
-	if err := module.CheckImportPath(p.Module); err != nil {
-		errs = append(errs, fmt.Errorf("%w %q: %w; use a path such as example.com/%s", ErrInvalidModule, p.Module, err, safeExample(spec.Name)))
+	if err := CheckModule(p.Module, spec.Name); err != nil {
+		errs = append(errs, err)
 	}
 
 	sel, ids, selErrs := selectComponents(cat, spec.Components)
 	errs = append(errs, selErrs...)
 
 	// Versions are checked even when a kind is not resolved yet; every
-	// component of such a kind then counts as possibly selected.
-	res, err := cat.Rules().Resolve(compat.Request{Components: ids, Go: spec.Go, Pins: spec.Pins})
+	// component of such a kind then counts as possibly selected, and so
+	// does every module with a trait condition (nil traits).
+	var traits map[string]string
+	if len(selErrs) == 0 {
+		traits = sel.Traits()
+	}
+	res, err := cat.Rules().Resolve(compat.Request{Components: ids, Go: spec.Go, Pins: spec.Pins, Traits: traits})
 	if err != nil || len(selErrs) > 0 {
 		return nil, errors.Join(append(errs, err)...)
 	}
@@ -172,29 +216,44 @@ func Prepare(cat *catalog.Catalog, spec Spec) (*Prepared, error) {
 		Project:   compose.Project{Name: p.Name, Module: p.Module, GoVersion: goDirective},
 		Selection: sel,
 		Versions:  res.Versions(),
+		Assets:    res.AssetVersions(),
+		Binaries:  res.BinaryVersions(),
+		Base:      cat.Base(),
+		Tooling:   res.Tooling,
+		Node:      res.Node,
+		NPM:       res.NPMVersions(),
 	})
 	if err != nil {
 		return nil, err
 	}
 	p.Plan = plan
+	p.Scaffolds = scaffolds(sel, res)
+	p.Node = cat.Rules().Node
 	return p, nil
 }
 
 // selectComponents resolves the chosen component names into a supported
-// selection, auto-selecting kinds with a single supported component. It also
-// returns the IDs of the components whose versions apply: the selected ones,
-// and every component of a kind that could not be resolved.
+// selection, auto-selecting required kinds with a single supported
+// component and selecting no component of an optional kind whose name is
+// empty or catalog.None. It also returns the IDs of the components whose
+// versions apply: the selected ones, and every component of a kind that
+// could not be resolved.
 func selectComponents(cat *catalog.Catalog, chosen map[catalog.Kind]string) (catalog.Selection, []string, []error) {
+	if sel, ids, ok := selectNamed(cat, chosen); ok {
+		return sel, ids, nil
+	}
 	supported := compose.Supported(cat)
 	var (
-		errs  []error
-		ids   []string
-		comps = make(map[catalog.Kind]*catalog.Component)
+		errs []error
+		ids  []string
+		sel  catalog.Selection
 	)
 	for _, kind := range catalog.Kinds() {
 		names := supportedNames(supported, kind)
 		value := chosen[kind]
 		switch {
+		case kind.Optional() && (value == "" || value == catalog.None):
+			continue
 		case value == "" && len(names) == 1:
 			value = names[0]
 		case value == "" || !slices.Contains(names, value):
@@ -205,38 +264,99 @@ func selectComponents(cat *catalog.Catalog, chosen map[catalog.Kind]string) (cat
 			continue
 		}
 		c, _ := cat.Component(kind, value)
-		comps[kind] = c
+		sel = sel.With(c)
 		ids = append(ids, c.ID())
 	}
 	if len(errs) > 0 {
 		return catalog.Selection{}, ids, errs
 	}
-	sel := catalog.Selection{
-		Architecture: comps[catalog.KindArchitecture],
-		Framework:    comps[catalog.KindFramework],
-		Database:     comps[catalog.KindDatabase],
-		Data:         comps[catalog.KindData],
-	}
 	if !slices.ContainsFunc(supported, func(s catalog.Selection) bool { return s.String() == sel.String() }) {
 		if err := compose.Check(cat, sel); err != nil {
+			if hint := providerHint(cat, sel); hint != "" {
+				err = fmt.Errorf("%w; %s", err, hint)
+			}
 			return catalog.Selection{}, ids, []error{fmt.Errorf("the combination %s is not supported: %w", sel, err)}
 		}
 	}
 	return sel, ids, nil
 }
 
-// supportedNames returns the sorted, unique names of kind in the supported
-// selections.
-func supportedNames(supported []catalog.Selection, kind catalog.Kind) []string {
-	var names []string
-	for _, s := range supported {
-		for _, c := range s.Components() {
-			if c.Kind == kind && !slices.Contains(names, c.Name) {
-				names = append(names, c.Name)
+// providerHint names, for every trait a selected component requires and no
+// selected component provides, the components of the catalog that provide
+// an accepted value, for example "frontend-build is provided by
+// frontend/htmx", or returns "" if there are none.
+func providerHint(cat *catalog.Catalog, sel catalog.Selection) string {
+	provided := sel.Traits()
+	var hints []string
+	for _, c := range sel.Components() {
+		for _, trait := range slices.Sorted(maps.Keys(c.Requires)) {
+			if _, ok := provided[trait]; ok {
+				continue
+			}
+			var by []string
+			for _, kind := range catalog.Kinds() {
+				for _, p := range cat.Components(kind) {
+					if v, ok := p.Provides[trait]; ok && slices.Contains(c.Requires[trait], v) {
+						by = append(by, p.ID())
+					}
+				}
+			}
+			if len(by) > 0 {
+				hints = append(hints, trait+" is provided by "+strings.Join(by, ", "))
 			}
 		}
 	}
+	return strings.Join(hints, "; ")
+}
+
+// selectNamed is the fast path of selectComponents: when every required
+// kind names an existing component and the selection composes, it is
+// supported by definition, and composing every candidate (to auto-select
+// or to list the supported names in an error) is not needed. Otherwise ok
+// is false and selectComponents does the full check.
+func selectNamed(cat *catalog.Catalog, chosen map[catalog.Kind]string) (catalog.Selection, []string, bool) {
+	var (
+		sel catalog.Selection
+		ids []string
+	)
+	for _, kind := range catalog.Kinds() {
+		value := chosen[kind]
+		if kind.Optional() && (value == "" || value == catalog.None) {
+			continue
+		}
+		c, ok := cat.Component(kind, value)
+		if !ok {
+			return catalog.Selection{}, nil, false
+		}
+		sel = sel.With(c)
+		ids = append(ids, c.ID())
+	}
+	if sel.CheckTraits() != nil || compose.Check(cat, sel) != nil {
+		return catalog.Selection{}, nil, false
+	}
+	return sel, ids, true
+}
+
+// supportedNames returns the sorted, unique names of kind in the supported
+// selections. For an optional kind, catalog.None comes first when a
+// supported selection has no component of the kind.
+func supportedNames(supported []catalog.Selection, kind catalog.Kind) []string {
+	var names []string
+	none := false
+	for _, s := range supported {
+		c := s.Component(kind)
+		if c == nil {
+			none = true
+			continue
+		}
+		if !slices.Contains(names, c.Name) {
+			names = append(names, c.Name)
+		}
+	}
 	slices.Sort(names)
+	if kind.Optional() && none {
+		names = append([]string{catalog.None}, names...)
+	}
 	return names
 }
 

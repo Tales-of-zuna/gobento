@@ -1,0 +1,65 @@
+# The base layer: files every generated project gets, whatever the selection.
+# It is not a component kind and is never selected. Its templates live in
+# files/root/ only; they reach the layout through .Slots like any template.
+title: Project tooling
+description: Makefile, Dockerfile, CI workflow, Dependabot, and golangci-lint configuration.
+
+# Contribution points of the project-wide files. A component of any kind
+# contributes to a point with contrib/<point>.tmpl in its directory.
+# Contributions are rendered with the usual template data, trimmed of
+# leading and trailing newlines, and joined with newlines in kind order.
+# Write them at column zero; the including templates indent them. A new
+# point needs an entry here and one {{contrib "<point>"}} in a template of
+# the base layer or of any component (the architectures' .gitignore
+# includes gitignore). Points that only one kind's files include, such as
+# the Vite points of the frontends, are declared in that kind's kind.yaml
+# instead. Contribution templates cannot include points.
+contributions:
+  make: >-
+    Makefile lines after the variables (GO, BINARY, IMAGE, GOLANGCI_LINT,
+    DOCKER_RUN_FLAGS): variable assignments such as
+    "DOCKER_RUN_FLAGS += ...", or whole targets with their own .PHONY line.
+  make-build: >-
+    Commands of `make build` that run before the binary is built, one per
+    line, without the leading tab (for example building a frontend that the
+    binary embeds).
+  make-generate: >-
+    Commands of `make generate`, one per line, without the leading tab. The
+    target exists only when some component contributes.
+  ci-services: >-
+    Service containers of the CI job, as entries of its services: mapping
+    (for example "postgres:" followed by its image, ports, and options).
+  ci-env: >-
+    Environment variables of the CI job, as entries of its env: mapping
+    (for example "TEST_DATABASE_URL: ...").
+  ci-steps: >-
+    Steps of the CI job after Go is set up and before the tidy check, build,
+    lint, and tests, as YAML sequence entries ("- name: ..."). Use it for
+    code generation and for checks that generated code is current.
+  docker-stages: >-
+    Whole Dockerfile stages before the Go build stage, each starting with
+    "FROM ... AS <name>" (for example a Node.js stage that builds a
+    frontend). The build stage copies their output with docker-build.
+  docker-build: >-
+    Dockerfile instructions in the build stage, after the sources are copied
+    and before the binary is built (for example code generation, or
+    preparing directories for the runtime stage under /out).
+  docker-runtime: >-
+    Dockerfile instructions in the runtime stage, after the binary is copied
+    and before USER and ENTRYPOINT (for example COPY --from=build, ENV,
+    VOLUME). The runtime image has no shell, so RUN does not work here.
+  dockerignore: >-
+    .dockerignore patterns, one per line, for files that must not reach the
+    build context (for example local database files).
+  dependabot: >-
+    Entries of the updates: list of .github/dependabot.yml, as YAML sequence
+    entries ("- package-ecosystem: ..."), for ecosystems beyond gomod,
+    github-actions, and docker (for example npm in /frontend).
+  gitignore: >-
+    .gitignore patterns, one per line, for files the component's tools
+    write that must not be committed. The architectures' .gitignore
+    includes them.
+  readme-docker: >-
+    Markdown paragraphs for the README's Docker section, separated from
+    other components' paragraphs by a blank line: what the component
+    needs at run time in a container (data volumes, connection strings).

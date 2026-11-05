@@ -1,4 +1,15 @@
-## Database schema
+## Database
+
+The application stores its data in SQLite, through the pure-Go driver
+modernc.org/sqlite, so it builds without a C compiler. `DATABASE_URL` is the
+database file path or a modernc.org/sqlite connection string; by default it is
+`{{.Project.Name}}.db` in the working directory (`DefaultURL` in
+`{{.Slots.database.Dir}}`).
+
+Tests need no setup: `{{.Slots.database.Dir}}/dbtest` gives every test an
+empty database file of its own in a temporary directory.
+
+### Schema
 
 `{{.Slots.database.Dir}}/schema.sql` is embedded in the binary and applied
 every time the application starts. It uses `CREATE TABLE IF NOT EXISTS`, so it

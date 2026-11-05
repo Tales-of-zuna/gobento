@@ -121,3 +121,42 @@ func TestDocsSeveralProblems(t *testing.T) {
 		t.Errorf("new.mdx shows:\n%s\nwant testdata/several-problems.txt:\n%s", report, want)
 	}
 }
+
+// TestDocsListComponents checks that the gobento list reference shows the
+// output of its example commands exactly: the text blocks after the
+// list-components-database, list-components-frontend, and
+// list-selections-mvc-postgres markers in website/content/docs/cli/list.mdx,
+// whose first line is the command.
+func TestDocsListComponents(t *testing.T) {
+	t.Parallel()
+
+	doc, err := os.ReadFile("../../website/content/docs/cli/list.mdx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, marker := range []string{"list-components-database", "list-components-frontend", "list-selections-mvc-postgres"} {
+		_, after, ok := strings.Cut(string(doc), "{/* "+marker+" */}\n\n```text\n")
+		if !ok {
+			t.Errorf("list.mdx has no %s text block", marker)
+			continue
+		}
+		block, _, ok := strings.Cut(after, "```")
+		if !ok {
+			t.Errorf("the %s block is not closed", marker)
+			continue
+		}
+		command, shown, _ := strings.Cut(block, "\n")
+		args, ok := strings.CutPrefix(command, "$ gobento ")
+		if !ok {
+			t.Errorf("the %s block starts with %q, want a $ gobento command", marker, command)
+			continue
+		}
+		out, _, err := run(t, components.FS(), &fakeGenerator{}, strings.Fields(args)...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if shown != out {
+			t.Errorf("list.mdx shows:\n%s\nwant the output of gobento %s:\n%s", shown, args, out)
+		}
+	}
+}

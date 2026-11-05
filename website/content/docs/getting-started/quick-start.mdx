@@ -12,8 +12,12 @@ Install gobento first, with
 [GitHub Releases](https://github.com/Tales-of-zuna/gobento/releases); see
 [Installation](/docs/getting-started/installation) for checksums and details.
 
-This guide generates a project called `shop` with the first supported stack:
-MVC, `net/http`, SQLite, and sqlc.
+This guide generates a project called `shop` with MVC, `net/http`, SQLite, and
+sqlc. SQLite needs no database server, so nothing else has to run. Swap
+`--framework nethttp` for `chi` or `gin` to use another router; the generated
+API is the same. [Choose your stack](/docs/getting-started/choose-your-stack)
+shows what changes with another architecture, PostgreSQL, GORM, or a
+frontend and CSS framework.
 
 ## Generate and run it
 
@@ -26,7 +30,7 @@ MVC, `net/http`, SQLite, and sqlc.
 writes nothing and does not run the Go toolchain.
 
 ```sh
-gobento new shop --module example.com/shop --dry-run
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --dry-run
 ```
 
 It prints `Dry run: nothing was written.`, the module, the selection
@@ -39,11 +43,24 @@ It prints `Dry run: nothing was written.`, the module, the selection
 ### Generate it
 
 ```sh
-gobento new shop --module example.com/shop
+gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
 ```
 
-Each component kind has one option today, so gobento selects them for you. The
-same command with every choice spelled out is:
+`--arch` chooses the architecture: `mvc` organizes the code by layer,
+`vertical-slice` by feature (see
+[With the vertical-slice architecture](/docs/getting-started/choose-your-stack#with-the-vertical-slice-architecture)),
+and `ddd` in domain-driven layers (see
+[With the ddd architecture](/docs/getting-started/choose-your-stack#with-the-ddd-architecture)).
+`--framework` picks the HTTP framework: `nethttp` (the standard library),
+`chi`, or `gin`. `--db` picks the database: `sqlite` or `postgres` (see
+[Use PostgreSQL](/docs/getting-started/choose-your-stack#use-postgresql)). `--data` picks the data access: `sqlc` or
+`gorm` (see [With GORM](/docs/getting-started/choose-your-stack#with-gorm)). There is no `--frontend`, so the project
+is an HTTP API (see [With htmx](/docs/getting-started/choose-your-stack#with-htmx) and
+[With React, Vue, or Svelte](/docs/getting-started/choose-your-stack#with-react-vue-or-svelte) for web pages). If you leave out
+one of these flags in a terminal, gobento asks you to choose; you can also run
+plain `gobento new` and answer the questions for the name, module path, and
+components. The same command with every choice spelled out, which never asks
+anything (an omitted `--frontend` means none), is:
 
 ```sh
 gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc
@@ -72,8 +89,9 @@ go test ./...
 ```
 
 The project builds, passes `go vet` and `gofmt -l`, and passes its own tests
-without edits: the handlers are tested against a fake store, and the database
-and store packages against a real SQLite database.
+without edits: the handlers are tested against a fake store, the entry point's
+routing against an in-memory store, and the database and store packages
+against a real SQLite database.
 
 </Step>
 <Step>
@@ -146,9 +164,16 @@ This is the list `--dry-run` prints for `shop`, as a tree:
 
 <Files>
   <Folder name="shop" defaultOpen>
+    <Folder name=".github" defaultOpen>
+      <Folder name="workflows" defaultOpen>
+        <File name="ci.yml" />
+      </Folder>
+      <File name="dependabot.yml" />
+    </Folder>
     <Folder name="cmd" defaultOpen>
       <Folder name="shop" defaultOpen>
         <File name="main.go" />
+        <File name="main_test.go" />
       </Folder>
     </Folder>
     <Folder name="internal" defaultOpen>
@@ -158,6 +183,9 @@ This is the list `--dry-run` prints for `shop`, as a tree:
         <File name="router_test.go" />
       </Folder>
       <Folder name="database" defaultOpen>
+        <Folder name="dbtest" defaultOpen>
+          <File name="dbtest.go" />
+        </Folder>
         <File name="database.go" />
         <File name="database_test.go" />
         <File name="schema.sql" />
@@ -176,7 +204,11 @@ This is the list `--dry-run` prints for `shop`, as a tree:
         <File name="store_test.go" />
       </Folder>
     </Folder>
+    <File name=".dockerignore" />
     <File name=".gitignore" />
+    <File name=".golangci.yml" />
+    <File name="Dockerfile" />
+    <File name="Makefile" />
     <File name="README.md" />
     <File name="go.mod" />
     <File name="go.sum" />
@@ -184,17 +216,20 @@ This is the list `--dry-run` prints for `shop`, as a tree:
   </Folder>
 </Files>
 
-Each directory is one Go package, filled by one component:
+Each directory under `cmd/` and `internal/` is one Go package, filled by one
+component; the tooling at the top comes from gobento's base layer:
 
-| Path                                          | Filled by     | Contents                                                                                                                                  |
-| --------------------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `cmd/shop/main.go`                            | architecture  | Config from the environment (`PORT`, default `8080`; `DATABASE_URL`, default `shop.db`), wiring, graceful shutdown on Ctrl-C or `SIGTERM` |
-| `internal/models/`                            | architecture  | The `Item` type and the `ItemStore` interface                                                                                             |
-| `internal/controllers/`                       | framework     | `NewRouter` with `GET /health`, `GET /items`, and `POST /items`, and tests with a fake `ItemStore`                                        |
-| `internal/database/`                          | database      | `Open`, and an embedded `schema.sql` applied at startup                                                                                   |
-| `internal/store/`                             | data access   | `queries.sql`, the `New` adapter, and a test against real SQLite; sqlc's generated code is in the `sqlcgen` subpackage                    |
-| `sqlc.yaml`                                   | data access   | sqlc configuration                                                                                                                        |
-| `README.md`, `.gitignore`, `go.mod`, `go.sum` | project files | `go.mod` is rendered by gobento, `go.sum` comes from the Go toolchain, and the README includes notes from each component                  |
+| Path                                          | Filled by     | Contents                                                                                                                                                                                  |
+| --------------------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cmd/shop/`                                   | architecture  | Config from the environment (`PORT`, default `8080`; `DATABASE_URL`, default `database.DefaultURL`, here `shop.db`), wiring, graceful shutdown on Ctrl-C or `SIGTERM`, and a routing test |
+| `internal/models/`                            | architecture  | The `Item` type and the `ItemStore` interface                                                                                                                                             |
+| `internal/controllers/`                       | framework     | `NewRouter` with `GET /health`, `GET /items`, and `POST /items`, and tests with a fake `ItemStore`                                                                                        |
+| `internal/database/`                          | database      | `Open`, `DefaultURL`, an embedded `schema.sql` applied at startup, and `dbtest`, which gives each test an empty database                                                                  |
+| `internal/store/`                             | data access   | `queries.sql`, the `New` adapter, and a test against a real database; sqlc's generated code is in the `sqlcgen` subpackage                                                                |
+| `sqlc.yaml`                                   | data access   | sqlc configuration                                                                                                                                                                        |
+| `README.md`, `.gitignore`, `go.mod`, `go.sum` | project files | `go.mod` is rendered by gobento, `go.sum` comes from the Go toolchain, and the README includes notes from each component                                                                  |
+| `Makefile`, `Dockerfile`, `.dockerignore`     | base layer    | `make` tasks (build, test, lint, docker-build, ...) and a static, distroless, non-root container image; see [Project tooling](/docs/concepts/project-tooling)                             |
+| `.github/`, `.golangci.yml`                   | base layer    | A CI workflow (tidy check, build, vet, golangci-lint, tests, image build), Dependabot, and the linter configuration                                                                       |
 
 `go.mod` requires every direct dependency at an exact version: the defaults
 from the [version rules](/docs/concepts/version-rules), or the versions you
@@ -203,7 +238,7 @@ chose with `--go` and `--pin`.
 The sqlc output in `internal/store/sqlcgen` is shipped pre-generated, so you
 do not need sqlc to build the project. The generated README explains how to
 regenerate it with the pinned sqlc version (v1.31.1 today) after you change
-`queries.sql` or the schema:
+`queries.sql` or the schema, with `make generate` or:
 
 ```sh
 go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1 generate
@@ -216,5 +251,6 @@ migration system.
 
 ## Next steps
 
+- Try another architecture, database, data access, or frontend in [Choose your stack](/docs/getting-started/choose-your-stack).
 - Learn how the pieces fit together in [Slots and contracts](/docs/concepts/slots-and-contracts).
 - See every flag in the [`gobento new` reference](/docs/cli/new).

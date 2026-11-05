@@ -1,0 +1,11 @@
+name: ddd
+title: Domain-driven design
+description: A domain package, an application service for the use cases, and adapters for HTTP, data access, and the database, with dependencies pointing inward.
+slots:
+  entry:    { dir: "cmd/{{.Project.Name}}",         package: main, filled_by: architecture }
+  models:   { dir: internal/domain,                 filled_by: architecture }
+  app:      { dir: internal/app,                    filled_by: architecture }
+  handlers: { dir: internal/adapters/httpapi,       filled_by: framework, required: true }
+  database: { dir: internal/adapters/database,      filled_by: database,  required: true }
+  store:    { dir: internal/adapters/persistence,   filled_by: data,      required: true }
+  web:      { dir: internal/adapters/web,           filled_by: frontend }

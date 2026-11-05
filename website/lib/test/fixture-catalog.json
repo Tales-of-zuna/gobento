@@ -1,0 +1,370 @@
+{
+  "kinds": [
+    {
+      "id": "architecture",
+      "title": "Architecture",
+      "description": "How the project's packages are laid out and wired together.",
+      "optional": false
+    },
+    {
+      "id": "framework",
+      "title": "HTTP framework",
+      "description": "Routes HTTP requests to handlers.",
+      "optional": false
+    },
+    {
+      "id": "database",
+      "title": "Database",
+      "description": "Where the project stores its data.",
+      "optional": false
+    },
+    {
+      "id": "data",
+      "title": "Data access",
+      "description": "How the code reads and writes the database.",
+      "optional": false
+    },
+    {
+      "id": "frontend",
+      "title": "Frontend",
+      "description": "Web pages served next to the API, which then moves under /api.",
+      "optional": true
+    },
+    {
+      "id": "css",
+      "title": "CSS framework",
+      "description": "Styles the frontend's pages; offered with a frontend that supports it.",
+      "optional": true
+    }
+  ],
+  "components": [
+    {
+      "id": "architecture/mvc",
+      "kind": "architecture",
+      "name": "mvc",
+      "title": "Model-View-Controller",
+      "description": "Models, controllers, and a data store in separate packages, wired together in cmd/<name>.",
+      "provides": {},
+      "requires": {}
+    },
+    {
+      "id": "architecture/vertical-slice",
+      "kind": "architecture",
+      "name": "vertical-slice",
+      "title": "Vertical slice",
+      "description": "One directory per feature, holding its types, HTTP handlers, and data access; shared infrastructure in internal/platform.",
+      "provides": {},
+      "requires": {}
+    },
+    {
+      "id": "framework/nethttp",
+      "kind": "framework",
+      "name": "nethttp",
+      "title": "net/http",
+      "description": "The standard library HTTP server and its pattern-based ServeMux.",
+      "provides": {},
+      "requires": {}
+    },
+    {
+      "id": "database/sqlite",
+      "kind": "database",
+      "name": "sqlite",
+      "title": "SQLite",
+      "description": "SQLite through modernc.org/sqlite, a pure-Go driver that needs no cgo.",
+      "provides": {
+        "conn": "database/sql",
+        "sql-dialect": "sqlite",
+        "sql-schema": "schema.sql"
+      },
+      "requires": {}
+    },
+    {
+      "id": "data/gorm",
+      "kind": "data",
+      "name": "gorm",
+      "title": "GORM",
+      "description": "Data access through the GORM ORM, on the database's own connection and schema.",
+      "provides": {},
+      "requires": {
+        "conn": ["database/sql"],
+        "sql-dialect": ["sqlite", "postgresql"],
+        "sql-schema": ["schema.sql"]
+      }
+    },
+    {
+      "id": "data/sqlc",
+      "kind": "data",
+      "name": "sqlc",
+      "title": "sqlc",
+      "description": "Type-safe Go code generated from SQL queries by sqlc.",
+      "provides": {},
+      "requires": {
+        "conn": ["database/sql"],
+        "sql-dialect": ["sqlite", "postgresql"],
+        "sql-schema": ["schema.sql"]
+      }
+    },
+    {
+      "id": "frontend/htmx",
+      "kind": "frontend",
+      "name": "htmx",
+      "title": "htmx + templ",
+      "description": "Server-rendered pages written as templ components, made interactive with htmx, and served by the Go binary with no build step.",
+      "provides": {
+        "frontend-build": "go"
+      },
+      "requires": {}
+    },
+    {
+      "id": "css/tailwind",
+      "kind": "css",
+      "name": "tailwind",
+      "title": "Tailwind CSS",
+      "description": "Utility-first CSS compiled by Tailwind CSS; for htmx with the standalone CLI and a committed stylesheet, so no Node.js is needed.",
+      "provides": {
+        "css": "tailwind"
+      },
+      "requires": {
+        "frontend-build": ["go", "vite"]
+      }
+    }
+  ],
+  "go": {
+    "range": ">=1.26 <1.28",
+    "default": "1.27"
+  },
+  "modules": [
+    {
+      "path": "github.com/a-h/templ",
+      "components": ["frontend/htmx"],
+      "traits": {},
+      "role": "library",
+      "range": "=v0.3.1100",
+      "default": "v0.3.1100",
+      "constraints": []
+    },
+    {
+      "path": "github.com/libtnb/sqlite",
+      "components": ["data/gorm"],
+      "traits": {
+        "sql-dialect": ["sqlite"]
+      },
+      "role": "library",
+      "range": ">=v1.1.0 <v2.0.0",
+      "default": "v1.2.2",
+      "constraints": [
+        {
+          "when": ">=v1.2.0",
+          "requires": {
+            "target": "gorm.io/gorm",
+            "range": ">=v1.31.2"
+          }
+        }
+      ]
+    },
+    {
+      "path": "github.com/sqlc-dev/sqlc",
+      "components": ["data/sqlc"],
+      "traits": {},
+      "role": "tool",
+      "range": "=v1.31.1",
+      "default": "v1.31.1",
+      "constraints": []
+    },
+    {
+      "path": "gorm.io/driver/postgres",
+      "components": ["data/gorm"],
+      "traits": {
+        "sql-dialect": ["postgresql"]
+      },
+      "role": "library",
+      "range": ">=v1.6.1 <v2.0.0",
+      "default": "v1.6.3",
+      "constraints": [
+        {
+          "when": ">=v1.6.2",
+          "requires": {
+            "target": "gorm.io/gorm",
+            "range": ">=v1.31.2"
+          }
+        }
+      ]
+    },
+    {
+      "path": "gorm.io/gorm",
+      "components": ["data/gorm"],
+      "traits": {},
+      "role": "library",
+      "range": ">=v1.31.1 <v2.0.0",
+      "default": "v1.31.2",
+      "constraints": []
+    },
+    {
+      "path": "modernc.org/sqlite",
+      "components": ["database/sqlite"],
+      "traits": {},
+      "role": "library",
+      "range": ">=v1.61.0 <v2.0.0",
+      "default": "v1.61.1",
+      "constraints": [
+        {
+          "when": ">=v1.61.0",
+          "requires": {
+            "target": "go",
+            "range": ">=1.26"
+          }
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "name": "htmx.org",
+      "components": ["frontend/htmx"],
+      "version": "2.0.11",
+      "source": "https://registry.npmjs.org/htmx.org/-/htmx.org-2.0.11.tgz"
+    }
+  ],
+  "binaries": [
+    {
+      "name": "tailwindcss",
+      "components": ["css/tailwind"],
+      "traits": { "frontend-build": ["go"] },
+      "version": "4.3.4",
+      "platforms": [
+        "darwin/amd64",
+        "darwin/arm64",
+        "linux/amd64",
+        "linux/arm64",
+        "windows/amd64",
+        "windows/arm64"
+      ]
+    }
+  ],
+  "node": {
+    "range": "",
+    "default": ""
+  },
+  "npm": null,
+  "supported": [
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx",
+      "css": "tailwind"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "mvc",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx",
+      "css": "tailwind"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "gorm",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx",
+      "css": "tailwind"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx"
+    },
+    {
+      "architecture": "vertical-slice",
+      "data": "sqlc",
+      "database": "sqlite",
+      "framework": "nethttp",
+      "frontend": "htmx",
+      "css": "tailwind"
+    }
+  ],
+  "rules": {
+    "projectName": {
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "message": "Start with a lowercase letter and use only lowercase letters, digits, - and _.",
+      "reserved": [
+        "con",
+        "prn",
+        "aux",
+        "nul",
+        "com1",
+        "com2",
+        "com3",
+        "com4",
+        "com5",
+        "com6",
+        "com7",
+        "com8",
+        "com9",
+        "lpt1",
+        "lpt2",
+        "lpt3",
+        "lpt4",
+        "lpt5",
+        "lpt6",
+        "lpt7",
+        "lpt8",
+        "lpt9"
+      ],
+      "reservedMessage": "The name is reserved on Windows and cannot be used for files or directories; choose another name."
+    },
+    "modulePath": {
+      "pattern": "^(?:[A-Za-z0-9_~+]|[A-Za-z0-9._~+][A-Za-z0-9._~+-]*[A-Za-z0-9_~+-])(?:/[A-Za-z0-9._~+-]*[A-Za-z0-9_~+-])*$",
+      "message": "Use a Go module path such as example.com/shop: elements of letters, digits, '.', '_', '~', '+' and '-', separated by '/', none ending in '.'."
+    }
+  }
+}

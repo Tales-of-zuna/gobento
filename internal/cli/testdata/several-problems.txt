@@ -2,5 +2,7 @@ gobento: cannot create "My App":
   - --pin "nonsense": want module=version, for example modernc.org/sqlite=v1.61.0
   - invalid project name "My App": start with a lowercase letter and use only lowercase letters, digits, - and _
   - invalid module path "Not A Path": malformed import path "Not A Path": invalid char ' '; use a path such as example.com/app
-  - --framework: unknown framework "express"; supported: nethttp
+  - --framework: unknown framework "express"; supported: chi, gin, nethttp
+  - --db: choose a database; supported: postgres, sqlite
+  - --data: choose a data-access library; supported: gorm, sqlc
   - version outside the supported range: go 1.20; supported range is ">=1.26 <1.28"

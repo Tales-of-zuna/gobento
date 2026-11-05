@@ -37,11 +37,13 @@ type toolchain struct {
 }
 
 // preflight checks, before anything is written, that the go command exists,
-// that it can provide the selected Go version, and that the target is a
+// that it can provide the selected Go version, that node and npm exist and
+// Node.js is recent enough when there are scaffold steps, and that the
+// target is a
 // missing or empty directory whose parent exists. Warnings, such as a Go
 // toolchain that will be downloaded, are written to req.Warn. All problems
 // are returned together.
-func preflight(ctx context.Context, req Request) (toolchain, error) {
+func preflight(ctx context.Context, req Request) (toolchain, node, error) {
 	var errs []error
 	tc, err := findToolchain(ctx, req)
 	if err != nil {
@@ -49,10 +51,16 @@ func preflight(ctx context.Context, req Request) (toolchain, error) {
 	} else if err := checkGoVersion(tc, req.GoVersion, req.Warn); err != nil {
 		errs = append(errs, err)
 	}
+	var n node
+	if len(req.Scaffolds) > 0 {
+		if n, err = checkNode(ctx, req); err != nil {
+			errs = append(errs, err)
+		}
+	}
 	if err := checkTarget(req.Target); err != nil {
 		errs = append(errs, err)
 	}
-	return tc, errors.Join(errs...)
+	return tc, n, errors.Join(errs...)
 }
 
 // findToolchain locates the go command and asks it for its version and its

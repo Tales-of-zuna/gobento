@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { catalogSchema } from './schema';
-import { fixtureData, type CatalogData } from '@/lib/test/catalog';
+import { addViteFrontend, fixtureData, type CatalogData } from '@/lib/test/catalog';
 
 describe('catalog schema', () => {
   it('accepts the exported catalog', () => {
@@ -8,10 +8,95 @@ describe('catalog schema', () => {
     expect(result.error?.issues).toBeUndefined();
     expect(result.data?.components.map((c) => c.id)).toEqual([
       'architecture/mvc',
+      'architecture/vertical-slice',
       'framework/nethttp',
       'database/sqlite',
+      'data/gorm',
       'data/sqlc',
+      'frontend/htmx',
+      'css/tailwind',
     ]);
+    expect(result.data?.kinds.filter((k) => k.optional).map((k) => k.id)).toEqual([
+      'frontend',
+      'css',
+    ]);
+    expect(result.data?.assets.map((a) => [a.name, a.version])).toEqual([['htmx.org', '2.0.11']]);
+    expect(result.data?.binaries.map((b) => [b.name, b.version, b.components])).toEqual([
+      ['tailwindcss', '4.3.4', ['css/tailwind']],
+    ]);
+    expect(result.data?.binaries[0]?.platforms).toContain('linux/amd64');
+  });
+
+  it('accepts supported selections with and without an optional kind', () => {
+    const result = catalogSchema.safeParse(fixtureData());
+    const optional = result.data?.supported.map(
+      (s) => `${s.frontend ?? 'none'}+${s.css ?? 'none'}`,
+    );
+    expect(optional?.filter((f) => f === 'none+none')).toHaveLength(4);
+    expect(optional?.filter((f) => f === 'htmx+none')).toHaveLength(4);
+    expect(optional?.filter((f) => f === 'htmx+tailwind')).toHaveLength(4);
+    expect(optional).toHaveLength(12);
+  });
+
+  it('defaults a kind to required and the assets and binaries to none when they are left out', () => {
+    const data = fixtureData();
+    for (const kind of data.kinds) if (!kind.optional) delete kind.optional;
+    delete data.assets;
+    delete data.binaries;
+    const result = catalogSchema.safeParse(data);
+    expect(result.error?.issues).toBeUndefined();
+    expect(result.data?.kinds.filter((k) => !k.optional)).toHaveLength(4);
+    expect(result.data?.assets).toEqual([]);
+    expect(result.data?.binaries).toEqual([]);
+  });
+
+  it('accepts the tooling versions and defaults them to none', () => {
+    const data = fixtureData();
+    expect(catalogSchema.safeParse(data).data?.tooling).toEqual({
+      images: [],
+      actions: [],
+      tools: [],
+    });
+    data.tooling = {
+      images: [{ key: 'go', image: 'golang', tag: '{go}', digest: '' }],
+      actions: [
+        {
+          name: 'actions/checkout',
+          version: 'v7.0.1',
+          sha: '3d3c42e5aac5ba805825da76410c181273ba90b1',
+        },
+      ],
+      tools: [{ name: 'golangci-lint', version: 'v2.15.0' }],
+    };
+    const result = catalogSchema.safeParse(data);
+    expect(result.error?.issues).toBeUndefined();
+    expect(result.data?.tooling.images[0]?.tag).toBe('{go}');
+    data.tooling.tools = [{ name: 'golangci-lint', version: '' }];
+    expect(catalogSchema.safeParse(data).success).toBe(false);
+  });
+
+  it('accepts the npm packages and the Node.js rule, and defaults them to none', () => {
+    const data = fixtureData();
+    delete data.node;
+    data.npm = null;
+    const none = catalogSchema.safeParse(data);
+    expect(none.error?.issues).toBeUndefined();
+    expect(none.data?.npm).toEqual([]);
+    expect(none.data?.node).toEqual({ range: '', default: '' });
+    addViteFrontend(data, 'react');
+    addViteFrontend(data, 'vue');
+    const result = catalogSchema.safeParse(data);
+    expect(result.error?.issues).toBeUndefined();
+    expect(result.data?.npm).toEqual([
+      {
+        name: 'create-vite',
+        components: ['frontend/react', 'frontend/vue'],
+        traits: {},
+        role: 'scaffolder',
+        version: '9.3.3',
+      },
+    ]);
+    expect(result.data?.node).toEqual({ range: '>=v22.12.0', default: '26' });
   });
 
   const sqlite = (data: CatalogData) => data.modules.find((m) => m.path === 'modernc.org/sqlite')!;
@@ -103,6 +188,11 @@ describe('catalog schema', () => {
       expected: 'Too small',
     },
     {
+      name: 'module trait condition with no allowed values',
+      edit: (d) => (sqlite(d).traits = { 'sql-dialect': [] }),
+      expected: 'Too small',
+    },
+    {
       name: 'invalid rule pattern',
       edit: (d) => (d.rules.projectName.pattern = '^[a-z'),
       expected: 'projectName: invalid regular expression',
@@ -113,9 +203,134 @@ describe('catalog schema', () => {
       expected: 'supported selection names unknown component "database/postgres"',
     },
     {
-      name: 'supported selection without every kind',
-      edit: (d) => delete (d.supported[0] as Partial<CatalogData['supported'][number]>).data,
-      expected: 'Invalid input',
+      name: 'supported selection without a required kind',
+      edit: (d) => delete d.supported[0]!.data,
+      expected: 'supported selection lacks a data',
+    },
+    {
+      name: 'supported selection without a kind that is no longer optional',
+      edit: (d) => {
+        d.kinds.find((k) => k.id === 'frontend')!.optional = false;
+      },
+      expected: 'supported selection lacks a frontend',
+    },
+    {
+      name: 'supported selection naming an unknown optional component',
+      edit: (d) => (d.supported[0]!.frontend = 'react'),
+      expected: 'supported selection names unknown component "frontend/react"',
+    },
+    {
+      name: 'asset of an unknown component',
+      edit: (d) => (d.assets![0]!.components = ['frontend/react']),
+      expected: 'htmx.org: unknown component "frontend/react"',
+    },
+    {
+      name: 'asset without a version',
+      edit: (d) => (d.assets![0]!.version = ''),
+      expected: 'Too small',
+    },
+    {
+      name: 'asset without a source',
+      edit: (d) => (d.assets![0]!.source = ''),
+      expected: 'Too small',
+    },
+    {
+      name: 'asset without components',
+      edit: (d) => (d.assets![0]!.components = []),
+      expected: 'Too small',
+    },
+    {
+      name: 'duplicate asset',
+      edit: (d) => d.assets!.push({ ...d.assets![0]! }),
+      expected: 'duplicate asset name',
+    },
+    {
+      name: 'binary of an unknown component',
+      edit: (d) => (d.binaries![0]!.components = ['css/bootstrap']),
+      expected: 'tailwindcss: unknown component "css/bootstrap"',
+    },
+    {
+      name: 'binary without a version',
+      edit: (d) => (d.binaries![0]!.version = ''),
+      expected: 'Too small',
+    },
+    {
+      name: 'binary without platforms',
+      edit: (d) => (d.binaries![0]!.platforms = []),
+      expected: 'Too small',
+    },
+    {
+      name: 'binary with a malformed platform',
+      edit: (d) => (d.binaries![0]!.platforms = ['linux-amd64']),
+      expected: 'Invalid string',
+    },
+    {
+      name: 'binary without components',
+      edit: (d) => (d.binaries![0]!.components = []),
+      expected: 'Too small',
+    },
+    {
+      name: 'duplicate binary',
+      edit: (d) => d.binaries!.push({ ...d.binaries![0]! }),
+      expected: 'duplicate binary name',
+    },
+    {
+      name: 'supported selection naming an unknown CSS framework',
+      edit: (d) => (d.supported[0]!.css = 'bootstrap'),
+      expected: 'supported selection names unknown component "css/bootstrap"',
+    },
+    {
+      name: 'npm package of an unknown component',
+      edit: (d) => {
+        addViteFrontend(d, 'react');
+        d.npm![0]!.components = ['frontend/solid'];
+      },
+      expected: 'create-vite: unknown component "frontend/solid"',
+    },
+    {
+      name: 'unknown npm package role',
+      edit: (d) => {
+        addViteFrontend(d, 'react');
+        (d.npm![0]! as { role: string }).role = 'plugin';
+      },
+      expected: 'Invalid option',
+    },
+    {
+      name: 'duplicate npm package',
+      edit: (d) => {
+        addViteFrontend(d, 'react');
+        d.npm!.push({ ...d.npm![0]! });
+      },
+      expected: 'duplicate npm package name',
+    },
+    {
+      name: 'npm packages with a malformed Node.js range',
+      edit: (d) => {
+        addViteFrontend(d, 'react');
+        d.node!.range = '^22';
+      },
+      expected: 'malformed range "^22"',
+    },
+    {
+      name: 'Node.js release line outside its range',
+      edit: (d) => {
+        addViteFrontend(d, 'react');
+        d.node!.default = '20';
+      },
+      expected: 'node: release line 20 is outside its range >=v22.12.0',
+    },
+    {
+      name: 'malformed Node.js release line',
+      edit: (d) => {
+        addViteFrontend(d, 'react');
+        d.node!.default = 'lts';
+      },
+      expected: 'node: malformed release line "lts"',
+    },
+    {
+      name: 'Node.js rule without npm packages',
+      edit: (d) => (d.node = { range: '>=v22.12.0', default: '26' }),
+      expected: 'a Node.js rule without npm packages',
     },
     {
       name: 'no supported selection',

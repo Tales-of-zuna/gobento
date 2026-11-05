@@ -21,6 +21,7 @@ slots:
   handlers: { dir: internal/controllers, filled_by: framework, required: true }
   database: { dir: internal/database, filled_by: database, required: true }
   store: { dir: internal/store, filled_by: data, required: true }
+  web: { dir: internal/views, filled_by: frontend }
 ```
 
 Each slot has these keys:
@@ -29,7 +30,7 @@ Each slot has these keys:
 | ----------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `dir`       | Required. The directory, relative to the project root. It is a template over `.Project`, such as `cmd/{{.Project.Name}}`. |
 | `package`   | Optional. The Go package name; by default the last element of the rendered `dir`. The entry point sets `package: main`.   |
-| `filled_by` | Required. The kind that fills the slot: `architecture`, `framework`, `database`, or `data`.                               |
+| `filled_by` | Required. The kind that fills the slot: `architecture`, `framework`, `database`, `data`, `frontend`, or `css`.            |
 | `required`  | Optional, default `false`. Whether a selection must fill the slot.                                                        |
 
 Slot names match `^[a-z][a-z0-9_]*$`, because templates use them as field
@@ -41,6 +42,56 @@ Components refer to slots by name (`handlers`), never by directory. If another
 architecture maps `handlers` to a different directory, the same framework
 files land there, with the matching package name and import paths.
 
+The `vertical-slice` architecture declares the same slots in a layout
+organized by feature:
+
+```yaml title="components/architecture/vertical-slice/component.yaml"
+name: vertical-slice
+title: Vertical slice
+description: One directory per feature, holding its types, HTTP handlers, and data access; shared infrastructure in internal/platform.
+slots:
+  entry: { dir: 'cmd/{{.Project.Name}}', package: main, filled_by: architecture }
+  models: { dir: internal/items, filled_by: architecture }
+  handlers: { dir: internal/items/itemshttp, filled_by: framework, required: true }
+  database: { dir: internal/platform/database, filled_by: database, required: true }
+  store: { dir: internal/items/itemsstore, filled_by: data, required: true }
+  web: { dir: internal/web, filled_by: frontend }
+```
+
+The `ddd` architecture also uses these slot names, and declares one more,
+`app`, which it fills itself with the application service:
+
+```yaml title="components/architecture/ddd/component.yaml"
+name: ddd
+title: Domain-driven design
+description: A domain package, an application service for the use cases, and adapters for HTTP, data access, and the database, with dependencies pointing inward.
+slots:
+  entry: { dir: 'cmd/{{.Project.Name}}', package: main, filled_by: architecture }
+  models: { dir: internal/domain, filled_by: architecture }
+  app: { dir: internal/app, filled_by: architecture }
+  handlers: { dir: internal/adapters/httpapi, filled_by: framework, required: true }
+  database: { dir: internal/adapters/database, filled_by: database, required: true }
+  store: { dir: internal/adapters/persistence, filled_by: data, required: true }
+  web: { dir: internal/adapters/web, filled_by: frontend }
+```
+
+| Slot       | `mvc`                  | `vertical-slice`             | `ddd`                           |
+| ---------- | ---------------------- | ---------------------------- | ------------------------------- |
+| `entry`    | `cmd/<name>`           | `cmd/<name>`                 | `cmd/<name>`                    |
+| `models`   | `internal/models`      | `internal/items`             | `internal/domain`               |
+| `app`      | —                      | —                            | `internal/app`                  |
+| `handlers` | `internal/controllers` | `internal/items/itemshttp`   | `internal/adapters/httpapi`     |
+| `database` | `internal/database`    | `internal/platform/database` | `internal/adapters/database`    |
+| `store`    | `internal/store`       | `internal/items/itemsstore`  | `internal/adapters/persistence` |
+| `web`      | `internal/views`       | `internal/web`               | `internal/adapters/web`         |
+
+`nethttp`, `sqlite`, and `sqlc` are the same components under all three: with
+`vertical-slice`, the handlers are in package `itemshttp` and import
+`<module>/internal/items`, so they refer to `items.ItemStore` instead of
+`models.ItemStore`; with `ddd`, they are in package `httpapi` and refer to
+`domain.ItemStore`. Slots that only the architecture fills, such as `app`, are
+invisible to the other components.
+
 ## One owner per slot
 
 Each slot is filled by exactly one component. No two components ever write
@@ -48,10 +99,20 @@ into the same Go package or the same file.
 
 The owner may add its own subpackages below the slot directory. sqlc's
 generated code, for example, lives in `internal/store/sqlcgen`, a subpackage
-of the `store` slot. Other slots never import such subpackages.
+of the `store` slot. Other slots never import such subpackages, unless the
+contract names them, like the database slot's `dbtest` package below.
+
+A slot directory may also lie inside another slot's directory, as
+`internal/items/itemshttp` lies inside `internal/items` in `vertical-slice`.
+The nested directory still belongs only to its own slot: if the outer slot's
+owner has a template that would land inside it, composition fails.
 
 Components may also add files at the project root, such as `sqlc.yaml`. Those
-paths are checked for conflicts like any other file.
+paths are checked for conflicts like any other file. The tooling files at the
+root (`Makefile`, `Dockerfile`, the CI workflow, ...) belong to gobento's base
+layer; components add to them through
+[contribution points](/docs/concepts/project-tooling#how-components-extend-the-tooling)
+rather than writing them.
 
 ## Architecture-owned contracts
 
@@ -59,31 +120,179 @@ The architecture owns the entry point and the **contract** between slots: the
 shared types and function signatures. Every other component implements its
 slot's part of that contract, and imports other slots only through it.
 
-The `mvc` architecture's `main.go` calls these fixed functions:
+The `main.go` of every shipped architecture calls these fixed functions, where
+`models` is the contract package (`models` in `mvc`, `items` in
+`vertical-slice`, `domain` in `ddd`):
 
-| Slot                    | Contract the filling component must provide                                                                                                                     |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `models` (architecture) | `type Item struct{ID int64; Name string; CreatedAt time.Time}`, `type ItemStore interface{ List(ctx) ([]Item, error); Create(ctx, name string) (Item, error) }` |
-| `database`              | `func Open(ctx context.Context, dsn string) (T, error)`, where `T` has `Close() error` and is named by the `conn` trait (`*sql.DB` for `database/sql`)          |
-| `store`                 | `func New(db T) models.ItemStore`                                                                                                                               |
-| `handlers`              | `func NewRouter(items models.ItemStore) http.Handler`                                                                                                           |
+| Slot                            | Contract the filling component must provide                                                                                                                                                                                           |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `models` (architecture)         | `type Item struct{ID int64; Name string; CreatedAt time.Time}`, `type ItemStore interface{ List(ctx) ([]Item, error); Create(ctx, name string) (Item, error) }`                                                                       |
+| `database`                      | `func Open(ctx context.Context, dsn string) (T, error)`, where `T` has `Close() error` and is named by the `conn` trait (`*sql.DB` for `database/sql`); `const DefaultURL string`, the `dsn` used when `DATABASE_URL` is unset        |
+| `database`, subpackage `dbtest` | `func URL(t testing.TB) string` and `func Open(t testing.TB) T`: an empty database of the test's own, with the schema applied, removed when the test ends; both skip the test when the database needs a server and none is configured |
+| `store`                         | `func New(db T) models.ItemStore`                                                                                                                                                                                                     |
+| `handlers`                      | `func NewRouter(items models.ItemStore) http.Handler`                                                                                                                                                                                 |
+| `web` (optional)                | `func NewHandler(items models.ItemStore) http.Handler`, serving every path outside `/api/`; see [Frontends](#frontends)                                                                                                               |
 
-`main.go` uses `db, err := database.Open(...)`, so it never names the
-connection type `T`. That type is described by the database's
+`main.go` uses `db, err := database.Open(ctx, getenv("DATABASE_URL",
+database.DefaultURL))`, so it never names the connection type `T`, nor any
+particular database: SQLite's `DefaultURL` is `<name>.db`, PostgreSQL's a
+local development server. The type is described by the database's
 [`conn` trait](/docs/concepts/traits).
+
+`mvc` and `vertical-slice` pass the store to the router:
+`NewRouter(store.New(db))`. `ddd` passes its application service instead,
+`NewRouter(app.NewItemService(persistence.New(db)))`: `ItemService`
+implements `domain.ItemStore`, checks the domain rule for item names, and
+stores items through the store it wraps, so the same framework components
+serve the request through an application layer.
+
+Tests of other slots, such as sqlc's store test, get their database from
+`dbtest.Open(t)`, so they run on every database. SQLite's `dbtest` uses a
+file in `t.TempDir()`. PostgreSQL's uses the server named by
+`TEST_DATABASE_URL`, creates a schema of the test's own there, and drops it at
+the end; without the variable, it skips the test. Only tests import `dbtest`.
 
 Because the contract is plain Go, **the compiler checks it** in every
 generated project. Each component also has its own package, so identifier
 clashes are impossible: sqlc's generated `sqlcgen.Item` and `models.Item`
 coexist, and the store converts one into the other.
 
-CI also checks the dependency direction: the handlers package does not import
-the database or store packages, directly or transitively.
+CI also checks the dependency direction: the handlers package, and the web
+package when there is one, do not import the database or store packages,
+directly or transitively, and the contract package imports no other package
+of the project. In `ddd`, the `app` package imports only `domain`, and no
+adapter imports `app`.
 
 <Callout type="info">
-  This contract belongs to `mvc` and its example `Item` resource. Another architecture may define a
-  different contract.
+  This contract belongs to the shipped architectures and their example `Item` resource. Another
+  architecture may define a different contract.
 </Callout>
+
+## Frontends
+
+The frontend is an optional kind, so `web` is an optional slot. A frontend
+reaches the data only through the same contract as the handlers,
+`models.ItemStore`, and uses only the standard library's `net/http` to
+route, so one frontend works with every framework.
+
+When the `web` slot is filled, the entry point serves both handlers from one
+`http.ServeMux`:
+
+```go title="cmd/shop/main.go (with a frontend)"
+func newHandler(itemStore models.ItemStore) http.Handler {
+	mux := http.NewServeMux()
+	mux.Handle("/api/", http.StripPrefix("/api", controllers.NewRouter(itemStore)))
+	mux.Handle("/", views.NewHandler(itemStore))
+	return mux
+}
+```
+
+In `ddd`, `newHandler` takes the application service instead of the store,
+`newHandler(app.NewItemService(persistence.New(db)))`, and gives it to both
+`httpapi.NewRouter` and `web.NewHandler` through the `domain.ItemStore` port,
+so the web adapter, like every adapter, never imports `app`.
+
+The API router itself is unchanged: `GET /api/items` reaches its
+`GET /items`, with the same status codes and bodies, and the framework's
+files are byte-for-byte the same with and without a frontend. The frontend
+owns `/` and every other path, such as `/static/`. Without a frontend,
+`newHandler` returns the API router, which then serves `/health` and
+`/items` at the root.
+
+The API moves under `/api` only when a frontend is selected, because the
+alternatives break something:
+
+| Alternative                                          | Why not                                                                                                       |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Frontend at `/`, API paths unchanged                 | `/items` would be both a page and an API route; telling them apart by `Accept` breaks the API's 404s and 405s |
+| Frontend under `/ui/`                                | The application's pages would never be at `/`                                                                 |
+| Frontend routes registered in the framework's router | One adapter per framework and frontend: a template per combination                                            |
+
+Templates see two values for this:
+
+- `.Slots.<name>.Filled` is true when a selected component has templates for
+  the slot. The entry point uses `{{if .Slots.web.Filled}}` to import and
+  mount the web package.
+- `.APIPrefix` is `/api` with a frontend and empty without one. The framework
+  notes and the README write API paths as `{{.APIPrefix}}/items`.
+
+Both describe the shape of the selection, not which component is selected,
+so components still never depend on each other's names. An architecture that
+declares no `web` slot simply does not support frontends: a frontend has
+templates for an undeclared slot, so composition rejects the selection, and
+it is not supported. [Adding a component](/docs/contributing/adding-a-component#supporting-frontends-in-an-architecture)
+lists what an architecture does to support them.
+
+### Serving a Vite build
+
+htmx renders its pages in Go. The React, Vue, and Svelte frontends fill the
+same slot with the same `NewHandler`, but their page is a single-page app
+that Vite builds from `frontend/` into the web package's `dist/app`
+(`build.outDir` in `frontend/vite.config.ts`). The package embeds it with
+`//go:embed all:dist` and serves it. It does not use the store: the app
+reads and adds items through the API under `/api`.
+
+| Request                                                        | Response                                                                                  |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `GET` or `HEAD` for a file of the build                        | The file; under `/assets/` (Vite's content-hashed files) with a one-year, immutable cache |
+| `GET` or `HEAD` for `/` or a path without a file extension     | The app's `index.html`, revalidated on every load, so client-side routes survive a reload |
+| A missing file with an extension, such as `/assets/missing.js` | `404`, so a missing script is reported instead of loading HTML                            |
+| Any path under `/api/`                                         | `404`: the web handler never answers an API path with the app                             |
+| Any other method                                               | `405` with `Allow: GET, HEAD`                                                             |
+
+The build is not committed: the committed `dist/.gitignore` ignores
+`dist/app/` and keeps `dist/`, so the embed pattern always matches a file.
+Until the frontend is built, every page the app would serve is a small
+placeholder that names `make build` and the npm commands, so `go build` and
+`go test ./...` work without Node.js. The handler's test covers a built and
+an unbuilt app, so it passes before and after `npm run build`.
+
+## CSS frameworks
+
+A CSS framework (the optional `css` kind) has no slot of its own: a slot is a
+Go package, and where a frontend keeps its styles depends on the frontend
+(`static/` for htmx, the app's sources for a Vite build). Instead, the
+frontend kind declares **contribution points** in
+`components/frontend/kind.yaml`, the same mechanism the
+[base layer](/docs/concepts/project-tooling#how-components-extend-the-tooling)
+uses. A frontend includes a point in its templates, and the selected CSS
+framework fills it:
+
+| Point                 | Build (`frontend-build`) | Filled with                                                                    |
+| --------------------- | ------------------------ | ------------------------------------------------------------------------------ |
+| `stylesheet`          | `go`                     | The complete stylesheet served as `/static/styles.css`                         |
+| `vite-config-imports` | `vite`                   | Import lines at the top of the Vite configuration                              |
+| `vite-plugins`        | `vite`                   | Entries of the Vite configuration's `plugins` array                            |
+| `css-imports`         | `vite`                   | Lines at the top of the app's main stylesheet, such as `@import "tailwindcss"` |
+
+The frontend's markup is the same for every CSS choice. htmx renders its
+stylesheet as the `stylesheet` contribution, or its plain CSS when there is
+none:
+
+```text title="components/frontend/htmx/files/web/static/styles.css.tmpl"
+{{with contrib "stylesheet"}}{{.}}{{else}}/* Styles for the pages in ../pages.templ. ... */
+...
+{{end -}}
+```
+
+A CSS framework contributes only to the points of the frontend's build
+system, guarded by the trait, and ships the files that only one build needs
+the same way: a template that renders nothing produces no file. For `go`,
+Tailwind CSS ships `tailwind.css`, the compiled stylesheet, and a Go program
+that runs the standalone Tailwind CLI. For `vite`, it adds
+`import tailwindcss from '@tailwindcss/vite'` with `vite-config-imports`,
+`tailwindcss(),` with `vite-plugins`, and `@import "tailwindcss";` with
+`css-imports`. The npm packages a framework needs are not a point: they are
+data in the `npm` section of the
+[rules file](/docs/concepts/version-rules#nodejs-and-npm) (role
+`dev-dependency`), and generation installs them into the scaffolded
+frontend's `package.json` and `package-lock.json`.
+
+A component may include only the points of the base layer and of its own
+kind, so a frontend template that names a point of another kind fails
+composition. If a non-empty contribution reaches no template, because the
+selected frontend does not include that point, composition fails too, so the
+combination is not supported instead of silently unstyled.
 
 ## Why there are no per-combination templates
 
@@ -104,17 +313,20 @@ variable names and imports that nothing checks.
 gobento composes the whole project in memory before writing anything. It
 collects every problem and reports them together:
 
-| Problem                                                                 | The error names                            |
-| ----------------------------------------------------------------------- | ------------------------------------------ |
-| A component has templates for a slot the architecture does not declare  | the component and the slot                 |
-| A required slot receives no component                                   | the slot and the kind that must fill it    |
-| Two components fill the same slot, or a component of the wrong kind     | the components and the slot                |
-| Two slots render to the same directory                                  | the architecture and both slots            |
-| Two components produce the same file                                    | both components and the path               |
-| A root file lies inside a slot directory                                | the component, the path, and the slot      |
-| A component produces `go.mod` or `go.sum`, which gobento writes         | the component and the file                 |
-| A required trait is not met, or two components provide different values | the components and the trait               |
-| A generated `.go` file does not format with `go/format`                 | the component and the template             |
-| A template fails to render                                              | the component, the template, and the error |
+| Problem                                                                 | The error names                             |
+| ----------------------------------------------------------------------- | ------------------------------------------- |
+| A component has templates for a slot the architecture does not declare  | the component and the slot                  |
+| A required slot receives no component                                   | the slot and the kind that must fill it     |
+| Two components fill the same slot, or a component of the wrong kind     | the components and the slot                 |
+| Two slots render to the same directory                                  | the architecture and both slots             |
+| A slot's template would land inside a slot nested in its directory      | the component, the file, and the inner slot |
+| Two components produce the same file                                    | both components and the path                |
+| A component produces a file of the base layer, such as `Makefile`       | the component, `base`, and the path         |
+| A base template names a contribution point `base.yaml` does not declare | the template and the point                  |
+| A root file lies inside a slot directory                                | the component, the path, and the slot       |
+| A component produces `go.mod` or `go.sum`, which gobento writes         | the component and the file                  |
+| A required trait is not met, or two components provide different values | the components and the trait                |
+| A generated `.go` file does not format with `go/format`                 | the component and the template              |
+| A template fails to render                                              | the component, the template, and the error  |
 
 In every case gobento exits with status `1` and writes nothing.

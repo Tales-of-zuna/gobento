@@ -1,0 +1,45 @@
+## Database
+
+The application stores its data in PostgreSQL, through the pure-Go driver
+[pgx](https://github.com/jackc/pgx) and `database/sql`, so it builds without a
+C compiler. `DATABASE_URL` is a `postgres://` URL or a `key=value` connection
+string. When it is unset, the application uses `DefaultURL` in
+`{{.Slots.database.Dir}}`, a local development server:
+
+```text
+postgres://postgres:postgres@localhost:5432/{{.Project.Name}}?sslmode=disable
+```
+
+Start such a server with Docker, or use any PostgreSQL server and set
+`DATABASE_URL` to it:
+
+```sh
+docker run --rm -d --name {{.Project.Name}}-postgres -p 5432:5432 \
+  -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB={{.Project.Name}} {{.Images.postgres}}
+```
+
+Stop it with `docker stop {{.Project.Name}}-postgres`; its data is deleted with
+it.
+
+### Tests
+
+The database and store tests need a PostgreSQL server. They are skipped,
+and `go test ./...` still passes, unless `TEST_DATABASE_URL` is set to a
+`postgres://` URL. Each test then works in a schema of its own on that server,
+which it drops when it ends, so the tests never touch the application's tables:
+
+```sh
+TEST_DATABASE_URL='postgres://postgres:postgres@localhost:5432/{{.Project.Name}}?sslmode=disable' go test ./...
+```
+
+Run `go test -v ./...` to see which tests were skipped. The CI workflow
+starts a PostgreSQL service and sets `TEST_DATABASE_URL`, so these tests run
+on every pull request.
+
+### Schema
+
+`{{.Slots.database.Dir}}/schema.sql` is embedded in the binary and applied
+every time the application starts. It uses `CREATE TABLE IF NOT EXISTS`, so it
+creates missing tables but never changes existing ones: it is not a migration
+system. Before you change the schema of a database that already holds data,
+add a migration tool or change the existing tables by hand.

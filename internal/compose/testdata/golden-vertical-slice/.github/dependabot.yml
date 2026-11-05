@@ -1,0 +1,17 @@
+# Keeps the Go modules, the GitHub Actions (pinned by commit SHA), and the
+# Docker base images (the runtime image is pinned by digest) up to date.
+# https://docs.github.com/code-security/dependabot/working-with-dependabot/dependabot-options-reference
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly

@@ -1,0 +1,17 @@
+# Build output
+/{{.Project.Name}}
+/{{.Project.Name}}.exe
+/bin/
+
+# Local database
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Test output
+coverage.out
+{{- with contrib "gitignore"}}
+
+{{.}}
+{{- end}}

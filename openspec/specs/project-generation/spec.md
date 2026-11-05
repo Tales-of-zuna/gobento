@@ -8,30 +8,55 @@ components with a single `gobento new` command that is safe to run anywhere.
 
 ### Requirement: Generate a project from a component selection
 `gobento new <name>` SHALL create a Go project from one selected architecture,
-HTTP framework, database, and data-access component, using the given Go module
-path, or the project name when `--module` is omitted.
+HTTP framework, database, and data-access component, and optionally one
+frontend (`--frontend`), using the given Go module path, or the project name
+when `--module` is omitted.
 
 #### Scenario: Fully specified by flags
 - **WHEN** the user runs `gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc`
 - **THEN** a directory `shop` is created containing a Go module named `example.com/shop`
 - **AND** the command exits with status 0 and prints the next commands to run
 
+#### Scenario: GORM data access
+- **WHEN** the user runs `gobento new shop --arch mvc --framework nethttp --db sqlite --data gorm`
+- **THEN** a directory `shop` is created whose store is implemented with GORM on the SQLite database
+- **AND** the command exits with status 0
+
+#### Scenario: htmx frontend
+- **WHEN** the user runs `gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx`
+- **THEN** a directory `shop` is created that serves HTML pages at `/` and the API under `/api`
+- **AND** the command exits with status 0
+
 #### Scenario: Module path defaults to the project name
-- **WHEN** the user runs `gobento new shop` without `--module`
+- **WHEN** the user runs `gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc` without `--module`
 - **THEN** the generated module is named `shop`
 
+#### Scenario: Architecture must be chosen
+- **WHEN** the user runs `gobento new shop` without `--arch` and without questions while `ddd`, `mvc`, and `vertical-slice` are the supported architectures
+- **THEN** gobento exits non-zero naming `--arch` and listing `ddd`, `mvc`, and `vertical-slice`, and writes nothing
+
 ### Requirement: Automatic selection of the only option
-When a selection flag is omitted and its component kind has exactly one
-supported value, gobento SHALL select that value. When the kind has several
-values, gobento SHALL exit non-zero naming the flag and listing the values.
+When a selection flag of a required kind is omitted and the kind has exactly
+one supported value, gobento SHALL select that value. When the kind has
+several values and gobento does not ask questions (see "Ask for missing input
+in a terminal"), gobento SHALL exit non-zero naming the flag and listing the
+values.
 
 #### Scenario: Single option is chosen automatically
 - **WHEN** the user omits `--db` and `sqlite` is the only supported database
 - **THEN** the project is generated with `sqlite`
 
 #### Scenario: Several options require a choice
-- **WHEN** the user omits a selection flag whose kind has several supported values
+- **WHEN** the user omits a selection flag of a required kind that has several supported values, and stdin is not a terminal or `--no-input` is given
 - **THEN** gobento exits non-zero naming the flag and its supported values, and writes nothing
+
+#### Scenario: Optional kind needs no flag
+- **WHEN** the user omits `--frontend` without a terminal while `htmx` is a supported frontend
+- **THEN** the project is generated without a frontend
+
+#### Scenario: Unknown frontend
+- **WHEN** the user passes `--frontend react` while only `htmx` is a supported frontend
+- **THEN** gobento exits non-zero naming `--frontend` and listing `none` and `htmx`, and writes nothing
 
 ### Requirement: Project name and module path rules
 The project name SHALL start with a lowercase letter and contain only lowercase
@@ -68,7 +93,7 @@ when the input is valid, and otherwise exit non-zero with the same problem
 report as a normal run.
 
 #### Scenario: Valid dry run
-- **WHEN** the user runs `gobento new shop --dry-run`
+- **WHEN** the user runs `gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc --dry-run`
 - **THEN** gobento lists the planned files, exits 0, and creates no directory
 
 #### Scenario: Invalid dry run
@@ -104,16 +129,30 @@ downloaded.
 
 ### Requirement: Generated project builds and passes its tests
 A project generated from any supported selection SHALL compile, pass `go vet`
-and `gofmt -l`, and pass its own `go test ./...` without edits by the user.
+and `gofmt -l`, and pass its own `go test ./...` without edits by the user. It
+SHALL also compile with cgo disabled (`CGO_ENABLED=0`), so it needs no C
+compiler on Linux, macOS, or Windows.
 
 #### Scenario: Build check after generation
-- **WHEN** a project is generated with the selection mvc/nethttp/sqlite/sqlc
+- **WHEN** a project is generated with the selection mvc/nethttp/sqlite/sqlc, vertical-slice/nethttp/sqlite/sqlc, ddd/nethttp/sqlite/sqlc, mvc/nethttp/sqlite/gorm, or mvc/nethttp/sqlite/sqlc with the htmx frontend
 - **THEN** `go build ./...`, `go vet ./...` and `go test ./...` succeed inside it, and `gofmt -l .` lists no files
+
+#### Scenario: Build check without a database server
+- **WHEN** a project is generated with the selection mvc/nethttp/postgres/sqlc on a machine without a PostgreSQL server and `TEST_DATABASE_URL` is unset
+- **THEN** `go build ./...`, `go vet ./...` and `go test ./...` succeed inside it, and `gofmt -l .` lists no files
+
+#### Scenario: Database tests run against a server
+- **WHEN** a project is generated with the selection mvc/nethttp/postgres/sqlc and `TEST_DATABASE_URL` names a reachable PostgreSQL server
+- **THEN** `go test ./...` succeeds and its database and store tests run against that server instead of being skipped
+
+#### Scenario: Build without cgo
+- **WHEN** `CGO_ENABLED=0 go build ./...` runs in a project generated from any supported selection
+- **THEN** it succeeds
 
 #### Scenario: Example functionality is present
 - **WHEN** the generated project is running
-- **THEN** `GET /health` responds 200
-- **AND** an item created with `POST /items` is returned by `GET /items`, persisted in the selected database
+- **THEN** `GET /health` responds 200 at the API's base path (`/` without a frontend, `/api` with one)
+- **AND** an item created with `POST /items` at that base path is returned by `GET /items` there, persisted in the selected database
 
 ### Requirement: No partial projects
 If generation fails or is interrupted after it began writing, gobento SHALL
@@ -128,3 +167,259 @@ it was, and SHALL report the cause.
 #### Scenario: User interrupts generation
 - **WHEN** the user presses Ctrl-C while dependencies are being fetched
 - **THEN** gobento stops, removes everything it created, reports that it was interrupted, and exits with status 130
+
+### Requirement: Report the gobento version
+`gobento --version` SHALL print the gobento version. A version set at build
+time (release builds) SHALL take precedence; otherwise gobento SHALL report the
+main module version recorded by the Go toolchain without its leading `v`, and
+`dev` when no version was recorded.
+
+#### Scenario: Release binary
+- **WHEN** a release binary built with `-X main.version=0.1.0` runs `gobento --version`
+- **THEN** it prints `gobento version 0.1.0`
+
+#### Scenario: Installed with go install
+- **WHEN** gobento installed with `go install github.com/Tales-of-zuna/gobento/cmd/gobento@vX.Y.Z` runs `gobento --version`
+- **THEN** it prints `gobento version X.Y.Z`
+
+#### Scenario: No recorded version
+- **WHEN** gobento runs without a build-time version and Go recorded `(devel)` or nothing
+- **THEN** it prints `gobento version dev`
+
+### Requirement: Optional kinds need no flag
+When the flag of an optional kind is omitted, gobento SHALL select no
+component of that kind without requiring the flag; the value `none` SHALL
+select no component explicitly. An unknown value of an optional kind SHALL be
+reported with the supported values, including `none`.
+
+#### Scenario: No flag for an optional kind
+- **WHEN** the user omits `--frontend` and stdin is not a terminal
+- **THEN** the project is generated without a frontend
+
+#### Scenario: No CSS flag with a frontend
+- **WHEN** the user passes `--frontend htmx`, omits `--css`, and stdin is not a terminal
+- **THEN** the project is generated with htmx and without a CSS framework
+
+#### Scenario: Unknown CSS framework
+- **WHEN** the user passes `--css bootstrap`
+- **THEN** gobento exits non-zero naming `--css` and listing `none` and `tailwind`, and writes nothing
+
+### Requirement: Ask for missing input in a terminal
+In a terminal (stdin and stdout) without `--no-input`, `gobento new` SHALL
+ask, before validating, for the project name when no `<name>` is given, then
+for the module path (empty keeps the name), and for each kind whose flag is
+omitted and that has several compatible options, in kind order; for an
+optional kind, "none" is an option, offered first. Answers SHALL follow the
+name and module path rules.
+Nothing given by a flag SHALL be asked, and `--dry-run` SHALL ask the same
+questions.
+
+#### Scenario: Several frameworks, framework flag omitted
+- **WHEN** the user runs `gobento new shop` in a terminal and the catalog has several supported frameworks
+- **THEN** gobento asks for the framework, and not for the name, the module path, or a kind with a single option
+- **AND** it generates the project with the chosen framework
+
+#### Scenario: No name given
+- **WHEN** the user runs `gobento new` in a terminal
+- **THEN** gobento asks for the project name, rejecting names that break the project name rules, and then for the module path, using the name when the answer is empty
+
+#### Scenario: Flags skip their questions
+- **WHEN** the user runs `gobento new shop --framework nethttp` in a terminal
+- **THEN** gobento does not ask for the framework
+
+#### Scenario: Frontend question
+- **WHEN** the user runs `gobento new shop --arch mvc --framework nethttp --db sqlite --data sqlc` in a terminal
+- **THEN** gobento asks for the frontend, offering "None (API only)" first and then `htmx`
+
+#### Scenario: CSS framework question
+- **WHEN** the user answers `htmx` to the frontend question
+- **THEN** gobento then asks for the CSS framework, offering "None (plain CSS)" first and then `tailwind`
+
+### Requirement: Questions offer only supported options
+A component question SHALL offer only the options that form a supported
+selection together with the component flags and the earlier answers. A kind
+left with a single compatible option SHALL be selected without a question.
+
+#### Scenario: Later options depend on earlier answers
+- **WHEN** an earlier answer or flag rules out some options of a later kind
+- **THEN** the later question offers only the options that form a supported selection with it, and is skipped when one option remains
+
+### Requirement: No questions for invalid command-line input
+If a name, module path, `--pin` value, or component flag given on the command
+line is invalid, or the component flags match no supported selection, gobento
+SHALL ask nothing and report the problems as it does without a terminal. When
+`<name>` is also omitted, the report SHALL include the missing name together
+with every other problem.
+
+#### Scenario: Invalid flag value
+- **WHEN** the user runs `gobento new shop --framework express` in a terminal
+- **THEN** gobento asks nothing, exits non-zero listing the supported frameworks, and writes nothing
+
+#### Scenario: Invalid flag value without a name
+- **WHEN** the user runs `gobento new --framework express` in a terminal
+- **THEN** gobento asks nothing and exits non-zero reporting both the missing project name and the unknown framework
+
+### Requirement: Equivalent command after questions
+After asking at least one question, gobento SHALL print on stderr the
+equivalent `gobento new` command, with every answer as an argument or flag
+and the other flags of the run, so the run can be repeated without
+questions. An optional kind answered with "none" SHALL be left out unless its
+flag was given, because leaving out the flag means the same.
+
+#### Scenario: Framework chosen by a question
+- **WHEN** the user answers `gin` to the framework question of `gobento new shop --dry-run`
+- **THEN** stderr shows a command that starts with `gobento new shop` and contains `--framework gin` and `--dry-run`
+
+#### Scenario: No frontend chosen by a question
+- **WHEN** the user answers "None (API only)" to the frontend question
+- **THEN** the equivalent command contains no `--frontend` flag
+
+### Requirement: Disable questions
+gobento SHALL NOT ask any question when `--no-input` is given or when stdin or
+stdout is not a terminal; it then behaves as if questions did not exist: a
+missing `<name>` is an argument error, and a kind with several options and no
+flag is reported as in "Automatic selection of the only option".
+
+#### Scenario: Piped input
+- **WHEN** the user runs `echo | gobento new` in a shell
+- **THEN** gobento exits non-zero asking for exactly one project name, without asking a question
+
+#### Scenario: No input flag in a terminal
+- **WHEN** the user runs `gobento new shop --no-input` in a terminal and a kind has several options
+- **THEN** gobento exits non-zero naming the kind's flag and its supported values, without asking a question
+
+### Requirement: Abort while asking
+When the user cancels a question with Ctrl-C or Esc, or the process is
+interrupted while a question is open, gobento SHALL stop, write nothing, print
+`gobento: interrupted; nothing was left behind`, and exit with status 130.
+When the input ends before every question is answered, gobento SHALL exit
+non-zero and write nothing.
+
+#### Scenario: Ctrl-C at a question
+- **WHEN** the user presses Ctrl-C while gobento asks for the framework
+- **THEN** gobento exits with status 130, reports that it was interrupted, and creates no directory
+
+#### Scenario: Input ends
+- **WHEN** the input ends (for example, Ctrl-D in accessible mode) before the last question is answered
+- **THEN** gobento exits non-zero saying the input ended, and creates no directory
+
+### Requirement: Accessible questions
+When the `ACCESSIBLE` environment variable is set to a non-empty value, or
+`TERM` is `dumb`, gobento SHALL ask its questions as plain, line-based text
+prompts, listing the options of a choice as numbered lines, instead of a
+full-screen interface. The questions, options, validation, and results SHALL
+be the same in both modes.
+
+#### Scenario: Screen reader user
+- **WHEN** the user runs `ACCESSIBLE=1 gobento new` in a terminal
+- **THEN** each question is printed as a line of text, each option of a choice as a numbered line, and the answer is read as a typed line
+
+### Requirement: PostgreSQL database
+gobento SHALL offer PostgreSQL as a database (`--db postgres`), using a
+pure-Go driver so that the generated project builds without a C compiler on
+Linux, macOS, and Windows. The generated README SHALL explain how to start a
+local PostgreSQL server, how to point the application and its tests at a
+server, and how the schema is applied.
+
+#### Scenario: PostgreSQL project
+- **WHEN** the user runs `gobento new shop --module example.com/shop --arch mvc --framework nethttp --db postgres --data sqlc`
+- **THEN** a project is created whose `go.mod` requires the PostgreSQL driver at its default version and no SQLite driver
+- **AND** its README contains a command that starts a PostgreSQL server matching the default connection string
+
+#### Scenario: Database is a choice
+- **WHEN** the user runs `gobento new shop` without `--db` and without a terminal
+- **THEN** gobento exits non-zero naming `--db` and listing `postgres` and `sqlite`, and writes nothing
+
+### Requirement: Supported selections are verified in CI
+gobento's CI SHALL generate and check projects on Linux, macOS, and Windows,
+each with the default versions and with the floor of every range. It SHALL
+cover every supported selection without an optional component, and a subset
+of the selections with one in which every pair of components that appears
+together in such a selection appears together at least once, chosen
+deterministically from the catalog.
+
+#### Scenario: Backend combinations are exhaustive
+- **WHEN** CI runs the integration test
+- **THEN** every supported selection without a frontend is generated and checked
+
+#### Scenario: Frontend combinations are covered pairwise
+- **WHEN** CI runs the integration test and the catalog has a frontend
+- **THEN** for every architecture, framework, database, and data-access component that can be combined with that frontend, a project with the frontend and that component is checked, and for every two such components that can appear together with the frontend, a project with the frontend and both of them is checked
+
+#### Scenario: CSS frameworks are covered pairwise
+- **WHEN** CI runs the integration test and the catalog has a CSS framework
+- **THEN** for every component that can be combined with that CSS framework, including each frontend, a project with the CSS framework and that component is checked
+
+### Requirement: Scaffold step
+With a scaffolded component, generation SHALL run the scaffolder after
+writing gobento's files to the temporary directory, merge its files with
+gobento's taking precedence, and write the npm lock file without installing.
+If npm refuses a remote tarball then (`EALLOWREMOTE`), it SHALL retry
+allowing them and fail unless every lock file package is on the registry's
+host. A failure or interruption SHALL leave nothing behind, including files
+of processes the scaffolder started.
+
+#### Scenario: Scaffolder fails
+- **WHEN** the scaffolder or npm fails during generation (for example, without network access)
+- **THEN** gobento exits non-zero with npm's output, and no generated files remain on disk
+
+#### Scenario: Interrupted while scaffolding
+- **WHEN** the user presses Ctrl-C while the scaffolder runs
+- **THEN** gobento stops the scaffolder and every process it started, removes everything it created, and exits with status 130
+
+#### Scenario: npm 12 refuses a registry tarball
+- **WHEN** npm 12 refuses, with `EALLOWREMOTE`, the registry tarball of an optional dependency while writing the lock file of a React project with `--css tailwind`
+- **THEN** generation repeats the install with `--allow-remote=all` and succeeds, and it fails, leaving nothing behind, if the lock file then resolves a package to another host
+
+### Requirement: Node.js preflight
+Before writing, when the selection includes a component with a scaffolder,
+gobento SHALL check that the `node` and `npm` commands are available and
+that the Node.js version lies in the rules file's Node.js range, and report
+every problem together with the other preflight problems. Without such a
+component, gobento SHALL NOT look for Node.js.
+
+#### Scenario: Node.js is missing
+- **WHEN** the user runs `gobento new shop ... --frontend react` and no `node` command is found on PATH
+- **THEN** gobento exits non-zero naming the frontend, the scaffolder, and the required Node.js range, with instructions to install Node.js, and writes nothing
+
+#### Scenario: Node.js is too old
+- **WHEN** the local Node.js version is below the floor of the Node.js range
+- **THEN** gobento exits non-zero naming both versions, and writes nothing
+
+#### Scenario: API-only projects need no Node.js
+- **WHEN** the user generates a project without a frontend, or with `--frontend htmx`, on a machine without Node.js
+- **THEN** generation succeeds
+
+### Requirement: Dry run with a scaffolder
+With `--dry-run`, gobento SHALL list the files it writes itself and SHALL
+say which scaffolder adds more files to which directory, which npm packages
+npm adds to the scaffolded project, and that generation needs Node.js and
+network access to the npm registry. It SHALL NOT run the scaffolder or
+require Node.js.
+
+#### Scenario: Dry run of a React project
+- **WHEN** the user runs `gobento new shop ... --frontend react --dry-run`
+- **THEN** the output lists `frontend/vite.config.ts` and the other gobento files, says that `npm create vite@<version>` with the template `react-ts` adds more files to `frontend/` and writes `frontend/package-lock.json`, and nothing is written
+
+#### Scenario: Dry run with Tailwind
+- **WHEN** the user runs `gobento new shop ... --frontend react --css tailwind --dry-run`
+- **THEN** the output also says that npm adds the development dependencies `@tailwindcss/vite` and `tailwindcss` at their versions to `frontend/package.json`
+
+### Requirement: Next steps build the frontend
+After generating a project with a Vite frontend, the next steps SHALL
+include the commands that install and build the frontend before the
+command that runs the server.
+
+#### Scenario: Next steps
+- **WHEN** a project with `--frontend vue` is generated
+- **THEN** the next steps list `npm --prefix frontend ci` and `npm --prefix frontend run build` before `go run ./cmd/shop`
+
+### Requirement: Vite frontends are verified in CI
+gobento's CI SHALL set up Node.js for the integration test on Linux, macOS,
+and Windows. For each generated project with a Vite frontend, it SHALL
+install the frontend's dependencies with `npm ci`, run its checks and its
+build, and then build and test the Go project with the built app embedded.
+
+#### Scenario: Frontend build in the integration test
+- **WHEN** CI generates a covered selection with a Vite frontend with the default versions
+- **THEN** `npm ci` and `npm run build` succeed in `frontend/`, the build is in the web package's `dist/app/`, and `go build ./...` and `go test ./...` succeed

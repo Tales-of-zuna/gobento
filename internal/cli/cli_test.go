@@ -9,9 +9,9 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
-	"testing/fstest"
 
 	"github.com/Tales-of-zuna/gobento/components"
 	"github.com/Tales-of-zuna/gobento/internal/generate"
@@ -76,16 +76,43 @@ func TestNew(t *testing.T) {
 		},
 		{
 			// Spec: Module path defaults to the project name, and
-			// Automatic selection of the only option.
+			// Single option is chosen automatically.
 			name:       "defaults",
-			args:       []string{"new", "shop"},
+			args:       []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc"},
 			wantTarget: "shop",
 			wantModule: "shop",
 			wantGo:     "1.27",
 		},
 		{
+			// Spec: Feature layout.
+			name:       "vertical slice",
+			args:       []string{"new", "shop", "--arch", "vertical-slice", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc"},
+			wantTarget: "shop",
+			wantModule: "shop",
+			wantGo:     "1.27",
+			wantOut:    []string{"go run ./cmd/shop"},
+		},
+		{
+			// Spec: Layered layout.
+			name:       "ddd",
+			args:       []string{"new", "shop", "--arch", "ddd", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc"},
+			wantTarget: "shop",
+			wantModule: "shop",
+			wantGo:     "1.27",
+			wantOut:    []string{"go run ./cmd/shop"},
+		},
+		{
+			// Spec: GORM data access.
+			name:       "gorm",
+			args:       []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "gorm"},
+			wantTarget: "shop",
+			wantModule: "shop",
+			wantGo:     "1.27",
+			wantOut:    []string{"Created shop in shop."},
+		},
+		{
 			name:       "versions and directory",
-			args:       []string{"new", "my-app", "--go", "1.26", "--pin", "modernc.org/sqlite=v1.61.0", "--dir", "out/app"},
+			args:       []string{"new", "my-app", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc", "--go", "1.26", "--pin", "modernc.org/sqlite=v1.61.0", "--dir", "out/app"},
 			wantTarget: "out/app",
 			wantModule: "my-app",
 			wantGo:     "1.26",
@@ -125,13 +152,31 @@ func TestNewPinVersionIsUsed(t *testing.T) {
 	t.Parallel()
 
 	gen := &fakeGenerator{}
-	if _, _, err := run(t, components.FS(), gen, "new", "shop", "--pin", "modernc.org/sqlite=v1.61.0"); err != nil {
+	if _, _, err := run(t, components.FS(), gen, "new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc", "--pin", "modernc.org/sqlite=v1.61.0"); err != nil {
 		t.Fatal(err)
 	}
 	for _, m := range gen.calls[0].Modules {
 		if m.Path == "modernc.org/sqlite" && m.Version != "v1.61.0" {
 			t.Errorf("modernc.org/sqlite = %s, want v1.61.0", m.Version)
 		}
+	}
+}
+
+// TestNewPostgres follows the spec scenario "PostgreSQL project": the
+// project requires the PostgreSQL driver and no SQLite driver.
+func TestNewPostgres(t *testing.T) {
+	t.Parallel()
+
+	gen := &fakeGenerator{}
+	if _, _, err := run(t, components.FS(), gen, "new", "shop", "--module", "example.com/shop", "--arch", "mvc", "--framework", "nethttp", "--db", "postgres", "--data", "sqlc"); err != nil {
+		t.Fatal(err)
+	}
+	var paths []string
+	for _, m := range gen.calls[0].Modules {
+		paths = append(paths, m.Path)
+	}
+	if !slices.Contains(paths, "github.com/jackc/pgx/v5") || slices.Contains(paths, "modernc.org/sqlite") {
+		t.Errorf("modules = %v, want github.com/jackc/pgx/v5 and not modernc.org/sqlite", paths)
 	}
 }
 
@@ -158,14 +203,49 @@ func TestNewErrors(t *testing.T) {
 		},
 		{
 			// Spec: Several options require a choice.
-			name:    "several options",
-			catalog: twoFrameworkFS(t),
-			args:    []string{"new", "shop"},
-			want:    []string{"--framework: choose a framework; supported: chi, nethttp"},
+			name: "several options",
+			args: []string{"new", "shop"},
+			want: []string{"--framework: choose a framework; supported: chi, gin, nethttp"},
+		},
+		{
+			// Spec: Unknown frontend.
+			name: "unknown frontend",
+			args: []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc", "--frontend", "angular"},
+			want: []string{`--frontend: unknown frontend "angular"; supported: none, htmx, react, svelte, vue`},
+		},
+		{
+			// Spec: Architecture must be chosen.
+			name: "architecture must be chosen",
+			args: []string{"new", "shop"},
+			want: []string{"--arch: choose an architecture; supported: ddd, mvc, vertical-slice"},
+		},
+		{
+			// Spec: Database is a choice.
+			name: "database is a choice",
+			args: []string{"new", "shop"},
+			want: []string{"--db: choose a database; supported: postgres, sqlite"},
+		},
+		{
+			// Spec: Several options require a choice, for data access.
+			name: "data access is a choice",
+			args: []string{"new", "shop"},
+			want: []string{"--data: choose a data-access library; supported: gorm, sqlc"},
+		},
+		{
+			// Spec: Several options require a choice (shipped catalog).
+			name: "data access not chosen",
+			args: []string{"new", "shop"},
+			want: []string{"--data: choose a data-access library; supported: gorm, sqlc"},
+		},
+		{
+			// Spec: Pin for a module whose trait condition is not met.
+			name: "pin of a dialect driver the selection does not use",
+			args: []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "gorm", "--pin", "gorm.io/driver/postgres=v1.6.3"},
+			want: []string{"cannot pin gorm.io/driver/postgres, it is only used with sql-dialect postgresql"},
 		},
 		{
 			name: "tool pin",
-			args: []string{"new", "shop", "--pin", "github.com/sqlc-dev/sqlc=v1.30.0"},
+			args: []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc", "--pin", "github.com/sqlc-dev/sqlc=v1.30.0"},
 			want: []string{"github.com/sqlc-dev/sqlc", "fixed per gobento release"},
 		},
 		{
@@ -205,7 +285,7 @@ func TestNewSeveralProblemsSnapshot(t *testing.T) {
 	t.Parallel()
 
 	_, _, err := run(t, components.FS(), &fakeGenerator{},
-		"new", "My App", "--module", "Not A Path", "--framework", "express", "--go", "1.20", "--pin", "nonsense")
+		"new", "My App", "--module", "Not A Path", "--arch", "mvc", "--framework", "express", "--go", "1.20", "--pin", "nonsense")
 	if err == nil {
 		t.Fatal("error = nil, want the problem report")
 	}
@@ -229,7 +309,7 @@ func TestNewGenerateFailure(t *testing.T) {
 	t.Parallel()
 
 	gen := &fakeGenerator{err: errors.New("go get: no network")}
-	_, _, err := run(t, components.FS(), gen, "new", "shop")
+	_, _, err := run(t, components.FS(), gen, "new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc")
 	if err == nil || !strings.Contains(err.Error(), "  - go get: no network") {
 		t.Errorf("error = %v, want the generation error in the report", err)
 	}
@@ -244,7 +324,7 @@ func TestNewDryRun(t *testing.T) {
 	t.Parallel()
 
 	gen := &fakeGenerator{}
-	out, _, err := run(t, components.FS(), gen, "new", "drytest", "--dry-run")
+	out, _, err := run(t, components.FS(), gen, "new", "drytest", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc", "--dry-run")
 	if err != nil {
 		t.Fatalf("--dry-run error = %v", err)
 	}
@@ -278,7 +358,7 @@ func TestNewHelp(t *testing.T) {
 		t.Fatal(err)
 	}
 	examples := out[strings.Index(out, "Examples:"):strings.Index(out, "Flags:")]
-	for _, name := range []string{"module", "arch", "framework", "db", "data", "go", "pin", "dir", "dry-run"} {
+	for _, name := range []string{"module", "arch", "framework", "db", "data", "go", "pin", "dir", "dry-run", "no-input"} {
 		flagLine := ""
 		for line := range strings.SplitSeq(out, "\n") {
 			if strings.Contains(line, "--"+name+" ") {
@@ -295,37 +375,13 @@ func TestNewHelp(t *testing.T) {
 	}
 }
 
-// twoFrameworkFS is the shipped catalog plus a copy of nethttp named chi.
-func twoFrameworkFS(t *testing.T) fs.FS {
-	t.Helper()
-	m := fstest.MapFS{}
-	err := fs.WalkDir(components.FS(), ".", func(p string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return err
-		}
-		data, err := fs.ReadFile(components.FS(), p)
-		m[p] = &fstest.MapFile{Data: data}
-		if rest, ok := strings.CutPrefix(p, "framework/nethttp/"); ok {
-			if rest == "component.yaml" {
-				data = []byte("name: chi\ntitle: chi\n")
-			}
-			m["framework/chi/"+rest] = &fstest.MapFile{Data: data}
-		}
-		return err
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return m
-}
-
 // TestNewIntoCurrentDirectory covers spec "Generate into the current empty
 // directory": the target is "." and no cd step is printed.
 func TestNewIntoCurrentDirectory(t *testing.T) {
 	t.Chdir(t.TempDir())
 
 	gen := &fakeGenerator{}
-	out, _, err := run(t, components.FS(), gen, "new", "shop", "--dir", ".")
+	out, _, err := run(t, components.FS(), gen, "new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc", "--dir", ".")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -397,7 +453,7 @@ func TestNewInterrupted(t *testing.T) {
 		stderr: &stderr,
 	}
 	cmd := newRootCommand("dev", a)
-	cmd.SetArgs([]string{"new", "shop"})
+	cmd.SetArgs([]string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc"})
 	if got := a.exitStatus(ctx, cmd.ExecuteContext(ctx)); got != ExitInterrupted {
 		t.Errorf("exit status = %d, want %d", got, ExitInterrupted)
 	}
@@ -420,5 +476,94 @@ func TestShellQuote(t *testing.T) {
 		if got := shellQuote(in); got != want {
 			t.Errorf("shellQuote(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+// TestNewFrontend covers the spec scenarios "Optional kind needs no flag",
+// "No frontend by default", "Explicitly none", and "htmx frontend".
+func TestNewFrontend(t *testing.T) {
+	t.Parallel()
+
+	base := []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc", "--dry-run"}
+	tests := []struct {
+		name  string
+		extra []string
+		want  string
+		views bool
+	}{
+		{"flag omitted", nil, "(mvc/nethttp/sqlite/sqlc, Go 1.27)", false},
+		{"none", []string{"--frontend", "none"}, "(mvc/nethttp/sqlite/sqlc, Go 1.27)", false},
+		{"htmx", []string{"--frontend", "htmx"}, "(mvc/nethttp/sqlite/sqlc/htmx, Go 1.27)", true},
+	}
+	var outputs []string
+	for _, tt := range tests {
+		out, stderr, err := run(t, components.FS(), &fakeGenerator{}, append(base, tt.extra...)...)
+		if err != nil {
+			t.Fatalf("%s: %v\n%s", tt.name, err, stderr)
+		}
+		if !strings.Contains(out, tt.want) {
+			t.Errorf("%s: output does not contain %q:\n%s", tt.name, tt.want, out)
+		}
+		if got := strings.Contains(out, "internal/views/pages.templ"); got != tt.views {
+			t.Errorf("%s: lists internal/views/pages.templ = %v, want %v", tt.name, got, tt.views)
+		}
+		outputs = append(outputs, out)
+	}
+	if outputs[0] != outputs[1] {
+		t.Errorf("--frontend none plans other files than no --frontend:\n%s\n%s", outputs[0], outputs[1])
+	}
+}
+
+// TestNewViteFrontend covers the spec scenarios "Dry run of a React
+// project", "Dry run with Tailwind", "Next steps", and "Scaffolder version
+// from the rules".
+func TestNewViteFrontend(t *testing.T) {
+	t.Parallel()
+
+	args := []string{"new", "shop", "--arch", "mvc", "--framework", "nethttp", "--db", "sqlite", "--data", "sqlc", "--frontend", "react"}
+	gen := &fakeGenerator{}
+	out, _, err := run(t, components.FS(), gen, append(args, "--dry-run")...)
+	if err != nil {
+		t.Fatalf("--dry-run error = %v", err)
+	}
+	for _, w := range []string{
+		"frontend/vite.config.ts", "frontend/src/App.tsx", "internal/views/dist/.gitignore",
+		"npm create vite@9.3.3 frontend -- --template react-ts adds more files to frontend/",
+		"frontend/package-lock.json", "Node.js >=v22.12.0, npm, and network access",
+	} {
+		if !strings.Contains(out, w) {
+			t.Errorf("dry-run output does not contain %q:\n%s", w, out)
+		}
+	}
+	if strings.Contains(out, "development dependencies") {
+		t.Errorf("dry-run output without a CSS framework names development dependencies:\n%s", out)
+	}
+	if len(gen.calls) != 0 {
+		t.Fatal("generate called during a dry run")
+	}
+
+	// Spec scenario "Dry run with Tailwind".
+	out, _, err = run(t, components.FS(), gen, append(slices.Clone(args), "--css", "tailwind", "--dry-run")...)
+	if err != nil {
+		t.Fatalf("--css tailwind --dry-run error = %v", err)
+	}
+	if w := "npm adds the development dependencies @tailwindcss/vite@4.3.4, tailwindcss@4.3.4 to frontend/package.json"; !strings.Contains(out, w) {
+		t.Errorf("dry-run output does not contain %q:\n%s", w, out)
+	}
+
+	dir := t.TempDir()
+	out, _, err = run(t, components.FS(), gen, append(args, "--dir", filepath.Join(dir, "shop"))...)
+	if err != nil {
+		t.Fatalf("new error = %v", err)
+	}
+	if len(gen.calls) != 1 || len(gen.calls[0].Scaffolds) != 1 {
+		t.Fatalf("generate calls = %+v, want one with a scaffold step", gen.calls)
+	}
+	if s := gen.calls[0].Scaffolds[0]; s.Package != "create-vite" || s.Version != "9.3.3" || s.Template != "react-ts" || s.Dir != "frontend" {
+		t.Errorf("scaffold step = %+v", s)
+	}
+	ci := strings.Index(out, "npm --prefix frontend ci\n  npm --prefix frontend run build\n")
+	if ci < 0 || ci > strings.Index(out, "go run ./cmd/shop") {
+		t.Errorf("next steps do not build the frontend before go run:\n%s", out)
 	}
 }

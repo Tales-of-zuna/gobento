@@ -14,11 +14,19 @@ describe('beltPlates', () => {
     const plates = beltPlates(catalogWith());
     expect(plates.filter((p) => p.status === 'ready').map((p) => p.name)).toEqual([
       'MVC',
+      'VS',
       'net/http',
       'SQLite',
+      'GORM',
       'sqlc',
+      'htmx + templ',
+      'Tailwind CSS',
     ]);
     expect(plates.filter((p) => p.status === 'roadmap')).toHaveLength(ROADMAP.length);
+  });
+
+  it('keeps nothing that ships on the roadmap', () => {
+    expect(ROADMAP.map((item) => item.name)).toEqual([]);
   });
 
   it('follows the catalog when a component is added', () => {
@@ -39,15 +47,24 @@ describe('beltPlates', () => {
 
 describe('stackCells', () => {
   it('gives one compartment per kind with its options and roadmap', () => {
-    const cells = stackCells(catalogWith());
+    const cells = stackCells(catalogWith(), [
+      { kind: 'framework', name: 'echo' },
+      { kind: 'framework', name: 'fiber' },
+    ]);
     expect(cells.map((c) => c.title)).toEqual([
       'Architecture',
       'HTTP framework',
       'Database',
       'Data access',
+      'Frontend',
+      'CSS framework',
     ]);
+    expect(cells.map((c) => c.optional)).toEqual([false, false, false, false, true, true]);
+    expect(cells[4]!.options.map((o) => o.name)).toEqual(['htmx + templ']);
+    expect(cells[5]!.options.map((o) => o.name)).toEqual(['Tailwind CSS']);
+    expect(cells[5]!.roadmap).toEqual([]);
     expect(cells[1]!.options.map((o) => o.name)).toEqual(['net/http']);
-    expect(cells[1]!.roadmap).toEqual(['gin', 'chi']);
+    expect(cells[1]!.roadmap).toEqual(['echo', 'fiber']);
   });
 });
 

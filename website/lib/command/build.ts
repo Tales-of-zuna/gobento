@@ -9,7 +9,7 @@ import {
   type Problem,
   type Selection,
 } from '@/lib/catalog/compat';
-import { KIND_IDS } from '@/lib/catalog/kinds';
+import { isOptionalKind, KIND_IDS } from '@/lib/catalog/kinds';
 import type { Catalog, KindId } from '@/lib/catalog/schema';
 import { sameVersion } from '@/lib/catalog/semver';
 
@@ -19,6 +19,8 @@ export const KIND_FLAGS: Readonly<Record<KindId, string>> = {
   framework: 'framework',
   database: 'db',
   data: 'data',
+  frontend: 'frontend',
+  css: 'css',
 };
 
 /** Everything the configurator lets a visitor choose. */
@@ -70,19 +72,30 @@ function optionsOf(catalog: Catalog, kind: KindId) {
 }
 
 /**
+ * Whether a kind's choice must appear as a flag. gobento picks the only
+ * component of a required kind by itself, but never picks one for an
+ * optional kind: there the default is none, so any choice is spelled out.
+ */
+function needsFlag(catalog: Catalog, kind: KindId): boolean {
+  return isOptionalKind(catalog, kind) || optionsOf(catalog, kind).length > 1;
+}
+
+/**
  * Builds the command for a state, or lists every problem that prevents one:
- * invalid name or module path, a kind with several options left unchosen,
- * or an incompatible selection.
+ * invalid name or module path, a required kind with several options left
+ * unchosen, or an incompatible selection. An optional kind left unchosen
+ * means none, so its flag is omitted (`--frontend none` and `--css none` are
+ * the defaults).
  */
 export function buildCommand(catalog: Catalog, state: ConfigState): BuildResult {
   const errors: FieldError[] = [...inputErrors(catalog, state)];
   for (const kind of KIND_IDS) {
     const options = optionsOf(catalog, kind);
+    if (isOptionalKind(catalog, kind)) continue;
     if (options.length > 1 && state.components[kind] === undefined) {
-      const title = catalog.kinds.find((k) => k.id === kind)?.title ?? kind;
       errors.push({
         field: kind,
-        message: `Choose a ${title.toLowerCase()}: ${options.map((o) => o.name).join(', ')}.`,
+        message: `Choose one of: ${options.map((o) => o.name).join(', ')}.`,
       });
     }
   }
@@ -93,7 +106,7 @@ export function buildCommand(catalog: Catalog, state: ConfigState): BuildResult 
   if (state.module !== '' && state.module !== state.name) args.push('--module', state.module);
   for (const kind of KIND_IDS) {
     const name = state.components[kind];
-    if (name !== undefined && optionsOf(catalog, kind).length > 1) {
+    if (name !== undefined && needsFlag(catalog, kind)) {
       args.push(`--${KIND_FLAGS[kind]}`, name);
     }
   }
