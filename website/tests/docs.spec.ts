@@ -16,6 +16,11 @@ const pages = [
     source: 'getting-started/quick-start.mdx',
   },
   {
+    path: 'docs/getting-started/choose-your-stack/',
+    title: 'Choose your stack',
+    source: 'getting-started/choose-your-stack.mdx',
+  },
+  {
     path: 'docs/concepts/components/',
     title: 'Components',
     source: 'concepts/components.mdx',

@@ -13,14 +13,11 @@ Install gobento first, with
 [Installation](/docs/getting-started/installation) for checksums and details.
 
 This guide generates a project called `shop` with MVC, `net/http`, SQLite, and
-sqlc. Swap `--framework nethttp` for `chi` or `gin` to use another router; the
-generated API is the same. SQLite needs no database server;
-[Use PostgreSQL](#use-postgresql) shows what changes with `--db postgres`,
-[With GORM](#with-gorm) what changes with `--data gorm`,
-[With htmx](#with-htmx) how to add web pages with `--frontend htmx`,
-[With Tailwind CSS](#with-tailwind-css) how to style them with `--css tailwind`,
-and [With React, Vue, or Svelte](#with-react-vue-or-svelte) how to add a
-single-page app built with Vite.
+sqlc. SQLite needs no database server, so nothing else has to run. Swap
+`--framework nethttp` for `chi` or `gin` to use another router; the generated
+API is the same. [Choose your stack](/docs/getting-started/choose-your-stack)
+shows what changes with another architecture, PostgreSQL, GORM, or a
+frontend and CSS framework.
 
 ## Generate and run it
 
@@ -51,15 +48,15 @@ gobento new shop --module example.com/shop --arch mvc --framework nethttp --db s
 
 `--arch` chooses the architecture: `mvc` organizes the code by layer,
 `vertical-slice` by feature (see
-[With the vertical-slice architecture](#with-the-vertical-slice-architecture)),
+[With the vertical-slice architecture](/docs/getting-started/choose-your-stack#with-the-vertical-slice-architecture)),
 and `ddd` in domain-driven layers (see
-[With the ddd architecture](#with-the-ddd-architecture)).
+[With the ddd architecture](/docs/getting-started/choose-your-stack#with-the-ddd-architecture)).
 `--framework` picks the HTTP framework: `nethttp` (the standard library),
 `chi`, or `gin`. `--db` picks the database: `sqlite` or `postgres` (see
-[Use PostgreSQL](#use-postgresql)). `--data` picks the data access: `sqlc` or
-`gorm` (see [With GORM](#with-gorm)). There is no `--frontend`, so the project
-is an HTTP API (see [With htmx](#with-htmx) and
-[With React, Vue, or Svelte](#with-react-vue-or-svelte) for web pages). If you leave out
+[Use PostgreSQL](/docs/getting-started/choose-your-stack#use-postgresql)). `--data` picks the data access: `sqlc` or
+`gorm` (see [With GORM](/docs/getting-started/choose-your-stack#with-gorm)). There is no `--frontend`, so the project
+is an HTTP API (see [With htmx](/docs/getting-started/choose-your-stack#with-htmx) and
+[With React, Vue, or Svelte](/docs/getting-started/choose-your-stack#with-react-vue-or-svelte) for web pages). If you leave out
 one of these flags in a terminal, gobento asks you to choose; you can also run
 plain `gobento new` and answer the questions for the name, module path, and
 components. The same command with every choice spelled out, which never asks
@@ -252,283 +249,8 @@ applied every time the server starts. It uses `CREATE TABLE IF NOT EXISTS`, so
 it creates missing tables but never changes existing ones; it is not a
 migration system.
 
-## With the vertical-slice architecture
-
-`--arch vertical-slice` generates the same files from the same components, in
-a layout organized by feature:
-
-```sh
-gobento new shop --module example.com/shop --arch vertical-slice --framework nethttp --db sqlite --data sqlc
-```
-
-| Path                          | Filled by    | Contents                                                                               |
-| ----------------------------- | ------------ | -------------------------------------------------------------------------------------- |
-| `cmd/shop/main.go`            | architecture | The same entry point and wiring                                                        |
-| `internal/items/`             | architecture | The items feature: the `Item` type and the `ItemStore` interface (`items.go`)          |
-| `internal/items/itemshttp/`   | framework    | The feature's handlers, `NewRouter` with `/health`, and their tests                    |
-| `internal/items/itemsstore/`  | data access  | The feature's `queries.sql`, the `New` adapter, its test, and the `sqlcgen` subpackage |
-| `internal/platform/database/` | database     | `Open` and `schema.sql`, shared by every feature                                       |
-
-The generated README explains the layout and how to add a second feature,
-such as `internal/orders`, beside `internal/items`.
-
-## With the ddd architecture
-
-`--arch ddd` arranges the same components in domain-driven,
-ports-and-adapters layers, and adds an application service between the HTTP
-handlers and the store:
-
-```sh
-gobento new shop --module example.com/shop --arch ddd --framework nethttp --db sqlite --data sqlc
-```
-
-| Path                             | Filled by    | Contents                                                                                       |
-| -------------------------------- | ------------ | ---------------------------------------------------------------------------------------------- |
-| `cmd/shop/main.go`               | architecture | The entry point; it gives the handlers the application service instead of the store            |
-| `internal/domain/`               | architecture | The `Item` entity, the rule for item names, the `ItemStore` port (`domain.go`), and a test     |
-| `internal/app/`                  | architecture | `ItemService`, which checks the domain rule and stores items through `ItemStore`, and its test |
-| `internal/adapters/httpapi/`     | framework    | The handlers, `NewRouter` with `/health`, and their tests                                      |
-| `internal/adapters/persistence/` | data access  | `queries.sql`, the `New` adapter, its test, and the `sqlcgen` subpackage                       |
-| `internal/adapters/database/`    | database     | `Open` and `schema.sql`                                                                        |
-
-Dependencies point inward: the adapters and `internal/app` import
-`internal/domain`, which imports no other package of the project, and only
-`cmd/shop` connects the adapters to the service. The generated README explains
-the layers and how to add a second aggregate, such as `Order`, next to `Item`.
-
-## Use PostgreSQL
-
-Generate the same project on PostgreSQL with `--db postgres`:
-
-```sh
-gobento new shop --module example.com/shop --arch mvc --framework nethttp --db postgres --data sqlc
-```
-
-The files are the same, except that `internal/database` opens PostgreSQL
-through [pgx](https://github.com/jackc/pgx), a pure-Go driver, and
-`sqlc.yaml` uses sqlc's `postgresql` engine. What changes for you:
-
-- **Running the server.** `DATABASE_URL` defaults to
-  `postgres://postgres:postgres@localhost:5432/shop?sslmode=disable`, a local
-  development server. The generated README has a command that starts one with
-  Docker:
-
-  ```sh
-  docker run --rm -d --name shop-postgres -p 5432:5432 \
-    -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=shop postgres:18-alpine
-  go run ./cmd/shop
-  ```
-
-  For any other server, set `DATABASE_URL` to its URL.
-
-- **Running the tests.** `go test ./...` passes without a server: the
-  database and store tests are skipped. Set `TEST_DATABASE_URL` to run them
-  against a server. Each test works in a schema of its own, which it drops
-  when it ends:
-
-  ```sh
-  TEST_DATABASE_URL='postgres://postgres:postgres@localhost:5432/shop?sslmode=disable' go test ./...
-  ```
-
-## With GORM
-
-`gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data gorm` generates the same
-project with a [GORM](https://gorm.io/) store. `internal/store/` then holds
-only `store.go` (the `New` adapter, which wraps the `*sql.DB` from
-`internal/database`) and `store_test.go` (a test against real SQLite), and
-there is no `sqlc.yaml`. `go.mod` adds `gorm.io/gorm` and
-`github.com/libtnb/sqlite`, a pure-Go GORM dialect on the same
-`modernc.org/sqlite` driver, so the project still builds without cgo. The
-tables still come only from `schema.sql`: the store never calls
-`AutoMigrate`.
-
-## With htmx
-
-Add `--frontend htmx` to serve web pages next to the API, rendered on the
-server from [templ](https://templ.guide) components and made interactive with
-[htmx](https://htmx.org):
-
-```sh
-gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx
-cd shop
-go run ./cmd/shop
-```
-
-Open [http://localhost:8080/](http://localhost:8080/): the page lists the items and has a form that
-adds one without reloading the page. The form also works with JavaScript
-turned off (it posts, and the browser is redirected back to the page). The
-JSON API is unchanged but moves under `/api`, so the frontend owns every other
-path:
-
-```sh
-curl -i http://localhost:8080/api/health
-curl -i -X POST http://localhost:8080/api/items -d '{"name":"onigiri"}'
-curl -i http://localhost:8080/
-```
-
-The project gains one package, `internal/views` (`internal/web` with
-`--arch vertical-slice`, `internal/adapters/web` with `--arch ddd`):
-
-| Path                                | Contents                                                                                            |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `internal/views/handler.go`         | `NewHandler`, serving `GET /`, `POST /items` (the form), and `/static/`; tests in `handler_test.go` |
-| `internal/views/pages.templ`        | The page, the item row, and the form as templ components                                            |
-| `internal/views/pages_templ.go`     | The Go code templ generates from `pages.templ`, shipped so that you need no templ command to build  |
-| `internal/views/static/htmx.min.js` | htmx, vendored and embedded in the binary: the pages load nothing from a CDN and work offline       |
-| `internal/views/static/styles.css`  | Plain CSS, no build step                                                                            |
-
-`cmd/shop/main.go` mounts the API router under `/api/` and the pages at `/`.
-`go.mod` adds `github.com/a-h/templ`, the templ runtime. After you edit
-`pages.templ`, regenerate `pages_templ.go` with the pinned templ version:
-run `make generate`, or without make the `//go:generate` line in
-`handler.go`, which holds the exact command:
-
-```sh
-go generate ./internal/views
-```
-
-The CI workflow runs the same command and fails when the committed
-`pages_templ.go` is stale.
-
-A blank name is answered with `422` and a message next to the field, and form
-posts from other sites are rejected with `403`.
-
-## With Tailwind CSS
-
-With a frontend, add `--css tailwind` to style the pages with
-[Tailwind CSS](https://tailwindcss.com). With htmx, the stylesheet is
-compiled by the standalone Tailwind CLI, so no Node.js is needed; for the
-Vite frontends, see
-[Tailwind CSS with React, Vue, or Svelte](#tailwind-css-with-react-vue-or-svelte).
-
-```sh
-gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend htmx --css tailwind
-cd shop
-go run ./cmd/shop
-```
-
-The pages and their markup are the same as with htmx alone; only the
-stylesheet changes. The project gains:
-
-| Path                                 | Contents                                                                                                   |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `tailwind.css`                       | The Tailwind source: styles the pages' elements and classes with `@apply`, and scans the `.templ` files    |
-| `internal/views/static/styles.css`   | The stylesheet Tailwind compiles from it, committed and embedded, so building needs no Node.js and no CLI  |
-| `internal/tools/tailwindcss/main.go` | A Go program that downloads the pinned standalone Tailwind CLI, checks its SHA-256, caches it, and runs it |
-
-After you change `tailwind.css` or add a utility class to a `.templ` file,
-rebuild the stylesheet with `make generate`, or without make:
-
-```sh
-go run ./internal/tools/tailwindcss --input tailwind.css --output internal/views/static/styles.css --minify
-```
-
-The first run downloads the CLI for your platform (about 100 MB) into your
-user cache directory. Add `--watch` instead of `--minify` to rebuild on every
-change while you work. To use a `tailwindcss` binary you already have, for
-example on musl-based Linux, set `TAILWINDCSS` to its path. The CI workflow
-fails when the committed stylesheet is not what the pinned CLI compiles.
-
-## With React, Vue, or Svelte
-
-Add `--frontend react`, `--frontend vue`, or `--frontend svelte` to serve a
-single-page app in TypeScript, built with [Vite](https://vite.dev). These
-frontends need [Node.js v22.12.0 or newer and npm](/docs/getting-started/installation#nodejs-for-react-vue-and-svelte),
-and network access to the npm registry, when you generate the project:
-
-```sh
-gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend react
-```
-
-During generation, gobento runs Vite's official scaffolder,
-`npm create vite@9.3.3`, with the `react-ts` template (`vue-ts`,
-`svelte-ts`) to create `frontend/`, adds its own example page on top, and
-has npm write `frontend/package-lock.json`. It does not install the
-dependencies. The next steps include the two npm commands that do, and that
-build the app:
-
-```text
-Created example.com/shop in shop.
-
-Next steps:
-  cd shop
-  go test ./...
-  npm --prefix frontend ci
-  npm --prefix frontend run build
-  go run ./cmd/shop
-```
-
-`make build` runs the same npm commands and then builds the binary into
-`bin/`. Open [http://localhost:8080/](http://localhost:8080/): the page lists
-the items and has a form that adds one without reloading the page; an API
-error, such as a blank name, is shown on the page. As with htmx, the JSON
-API moves under `/api`:
-
-```sh
-curl -i http://localhost:8080/api/health
-curl -i -X POST http://localhost:8080/api/items -d '{"name":"onigiri"}'
-curl -i http://localhost:8080/
-```
-
-While you work on the page, run the Go server with `make run` and, in a
-second terminal, the Vite dev server with `make dev` (or
-`npm --prefix frontend run dev`). Open
-[http://localhost:5173/](http://localhost:5173/): the dev server reloads the
-page as you edit it and forwards `/api` to the Go server on port 8080.
-
-The project gains `frontend/` and one Go package, `internal/views`
-(`internal/web` with `--arch vertical-slice`, `internal/adapters/web` with
-`--arch ddd`). gobento owns these files; everything else in `frontend/`, such
-as `package.json`, `index.html`, and `src/main.tsx`, is the scaffolder's:
-
-| Path                             | Contents                                                                                                                 |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `frontend/vite.config.ts`        | The framework's Vite plugin, the build output `../internal/views/dist/app`, and the dev server's proxy for `/api`        |
-| `frontend/src/App.tsx`           | The example page (`App.vue` with Vue, `App.svelte` with Svelte)                                                          |
-| `frontend/src/api.ts`            | The client for `GET /api/items` and `POST /api/items`                                                                    |
-| `frontend/src/index.css`         | The page's styles (`style.css` with Vue, `app.css` with Svelte): the stylesheet the scaffolded entry imports             |
-| `frontend/package-lock.json`     | Every npm dependency at an exact version, written by npm; Dependabot keeps them current                                  |
-| `internal/views/handler.go`      | `NewHandler`, serving the build embedded with `//go:embed`; tests in `handler_test.go`                                   |
-| `internal/views/dist/.gitignore` | Keeps `dist/` in the repository and ignores the build in `dist/app/`, so the package builds before the frontend is built |
-
-The binary embeds the build, so it needs no files next to it. It serves the
-build's files, and `index.html` for every other path without a file
-extension, so client-side routes survive a reload; a missing file with an
-extension, and any path under `/api/`, is `404`. Until you build the
-frontend, `/` shows a page that names the build commands, so `go build` and
-`go test ./...` work without Node.js.
-
-The [tooling](/docs/concepts/project-tooling#frontend-tooling) builds the
-frontend too: the CI workflow sets up Node.js and runs `npm ci`, the
-scaffolded project's checks, and `npm run build` before the Go checks, and
-the Dockerfile builds the app in a `node` stage. The three frontends are
-alike: the same files apart from the framework's file names, the same page,
-and the same tooling.
-
-### Tailwind CSS with React, Vue, or Svelte
-
-Add `--css tailwind` to style the app with Tailwind CSS through its Vite
-plugin:
-
-```sh
-gobento new shop --module example.com/shop --arch mvc --framework nethttp --db sqlite --data sqlc --frontend react --css tailwind
-```
-
-After the scaffolder, npm adds `tailwindcss` and `@tailwindcss/vite` 4.3.4,
-the versions in gobento's rules file, to the `devDependencies` of
-`frontend/package.json` and to `frontend/package-lock.json`; `--dry-run`
-lists them. `frontend/vite.config.ts` imports the plugin and adds
-`tailwindcss()` to its `plugins`, and `frontend/src/index.css` (`style.css`
-with Vue, `app.css` with Svelte) starts with `@import "tailwindcss";`,
-before the example page's plain CSS. Use utility classes in the components,
-or replace those rules.
-
-`npm run build` and `make dev` compile every utility class the sources use,
-so there is no `tailwind.css`, no committed stylesheet, no `make generate`
-step, and no extra CI step: the frontend build that the tooling already runs
-compiles the styles.
-
 ## Next steps
 
+- Try another architecture, database, data access, or frontend in [Choose your stack](/docs/getting-started/choose-your-stack).
 - Learn how the pieces fit together in [Slots and contracts](/docs/concepts/slots-and-contracts).
 - See every flag in the [`gobento new` reference](/docs/cli/new).
